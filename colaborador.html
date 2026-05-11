@@ -7,20 +7,11 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-:root{
-  --bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;
-  --text:#1a1917;--muted:#6b6860;--hint:#a09d96;
-  --radius:10px;--rsm:6px;
-  --green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;
-  --red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;
-  --amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;
-  --blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;
-  --acc:#1a1917;
-}
+:root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;--blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:13px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
-.tb-icon{width:32px;height:32px;background:var(--acc);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.tb-icon{width:32px;height:32px;background:var(--text);border-radius:8px;display:flex;align-items:center;justify-content:center}
 .tb-icon svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tb-title{font-size:15px;font-weight:600}.tb-sub{font-size:12px;color:var(--muted);margin-top:1px}
 .tb-status{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:20px;font-weight:500}
@@ -32,7 +23,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .alert-err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
 .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
 .tab-btn{padding:9px 6px;border:none;border-radius:var(--rsm);background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;line-height:1.3}
-.tab-btn.active{background:var(--acc);color:#fff}
+.tab-btn.active{background:var(--text);color:#fff}
 .tab-btn span{display:block;font-size:10px;font-weight:400;opacity:.75;margin-top:1px}
 .tab-content{display:none}.tab-content.active{display:block}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:12px}
@@ -50,7 +41,7 @@ input.err,select.err{border-color:#e05252}
 select{cursor:pointer}
 textarea{resize:vertical;min-height:72px}
 .pedido-add-row{display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:flex-end;margin-bottom:10px}
-.btn-add{padding:9px 14px;background:var(--acc);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;height:42px;display:flex;align-items:center;gap:5px}
+.btn-add{padding:9px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;height:42px;display:flex;align-items:center;gap:5px}
 .btn-add:hover{opacity:.87}
 .pedido-list{display:flex;flex-direction:column;gap:6px;margin-top:4px}
 .pedido-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);font-size:13px}
@@ -64,11 +55,10 @@ textarea{resize:vertical;min-height:72px}
 .ps-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:500}
 .ps-lbl{font-size:11px;color:var(--muted);margin-top:2px}
 .conf-info{background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:var(--rsm);padding:10px 14px;font-size:12px;color:var(--blue-t);margin-bottom:14px;line-height:1.5}
-.btn-submit{width:100%;padding:13px;background:var(--acc);color:#fff;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-submit{width:100%;padding:13px;background:var(--text);color:#fff;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-submit:hover{opacity:.87}
 .btn-submit:disabled{opacity:.5;cursor:not-allowed}
 .btn-submit svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.divider{height:1px;background:var(--border);margin:14px 0}
 .chart-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
 .chart-filters select{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer}
 .chart-wrap{position:relative;width:100%;height:210px;margin-bottom:14px}
@@ -142,7 +132,7 @@ textarea{resize:vertical;min-height:72px}
   <div class="tab-content" id="tab-conferente">
     <div class="conf-info"><strong>Aba do conferente</strong> — Registre os erros encontrados durante a conferência. Aparecem em tempo real no painel do gestor.</div>
     <div class="card">
-      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Identificação do conferente</div>
+      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Identificação</div>
       <div class="form-grid">
         <div class="form-group"><label>Filial <span class="req">*</span></label><select id="cf-filial" onchange="loadColabs('cf-filial','cf-colab')"><option value="">Selecione</option></select></div>
         <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="cf-date"></div>
@@ -154,19 +144,14 @@ textarea{resize:vertical;min-height:72px}
       <div class="card-title"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Detalhes do erro</div>
       <div class="form-grid">
         <div class="form-group"><label>Motivo <span class="req">*</span></label>
-          <select id="cf-motivo">
-            <option value="">Selecione</option>
-            <option>Medida invertida</option><option>Pneu a mais</option><option>Pneu a menos</option>
-            <option>Etiqueta faltando</option><option>Doca errada</option><option>Sem nome</option><option>Outro</option>
-          </select>
+          <select id="cf-motivo"><option value="">Selecione</option><option>Medida invertida</option><option>Pneu a mais</option><option>Pneu a menos</option><option>Etiqueta faltando</option><option>Doca errada</option><option>Sem nome</option><option>Outro</option></select>
         </div>
         <div class="form-group"><label>Nº pedido com erro</label><input type="text" id="cf-pedido-err" placeholder="Ex: 299226"></div>
-        <div class="form-group full"><label>Observação</label><textarea id="cf-obs" placeholder="Descreva o erro — ex: 205/55R17 invertida pela 215/55R17..."></textarea></div>
+        <div class="form-group full"><label>Observação</label><textarea id="cf-obs" placeholder="Descreva o erro..."></textarea></div>
       </div>
     </div>
     <button class="btn-submit" id="btn-salvar-erro" onclick="salvarErro()" style="background:#8b2424">
-      <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      Registrar erro
+      <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Registrar erro
     </button>
     <div class="card" style="margin-top:18px">
       <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Erros registrados hoje</div>
@@ -186,61 +171,45 @@ textarea{resize:vertical;min-height:72px}
       <div class="chart-wrap" id="chart-wrap" style="display:none"><canvas id="myChart"></canvas></div>
       <div id="chart-empty" style="text-align:center;padding:40px;color:var(--hint);font-size:13px">Selecione filial e colaborador</div>
     </div>
-    <div class="card" id="erros-pessoais-card" style="display:none">
-      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Meus erros registrados</div>
-      <div id="erros-pessoais-list"></div>
-    </div>
   </div>
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbxnkYPtBYpPmj_X9UDowRrEQu7iXJI9MapYakdZWJpGRLrghw3jMZ6l_isvgyua5RXA/exec';
+const FB_URL = 'https://mauer-produtividade-default-rtdb.firebaseio.com';
 
-let filiais=[], colaboradores={}, lancamentosHoje=[], myChart=null;
+async function fbGet(path){const r=await fetch(`${FB_URL}/${path}.json`);return await r.json();}
+async function fbPost(path,data){const r=await fetch(`${FB_URL}/${path}.json`,{method:'POST',body:JSON.stringify(data)});return await r.json();}
+
+let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 
-async function apiPost(body){
-  const r=await fetch(API,{method:'POST',body:JSON.stringify(body)});
-  return await r.json();
-}
-async function apiGet(sheet){
-  const r=await fetch(`${API}?action=get&sheet=${sheet}`);
-  return await r.json();
-}
-
-async function init(){
+async function init() {
   setStatus('loading','Conectando...');
   const today=new Date().toISOString().slice(0,10);
   ['p-date','cf-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
-  try{
-    const [filR,colR]=await Promise.all([apiGet('Filiais'),apiGet('Colaboradores')]);
-    filiais=(filR.data||[]).map(f=>({id:f.Id,nome:f.NomeFilial}));
-    colaboradores={};
-    (colR.data||[]).forEach(c=>{if(!colaboradores[c.Filial])colaboradores[c.Filial]=[];colaboradores[c.Filial].push({id:c.Id,nome:c.NomeColaborador});});
+  try {
+    const [filData,colData] = await Promise.all([fbGet('filiais'),fbGet('colaboradores')]);
+    filiais = filData ? Object.entries(filData).map(([k,v])=>({...v,_key:k})) : [];
+    colaboradores = {};
+    if(colData){Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});}
     populateFilialSelects();
     await carregarHoje();
     setStatus('ok','Conectado ✓');
-  }catch(e){
+  } catch(e) {
     setStatus('err','Sem conexão');
-    showAlert('err','Não foi possível conectar. Verifique sua internet.');
+    showAlert('err','Não foi possível conectar.');
     console.error(e);
   }
 }
 
-async function carregarHoje(){
-  try{
-    const r=await apiGet('Lancamentos');
+async function carregarHoje() {
+  try {
+    const data = await fbGet('lancamentos');
     const today=new Date().toISOString().slice(0,10);
-    lancamentosHoje=(r.data||[]).filter(l=>String(l.Data||'').slice(0,10)===today).map(l=>({
-      id:l.Id,data:String(l.Data||'').slice(0,10),filial:l.Filial||'',colaborador:l.Colaborador||'',
-      pedidos:Number(l.Pedidos||0),pneus:Number(l.Pneus||0),motivo:l.Motivo||'',
-      pedidoErro:l.PedidoErro||'',obs:l.Obs||'',conferente:l.Conferente||'',
-      isPedido:l.IsPedido===true||l.IsPedido==='TRUE'||l.IsPedido==='1',
-      numPedido:l.NumPedido||'',qtdPedido:Number(l.QtdPedido||0),
-      isErro:l.IsErro===true||l.IsErro==='TRUE'||l.IsErro==='1',
-    }));
+    allLancamentos = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
+    lancamentosHoje = allLancamentos.filter(l=>l.data===today);
     renderPedidoHistory();renderErroHistory();
-  }catch(e){console.error(e);}
+  } catch(e){console.error(e);}
 }
 
 function setStatus(type,msg){const el=document.getElementById('status-badge');el.className='tb-status '+type;el.textContent=msg;}
@@ -287,15 +256,7 @@ function renderPedidoTemp(){
   const summEl=document.getElementById('pedido-summary');
   if(!pedidosTemp.length){listEl.innerHTML='';emptyEl.style.display='';summEl.style.display='none';return;}
   emptyEl.style.display='none';summEl.style.display='flex';
-  listEl.innerHTML=pedidosTemp.map((p,i)=>`
-    <div class="pedido-item">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:7px;height:7px;border-radius:50%;background:var(--green-t);flex-shrink:0"></div>
-        <span class="pedido-num">${p.num}</span>
-        <span class="pedido-qt">— ${p.qt} pneu${p.qt!==1?'s':''}</span>
-      </div>
-      <button class="pedido-del" onclick="removePedido(${i})">×</button>
-    </div>`).join('');
+  listEl.innerHTML=pedidosTemp.map((p,i)=>`<div class="pedido-item"><div style="display:flex;align-items:center;gap:10px"><div style="width:7px;height:7px;border-radius:50%;background:var(--green-t);flex-shrink:0"></div><span class="pedido-num">${p.num}</span><span class="pedido-qt">— ${p.qt} pneu${p.qt!==1?'s':''}</span></div><button class="pedido-del" onclick="removePedido(${i})">×</button></div>`).join('');
   document.getElementById('ps-total-ped').textContent=pedidosTemp.length;
   document.getElementById('ps-total-pn').textContent=pedidosTemp.reduce((a,p)=>a+p.qt,0).toLocaleString('pt-BR');
 }
@@ -308,21 +269,18 @@ async function salvarPedidos(){
   [['p-filial',filial],['p-date',date],['p-colab',colab]].forEach(([id,val])=>{document.getElementById(id).classList.toggle('err',!val);if(!val)ok=false;});
   if(!ok){showAlert('err','Preencha filial, data e colaborador.');return;}
   if(!pedidosTemp.length){showAlert('err','Adicione pelo menos um pedido.');return;}
-
   const btn=document.getElementById('btn-salvar-pedidos');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Salvando...';
   const totalPneus=pedidosTemp.reduce((a,p)=>a+p.qt,0);
   try{
     for(let i=0;i<pedidosTemp.length;i++){
-      await apiPost({action:'insert',sheet:'Lancamentos',row:{Data:date,Filial:filial,Colaborador:colab,IsPedido:true,NumPedido:pedidosTemp[i].num,QtdPedido:pedidosTemp[i].qt,Pedidos:0,Pneus:0,IsErro:false,Motivo:'',PedidoErro:'',Obs:'',Conferente:''}});
+      await fbPost('lancamentos',{data:date,filial,colaborador:colab,isPedido:true,numPedido:pedidosTemp[i].num,qtdPedido:pedidosTemp[i].qt,pedidos:0,pneus:0,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:''});
     }
-    await apiPost({action:'insert',sheet:'Lancamentos',row:{Data:date,Filial:filial,Colaborador:colab,Pedidos:pedidosTemp.length,Pneus:totalPneus,IsPedido:false,IsErro:false,NumPedido:'',QtdPedido:0,Motivo:'',PedidoErro:'',Obs:'',Conferente:''}});
+    await fbPost('lancamentos',{data:date,filial,colaborador:colab,pedidos:pedidosTemp.length,pneus:totalPneus,isPedido:false,isErro:false,numPedido:'',qtdPedido:0,motivo:'',pedidoErro:'',obs:'',conferente:''});
     pedidosTemp=[];renderPedidoTemp();
     showAlert('ok',`${totalPneus} pneus enviados ao painel do gestor!`);
     await carregarHoje();
-  }catch(e){
-    showAlert('err','Erro ao salvar. Verifique a conexão.');console.error(e);
-  }
+  }catch(e){showAlert('err','Erro ao salvar.');console.error(e);}
   btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Salvar e enviar ao gestor';
 }
 
@@ -332,8 +290,8 @@ function renderPedidoHistory(){
   const el=document.getElementById('pedido-history');
   if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum pedido registrado hoje</div>';return;}
   const ag={};
-  items.forEach(p=>{if(!ag[p.colaborador])ag[p.colaborador]={colab:p.colaborador,filial:p.filial,pneus:0,pedidos:[]};ag[p.colaborador].pneus+=p.qtdPedido;ag[p.colaborador].pedidos.push(p.numPedido);});
-  el.innerHTML=Object.values(ag).map(a=>`<div class="hist-item"><div class="hist-dot ok"></div><div><div style="font-weight:500;font-size:13px">${a.colab} <span style="font-weight:400;color:var(--muted)">— ${a.filial}</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px">${a.pedidos.length} pedido${a.pedidos.length!==1?'s':''} · ${a.pneus} pneus</div><div style="font-size:11px;color:var(--hint);margin-top:2px;font-family:'DM Mono',monospace">${a.pedidos.slice(0,4).join(', ')}${a.pedidos.length>4?'...':''}</div></div></div>`).join('');
+  items.forEach(p=>{if(!ag[p.colaborador])ag[p.colaborador]={colab:p.colaborador,filial:p.filial,pneus:0,pedidos:[]};ag[p.colaborador].pneus+=Number(p.qtdPedido||0);ag[p.colaborador].pedidos.push(p.numPedido);});
+  el.innerHTML=Object.values(ag).map(a=>`<div class="hist-item"><div class="hist-dot ok"></div><div><div style="font-weight:500;font-size:13px">${a.colab} <span style="font-weight:400;color:var(--muted)">— ${a.filial}</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px">${a.pedidos.length} pedido${a.pedidos.length!==1?'s':''} · ${a.pneus} pneus</div></div></div>`).join('');
 }
 
 // ---- CONFERENTE ----
@@ -347,18 +305,15 @@ async function salvarErro(){
   const obs=document.getElementById('cf-obs').value.trim();
   let ok=true;
   [['cf-filial',filial],['cf-date',date],['cf-nome',conf],['cf-colab',colab],['cf-motivo',motivo]].forEach(([id,val])=>{document.getElementById(id).classList.toggle('err',!val);if(!val)ok=false;});
-  if(!ok){showAlert('err','Preencha todos os campos obrigatórios.');return;}
-
+  if(!ok){showAlert('err','Preencha todos os campos.');return;}
   const btn=document.getElementById('btn-salvar-erro');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Registrando...';
   try{
-    await apiPost({action:'insert',sheet:'Lancamentos',row:{Data:date,Filial:filial,Colaborador:colab,Motivo:motivo,PedidoErro:pedErr,Obs:obs,Conferente:conf,Pedidos:0,Pneus:0,IsPedido:false,IsErro:true,NumPedido:'',QtdPedido:0}});
+    await fbPost('lancamentos',{data:date,filial,colaborador:colab,motivo,pedidoErro:pedErr,obs,conferente:conf,pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0});
     ['cf-colab','cf-motivo','cf-pedido-err','cf-obs'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('err');});
     showAlert('ok','Erro registrado no painel do gestor!');
     await carregarHoje();
-  }catch(e){
-    showAlert('err','Erro ao registrar. Verifique a conexão.');console.error(e);
-  }
+  }catch(e){showAlert('err','Erro ao registrar.');console.error(e);}
   btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Registrar erro';
 }
 
@@ -366,8 +321,8 @@ function renderErroHistory(){
   const today=new Date().toISOString().slice(0,10);
   const items=lancamentosHoje.filter(l=>l.isErro&&l.data===today);
   const el=document.getElementById('erro-history');
-  if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum erro registrado hoje</div>';return;}
-  el.innerHTML=[...items].reverse().map(e=>`<div class="hist-item"><div class="hist-dot err"></div><div style="font-size:13px"><div style="font-weight:500">${e.colaborador} <span class="badge badge-warn">${e.motivo}</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px">${e.pedidoErro?`Pedido ${e.pedidoErro} · `:''}Conf.: ${e.conferente}${e.obs?`<br><span style="font-style:italic">${e.obs}</span>`:''}</div></div></div>`).join('');
+  if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum erro hoje</div>';return;}
+  el.innerHTML=[...items].reverse().map(e=>`<div class="hist-item"><div class="hist-dot err"></div><div style="font-size:13px"><div style="font-weight:500">${e.colaborador} <span class="badge badge-warn">${e.motivo}</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px">${e.pedidoErro?`Pedido ${e.pedidoErro} · `:''}Conf.: ${e.conferente}</div></div></div>`).join('');
 }
 
 // ---- GRÁFICO ----
@@ -377,35 +332,29 @@ async function renderChart(){
   const metricsEl=document.getElementById('chart-metrics');
   const wrapEl=document.getElementById('chart-wrap');
   const emptyEl=document.getElementById('chart-empty');
-  const errosCard=document.getElementById('erros-pessoais-card');
-  if(!filial||!colab){metricsEl.style.display='none';wrapEl.style.display='none';emptyEl.style.display='';errosCard.style.display='none';if(myChart){myChart.destroy();myChart=null;}return;}
+  if(!filial||!colab){metricsEl.style.display='none';wrapEl.style.display='none';emptyEl.style.display='';if(myChart){myChart.destroy();myChart=null;}return;}
   emptyEl.textContent='Carregando...';emptyEl.style.display='';
   try{
-    const r=await apiGet('Lancamentos');
-    const todos=(r.data||[]);
-    const dados=todos.filter(l=>l.Filial===filial&&l.Colaborador===colab&&!l.IsPedido&&l.IsPedido!=='TRUE'&&!l.IsErro&&l.IsErro!=='TRUE'&&Number(l.Pneus||0)>0);
-    const erros=todos.filter(l=>l.Filial===filial&&l.Colaborador===colab&&l.Motivo);
-    if(!dados.length&&!erros.length){emptyEl.textContent='Nenhum dado encontrado.';wrapEl.style.display='none';metricsEl.style.display='none';errosCard.style.display='none';if(myChart){myChart.destroy();myChart=null;}return;}
+    const data=await fbGet('lancamentos');
+    const todos=data?Object.values(data):[];
+    const dados=todos.filter(l=>l.filial===filial&&l.colaborador===colab&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
+    if(!dados.length){emptyEl.textContent='Nenhum dado.';wrapEl.style.display='none';metricsEl.style.display='none';if(myChart){myChart.destroy();myChart=null;}return;}
     emptyEl.style.display='none';
     const byDate={};
-    dados.forEach(l=>{const d=String(l.Data||'').slice(0,10);if(!byDate[d])byDate[d]={pneus:0,pedidos:0};byDate[d].pneus+=Number(l.Pneus||0);byDate[d].pedidos+=Number(l.Pedidos||0);});
+    dados.forEach(l=>{if(!byDate[l.data])byDate[l.data]={pneus:0,pedidos:0};byDate[l.data].pneus+=Number(l.pneus||0);byDate[l.data].pedidos+=Number(l.pedidos||0);});
     const dates=Object.keys(byDate).sort();
     const labels=dates.map(d=>{try{const[y,m,dd]=d.split('-');return`${dd}/${m}`;}catch(e){return d;}});
     const pneusData=dates.map(d=>byDate[d].pneus);
     const totalPn=pneusData.reduce((a,v)=>a+v,0);
-    const totalPd=dados.reduce((a,l)=>a+Number(l.Pedidos||0),0);
+    const totalPd=dados.reduce((a,l)=>a+Number(l.pedidos||0),0);
     const media=dates.length>0?Math.round(totalPn/dates.length):0;
     const maximo=pneusData.length>0?Math.max(...pneusData):0;
     metricsEl.style.display='grid';
     metricsEl.innerHTML=`<div class="cm"><div class="cm-lbl">Total pneus</div><div class="cm-val">${totalPn.toLocaleString('pt-BR')}</div></div><div class="cm"><div class="cm-lbl">Pedidos</div><div class="cm-val">${totalPd}</div></div><div class="cm"><div class="cm-lbl">Média/dia</div><div class="cm-val">${media}</div></div><div class="cm"><div class="cm-lbl">Melhor dia</div><div class="cm-val" style="color:var(--green-t)">${maximo}</div></div>`;
-    if(dados.length){
-      wrapEl.style.display='';
-      if(myChart)myChart.destroy();
-      myChart=new Chart(document.getElementById('myChart'),{type:'bar',data:{labels,datasets:[{label:'Pneus',data:pneusData,backgroundColor:pneusData.map(v=>v===maximo&&maximo>0?'#1a1917':'#c8c5ba'),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} pneus`}}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11},maxRotation:45}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}}}});
-    }else{wrapEl.style.display='none';}
-    errosCard.style.display=erros.length?'':'none';
-    if(erros.length){document.getElementById('erros-pessoais-list').innerHTML=[...erros].reverse().map(e=>`<div class="hist-item"><div class="hist-dot err"></div><div style="font-size:13px"><div style="font-weight:500"><span class="badge badge-warn">${e.Motivo}</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px">${String(e.Data||'').slice(0,10).split('-').reverse().join('/')} ${e.PedidoErro?'— Pedido '+e.PedidoErro:''}${e.Obs?`<br><span style="font-style:italic">${e.Obs}</span>`:''}</div></div></div>`).join('');}
-  }catch(e){emptyEl.textContent='Erro ao carregar dados.';emptyEl.style.display='';console.error(e);}
+    wrapEl.style.display='';
+    if(myChart)myChart.destroy();
+    myChart=new Chart(document.getElementById('myChart'),{type:'bar',data:{labels,datasets:[{label:'Pneus',data:pneusData,backgroundColor:pneusData.map(v=>v===maximo&&maximo>0?'#1a1917':'#c8c5ba'),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} pneus`}}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11},maxRotation:45}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}}}});
+  }catch(e){emptyEl.textContent='Erro ao carregar.';emptyEl.style.display='';console.error(e);}
 }
 
 function showAlert(type,msg){
