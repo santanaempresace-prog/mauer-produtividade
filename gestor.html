@@ -119,7 +119,8 @@ tbody tr:hover td{background:var(--bg)}
     <div class="nav-item" onclick="setView('historico',this)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
     <div class="sb-divider"></div>
     <div class="sb-label">Cadastros</div>
-    <div class="nav-item" onclick="setView('config',this)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M17.66 17.66l-1.41-1.41M6.75 17.66l1.41-1.41"/></svg>Filiais e colaboradores</div>
+    <div class="nav-item" onclick="setView('config',this)><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M17.66 17.66l-1.41-1.41M6.75 17.66l1.41-1.41"/></svg>Filiais e colaboradores</div>
+    <div class="nav-item" onclick="setView('gestores',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Gestores</div>
     <div class="sb-footer">
       <div class="sb-stat-val" id="sb-pneus">—</div>
       <div class="sb-stat-lbl">pneus no período</div>
@@ -146,6 +147,18 @@ tbody tr:hover td{background:var(--bg)}
         <input type="date" id="g-date-ini" onchange="render()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;cursor:pointer">
         <span style="font-size:12px;color:var(--muted)">até</span>
         <input type="date" id="g-date-fim" onchange="render()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;cursor:pointer">
+      </div>
+      <div style="position:relative">
+        <button class="btn btn-outline btn-sm" onclick="toggleGestorDropdown()" id="gestor-btn" style="min-width:140px;justify-content:space-between">
+          <span id="gestor-btn-label">Por gestor</span> ▾
+        </button>
+        <div id="gestor-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:180px;padding:8px 0;margin-top:4px;max-height:240px;overflow-y:auto">
+          <div style="padding:6px 12px;font-size:12px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);margin-bottom:4px">Filtrar por gestor</div>
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px">
+            <input type="radio" name="gestor-radio" value="" checked onchange="filtrarPorGestor('')"> Todos os gestores
+          </label>
+          <div id="gestor-radio-list"></div>
+        </div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="clearFilters()">Limpar</button>
     </div>
@@ -193,6 +206,26 @@ tbody tr:hover td{background:var(--bg)}
         <div id="colab-list"></div>
       </div>
     </div>
+
+    <!-- VIEW GESTORES -->
+    <div class="view" id="view-gestores">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><svg class="ic" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Cadastro de gestores</div>
+          <span id="gestores-count" class="badge badge-neu"></span>
+        </div>
+        <div style="background:var(--blue-bg,#e8f3fd);border:0.5px solid #a8ccf0;border-radius:var(--rsm);padding:10px 14px;font-size:12px;color:#1a4b8c;margin-bottom:14px">
+          Login será ativado futuramente. Por enquanto cadastre os gestores e vincule às filiais.
+        </div>
+        <div class="field-row" style="flex-wrap:wrap">
+          <input type="text" id="new-gestor-nome" placeholder="Nome do gestor" style="flex:1;min-width:140px">
+          <input type="text" id="new-gestor-usuario" placeholder="Usuário (futuro login)" style="flex:1;min-width:140px">
+          <button class="btn btn-dark" onclick="addGestor()">+ Adicionar</button>
+        </div>
+        <div id="gestores-list"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -250,6 +283,7 @@ async function carregarTudo() {
     }
 
     populateFiliaisSelect();
+    await carregarGestores();
     render();
     setStatus('ok','Conectado ✓');
     const m = new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
@@ -328,8 +362,10 @@ document.addEventListener('click', function(e) {
 
 function clearFilters() {
   filiaisSelecionadas = new Set(filiais.map(f=>f.nome));
-  document.getElementById('g-date-ini').value = '';
-  document.getElementById('g-date-fim').value = '';
+  document.getElementById('g-date-ini').value = _iniMes;
+  document.getElementById('g-date-fim').value = _fimMes;
+  document.querySelectorAll('input[name=gestor-radio]').forEach(r=>r.checked=r.value==='');
+  const lbl=document.getElementById('gestor-btn-label'); if(lbl)lbl.textContent='Por gestor';
   populateFiliaisSelect();
   render();
 }
@@ -540,6 +576,7 @@ function setView(view,el) {
   document.getElementById('view-'+view).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
+  if(view==='gestores'){renderGestoresList();return;}
   render();
 }
 
@@ -590,6 +627,108 @@ function showAlert(type,msg) {
   el.className='top-alert '+type+' visible';el.textContent=msg;
   setTimeout(()=>el.classList.remove('visible'),4000);
 }
+
+
+// ---- GESTORES ----
+let gestores = [];
+
+async function carregarGestores() {
+  try {
+    const data = await fbGet('gestores');
+    gestores = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
+    renderGestorRadioList();
+    if(currentView==='gestores') renderGestoresList();
+  } catch(e) { console.error(e); }
+}
+
+function renderGestoresList() {
+  const el = document.getElementById('gestores-list');
+  const cnt = document.getElementById('gestores-count');
+  if(cnt) cnt.textContent = gestores.length + ' gestor' + (gestores.length!==1?'es':'');
+  if(!el) return;
+  if(!gestores.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum gestor cadastrado</div>';return;}
+  el.innerHTML = gestores.map((g) => `
+    <div style="padding:14px 6px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-weight:500;font-size:13px">${g.nome}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Usu&aacute;rio: ${g.usuario||'n&atilde;o definido'}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeGestor('${g._key}')">Remover</button>
+      </div>
+      <div style="font-size:11px;font-weight:500;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Filiais vinculadas</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${filiais.map(f=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:3px 8px"><input type="checkbox" ${(g.filiais||[]).includes(f.nome)?'checked':''} onchange="vincularFilial('${g._key}','${f.nome}',this.checked)"> ${f.nome}</label>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+async function addGestor() {
+  const nome = document.getElementById('new-gestor-nome').value.trim();
+  const usuario = document.getElementById('new-gestor-usuario').value.trim();
+  if(!nome){showAlert('err','Digite o nome do gestor.');return;}
+  try {
+    const r = await fbPost('gestores',{nome,usuario,filiais:[]});
+    gestores.push({nome,usuario,filiais:[],_key:r.name});
+    document.getElementById('new-gestor-nome').value='';
+    document.getElementById('new-gestor-usuario').value='';
+    renderGestoresList();
+    showAlert('ok','Gestor adicionado!');
+  } catch(e){showAlert('err','Erro ao adicionar.');}
+}
+
+async function vincularFilial(gestorKey, filialNome, checked) {
+  const g = gestores.find(g=>g._key===gestorKey);
+  if(!g) return;
+  if(!g.filiais) g.filiais=[];
+  if(checked && !g.filiais.includes(filialNome)) g.filiais.push(filialNome);
+  else if(!checked) g.filiais = g.filiais.filter(f=>f!==filialNome);
+  try {
+    await fbPatch('gestores/'+gestorKey,{filiais:g.filiais});
+    showAlert('ok','Vinculo atualizado!');
+  } catch(e){showAlert('err','Erro ao salvar.');}
+}
+
+async function removeGestor(key) {
+  if(!confirm('Remover este gestor?')) return;
+  try {
+    await fbDelete('gestores/'+key);
+    gestores = gestores.filter(g=>g._key!==key);
+    renderGestoresList();
+    showAlert('ok','Gestor removido.');
+  } catch(e){showAlert('err','Erro ao remover.');}
+}
+
+function filtrarPorGestor(key) {
+  if(!key) {
+    filiaisSelecionadas = new Set(filiais.map(f=>f.nome));
+  } else {
+    const g = gestores.find(g=>g._key===key);
+    if(g && g.filiais && g.filiais.length) filiaisSelecionadas = new Set(g.filiais);
+    else filiaisSelecionadas = new Set();
+  }
+  populateFiliaisSelect();
+  render();
+}
+
+
+
+function toggleGestorDropdown() {
+  const dd = document.getElementById('gestor-dropdown');
+  dd.style.display = dd.style.display === 'none' ? '' : 'none';
+}
+document.addEventListener('click', function(e) {
+  const btn = document.getElementById('gestor-btn');
+  const dd = document.getElementById('gestor-dropdown');
+  if(dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none';
+});
+
+function renderGestorRadioList() {
+  const el = document.getElementById('gestor-radio-list');
+  if(!el) return;
+  el.innerHTML = gestores.map(g=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px"><input type="radio" name="gestor-radio" value="${g._key}" onchange="filtrarPorGestor('${g._key}');document.getElementById('gestor-btn-label').textContent='${g.nome}';"> ${g.nome}</label>`).join('');
+}
+
 
 // Default: mês atual
 const _hoje = new Date();
