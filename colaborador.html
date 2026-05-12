@@ -72,6 +72,25 @@ textarea{resize:vertical;min-height:72px}
 .hist-dot.ok{background:var(--green-t)}.hist-dot.err{background:#e05252}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
 .badge-warn{background:var(--amber-bg);color:var(--amber-t);border:1px solid var(--amber-b)}
+
+.race-track{background:linear-gradient(180deg,#1a1a2e 0%,#16213e 100%);border-radius:var(--radius);padding:16px;margin-bottom:8px;overflow:hidden}
+.race-lane{display:flex;align-items:center;gap:10px;margin-bottom:14px;position:relative}
+.race-lane:last-child{margin-bottom:0}
+.race-pos{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:#fff;min-width:24px;text-align:center;opacity:.7}
+.race-pos.first{color:#FFD700;opacity:1;font-size:16px}
+.race-pos.second{color:#C0C0C0;opacity:1}
+.race-pos.third{color:#CD7F32;opacity:1}
+.race-name{font-size:12px;font-weight:500;color:#fff;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.race-bar-wrap{flex:1;height:22px;background:rgba(255,255,255,.1);border-radius:20px;overflow:hidden;position:relative}
+.race-bar{height:100%;border-radius:20px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;transition:width .8s cubic-bezier(.34,1.56,.64,1);min-width:30px;position:relative}
+.race-bar::after{content:'🛞';position:absolute;right:-18px;font-size:16px;animation:roll .4s linear infinite}
+@keyframes roll{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.race-val{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:#fff;position:absolute;right:28px;white-space:nowrap}
+.race-total{font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.6);min-width:50px;text-align:right}
+.race-crown{font-size:14px;margin-left:2px}
+.race-meta{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 0;border-top:1px solid rgba(255,255,255,.1);margin-top:8px}
+.race-meta-txt{font-size:11px;color:rgba(255,255,255,.5)}
+
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:480px){.form-grid{grid-template-columns:1fr}.pedido-add-row{grid-template-columns:1fr 90px auto}.chart-metrics{grid-template-columns:repeat(2,1fr)}}
@@ -91,7 +110,7 @@ textarea{resize:vertical;min-height:72px}
   <div class="tabs">
     <button class="tab-btn active" onclick="setTab('pedido',this)">Registrar pedido<span>Separador</span></button>
     <button class="tab-btn" onclick="setTab('conferente',this)">Conferente<span>Lançar erros</span></button>
-    <button class="tab-btn" onclick="setTab('grafico',this)">Produtividade<span>Meu desempenho</span></button>
+    <button class="tab-btn" onclick="setTab('grafico',this)">🏁 Corrida<span>Ranking ao vivo</span></button>
   </div>
 
   <!-- TAB 1: PEDIDOS -->
@@ -161,15 +180,29 @@ textarea{resize:vertical;min-height:72px}
 
   <!-- TAB 3: GRÁFICO -->
   <div class="tab-content" id="tab-grafico">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:10px">🏁 Ranking de corrida — hoje</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <select id="g-filial" onchange="loadChartColabs()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer;flex:1">
+          <option value="">Selecione a filial</option>
+        </select>
+        <button onclick="renderRankingCorrida()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Atualizar</button>
+      </div>
+      <div id="ranking-corrida-wrap">
+        <div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>
+      </div>
+    </div>
+
     <div class="card">
-      <div class="card-title"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Minha produtividade</div>
-      <div class="chart-filters">
-        <select id="g-filial" onchange="loadChartColabs()"><option value="">Filial</option></select>
-        <select id="g-colab" onchange="renderChart()"><option value="">Colaborador</option></select>
+      <div class="card-title"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Meu histórico</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="g-colab" onchange="renderChart()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer;flex:1">
+          <option value="">Selecione o colaborador</option>
+        </select>
       </div>
       <div class="chart-metrics" id="chart-metrics" style="display:none"></div>
       <div class="chart-wrap" id="chart-wrap" style="display:none"><canvas id="myChart"></canvas></div>
-      <div id="chart-empty" style="text-align:center;padding:40px;color:var(--hint);font-size:13px">Selecione filial e colaborador</div>
+      <div id="chart-empty" style="text-align:center;padding:24px;color:var(--hint);font-size:13px">Selecione um colaborador</div>
     </div>
   </div>
 </div>
@@ -226,13 +259,13 @@ function loadColabs(filialId,colabId){
   sel.innerHTML=cols.length?'<option value="">Selecione</option>'+cols.map(c=>`<option>${c.nome}</option>`).join(''):'<option value="">Nenhum colaborador</option>';
 }
 
-function loadChartColabs(){loadColabs('g-filial','g-colab');renderChart();}
+function loadChartColabs(){loadColabs('g-filial','g-colab');renderRankingCorrida();renderChart();}
 
 function setTab(tab,btn){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
-  if(tab==='grafico')renderChart();
+  if(tab==='grafico'){renderRankingCorrida();renderChart();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente')renderErroHistory();
 }
@@ -326,6 +359,64 @@ function renderErroHistory(){
 }
 
 // ---- GRÁFICO ----
+
+async function renderRankingCorrida() {
+  const filial = document.getElementById('g-filial').value;
+  const wrap = document.getElementById('ranking-corrida-wrap');
+  if(!filial){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>';return;}
+  wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Carregando corrida... 🛞</div>';
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const data = await fbGet('lancamentos');
+    const todos = data ? Object.values(data) : [];
+    const hoje = todos.filter(l=>l.filial===filial&&l.data===today&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
+    if(!hoje.length){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Nenhuma separação registrada hoje nesta filial</div>';return;}
+    // Agrupa por colaborador
+    const ag={};
+    hoje.forEach(l=>{
+      if(!ag[l.colaborador])ag[l.colaborador]={nome:l.colaborador,pneus:0,pedidos:0,erros:0};
+      ag[l.colaborador].pneus+=Number(l.pneus||0);
+      ag[l.colaborador].pedidos+=Number(l.pedidos||0);
+    });
+    // Conta erros
+    const errosHoje=todos.filter(l=>l.filial===filial&&l.data===today&&l.motivo);
+    errosHoje.forEach(l=>{if(ag[l.colaborador])ag[l.colaborador].erros++;});
+    const list=Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
+    const max=list[0]?.pneus||1;
+    const totalPneus=list.reduce((a,c)=>a+c.pneus,0);
+    const cores=['#FFD700','#3266ad','#1D9E75','#D85A30','#742774','#639922','#534AB7','#993556'];
+    const medalhas=['🥇','🥈','🥉'];
+    const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const html=`<div class="race-track">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:#fff">🏁 ${filial}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4)">Atualizado ${hora}</div>
+      </div>
+      ${list.map((c,i)=>{
+        const pct=Math.round((c.pneus/max)*100);
+        const cor=cores[i%cores.length];
+        const medal=medalhas[i]||`${i+1}º`;
+        return`<div class="race-lane">
+          <div class="race-pos${i===0?' first':i===1?' second':i===2?' third':''}">${medal}</div>
+          <div class="race-name">${c.nome}</div>
+          <div class="race-bar-wrap">
+            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}">
+              <span class="race-val">${c.pneus}</span>
+            </div>
+          </div>
+          <div class="race-total">${c.pneus} 🛞</div>
+        </div>`;
+      }).join('')}
+      <div class="race-meta">
+        <span class="race-meta-txt">${list.length} separadores em pista</span>
+        <span class="race-meta-txt">${totalPneus} pneus total hoje</span>
+      </div>
+    </div>`;
+    wrap.innerHTML=html;
+  } catch(e){wrap.innerHTML='<div style="text-align:center;padding:20px;color:#e05252;font-size:13px">Erro ao carregar ranking</div>';console.error(e);}
+}
+
+
 async function renderChart(){
   const filial=document.getElementById('g-filial').value;
   const colab=document.getElementById('g-colab').value;
