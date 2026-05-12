@@ -193,6 +193,14 @@ textarea{resize:vertical;min-height:72px}
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:10px">🌎 Ranking geral — todas as filiais</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button onclick="renderRankingGeral()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;width:100%">Carregar ranking geral</button>
+      </div>
+      <div id="ranking-geral-wrap"></div>
+    </div>
+
     <div class="card">
       <div class="card-title"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Meu histórico</div>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -359,6 +367,67 @@ function renderErroHistory(){
 }
 
 // ---- GRÁFICO ----
+
+
+async function renderRankingGeral() {
+  const wrap = document.getElementById('ranking-geral-wrap');
+  wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Carregando ranking geral... 🛞</div>';
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const data = await fbGet('lancamentos');
+    const todos = data ? Object.values(data) : [];
+    const hoje = todos.filter(l=>l.data===today&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
+    if(!hoje.length){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Nenhuma separação registrada hoje</div>';return;}
+    
+    // Agrupa por colaborador+filial
+    const ag={};
+    hoje.forEach(l=>{
+      const key=l.colaborador+'||'+l.filial;
+      if(!ag[key])ag[key]={nome:l.colaborador,filial:l.filial,pneus:0,pedidos:0};
+      ag[key].pneus+=Number(l.pneus||0);
+      ag[key].pedidos+=Number(l.pedidos||0);
+    });
+    
+    const list=Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
+    const max=list[0]?.pneus||1;
+    const totalPneus=list.reduce((a,c)=>a+c.pneus,0);
+    const totalSep=list.length;
+    const cores=['#FFD700','#C0C0C0','#CD7F32','#3266ad','#1D9E75','#D85A30','#742774','#639922','#534AB7','#993556'];
+    const medalhas=['🥇','🥈','🥉'];
+    const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    
+    const html=`<div class="race-track">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:#fff">🌎 Todas as filiais</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4)">Atualizado ${hora}</div>
+      </div>
+      ${list.map((c,i)=>{
+        const pct=Math.round((c.pneus/max)*100);
+        const cor=cores[i%cores.length];
+        const medal=medalhas[i]||`${i+1}º`;
+        return`<div class="race-lane">
+          <div class="race-pos${i===0?' first':i===1?' second':i===2?' third':''}">${medal}</div>
+          <div style="min-width:90px">
+            <div class="race-name">${c.nome}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:1px">${c.filial}</div>
+          </div>
+          <div class="race-bar-wrap">
+            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}">
+              <span class="race-val">${c.pneus}</span>
+            </div>
+          </div>
+          <div class="race-total">${c.pneus} 🛞</div>
+        </div>`;
+      }).join('')}
+      <div class="race-meta">
+        <span class="race-meta-txt">${totalSep} separadores no total</span>
+        <span class="race-meta-txt">${totalPneus} pneus hoje</span>
+      </div>
+    </div>`;
+    wrap.innerHTML=html;
+  } catch(e){wrap.innerHTML='<div style="text-align:center;padding:20px;color:#e05252;font-size:13px">Erro ao carregar ranking geral</div>';console.error(e);}
+}
+
 
 async function renderRankingCorrida() {
   const filial = document.getElementById('g-filial').value;
