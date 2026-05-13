@@ -236,6 +236,21 @@ async function fbPost(path,data){const r=await fetch(`${FB_URL}/${path}.json`,{m
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 
+
+function getBrasiliaTimestamp() {
+  // Sempre salva o timestamp UTC — a conversão é feita na exibição
+  return Date.now();
+}
+
+function getBrasiliaDateStr() {
+  // Retorna a data atual no fuso de Brasilia (YYYY-MM-DD)
+  return new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).split('/').reverse().join('-');
+}
+
+
 async function init() {
   setStatus('loading','Conectando...');
   const today=new Date().toISOString().slice(0,10);
@@ -332,9 +347,9 @@ async function salvarPedidos(){
   const totalPneus=pedidosTemp.reduce((a,p)=>a+p.qt,0);
   try{
     for(let i=0;i<pedidosTemp.length;i++){
-      await fbPost('lancamentos',{data:date,filial,colaborador:colab,isPedido:true,numPedido:pedidosTemp[i].num,qtdPedido:pedidosTemp[i].qt,pedidos:0,pneus:0,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:Date.now()});
+      await fbPost('lancamentos',{data:date,filial,colaborador:colab,isPedido:true,numPedido:pedidosTemp[i].num,qtdPedido:pedidosTemp[i].qt,pedidos:0,pneus:0,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:getBrasiliaTimestamp()});
     }
-    await fbPost('lancamentos',{data:date,filial,colaborador:colab,pedidos:pedidosTemp.length,pneus:totalPneus,isPedido:false,isErro:false,numPedido:'',qtdPedido:0,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:Date.now()});
+    await fbPost('lancamentos',{data:date,filial,colaborador:colab,pedidos:pedidosTemp.length,pneus:totalPneus,isPedido:false,isErro:false,numPedido:'',qtdPedido:0,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:getBrasiliaTimestamp()});
     pedidosTemp=[];renderPedidoTemp();
     showAlert('ok',`${totalPneus} pneus enviados ao painel do gestor!`);
     await carregarHoje();
@@ -367,7 +382,7 @@ async function salvarErro(){
   const btn=document.getElementById('btn-salvar-erro');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Registrando...';
   try{
-    await fbPost('lancamentos',{data:date,filial,colaborador:colab,motivo,pedidoErro:pedErr,obs,conferente:conf,pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0,timestamp:Date.now()});
+    await fbPost('lancamentos',{data:date,filial,colaborador:colab,motivo,pedidoErro:pedErr,obs,conferente:conf,pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0,timestamp:getBrasiliaTimestamp()});
     ['cf-colab','cf-motivo','cf-pedido-err','cf-obs'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('err');});
     showAlert('ok','Erro registrado no painel do gestor!');
     await carregarHoje();
