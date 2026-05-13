@@ -177,6 +177,9 @@ tbody tr:hover td{background:var(--bg)}
           <div id="gestor-radio-list"></div>
         </div>
       </div>
+      <select id="g-colab-filter" onchange="render()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer;min-width:160px">
+        <option value="">Todos colaboradores</option>
+      </select>
       <button class="btn btn-outline btn-sm" onclick="clearFilters()">Limpar</button>
     </div>
     <div class="metrics-grid" id="metrics-grid"><div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--hint)"><div class="spinner" style="margin:0 auto 8px"></div><br>Conectando ao Firebase...</div></div>
@@ -270,6 +273,18 @@ tbody tr:hover td{background:var(--bg)}
 
       <div class="card" style="margin-top:12px">
         <div class="card-header">
+          <div class="card-title"><svg class="ic" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Margem de pedidos</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">Define a variação máxima permitida no número do pedido. Ex: último pedido 301817 com margem 1000 aceita de 300817 a 302817.</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <input type="number" id="margem-input" min="100" max="9999" placeholder="Ex: 1000" style="font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:8px 12px;outline:none;width:140px">
+          <button class="btn btn-dark" onclick="salvarMargem()">Salvar margem</button>
+          <span id="margem-atual" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="card-header">
           <div class="card-title"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>Aparência</div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
@@ -342,6 +357,7 @@ async function carregarTudo() {
     }
 
     populateFiliaisSelect();
+    await carregarMargem();
     await carregarGestores();
     await carregarConferentes();
     render();
@@ -403,11 +419,49 @@ function atualizarBotaoFilial() {
   const total = filiais.length;
   const sel = filiaisSelecionadas.size;
   const lbl = document.getElementById('filial-btn-label');
-  if(!lbl) return;
-  if(sel === 0) lbl.textContent = 'Nenhuma filial';
-  else if(sel === total) lbl.textContent = 'Todas as filiais';
-  else if(sel === 1) lbl.textContent = [...filiaisSelecionadas][0];
-  else lbl.textContent = `${sel} filiais`;
+  const btn = document.getElementById('filial-btn');
+  if(!lbl || !btn) return;
+  if(sel === 0) {
+    lbl.textContent = 'Nenhuma filial';
+    btn.style.background = 'var(--red-bg)';
+    btn.style.color = 'var(--red-t)';
+    btn.style.borderColor = 'var(--red-b)';
+  } else if(sel === total) {
+    lbl.textContent = 'Todas as filiais';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  } else if(sel === 1) {
+    lbl.textContent = [...filiaisSelecionadas][0];
+    btn.style.background = 'var(--text)';
+    btn.style.color = '#fff';
+    btn.style.borderColor = 'var(--text)';
+  } else {
+    lbl.textContent = `${sel} filiais`;
+    btn.style.background = 'var(--amber-bg)';
+    btn.style.color = 'var(--amber-t)';
+    btn.style.borderColor = 'var(--amber-b)';
+  }
+  // Update colaborador select based on selected filiais
+  updateColabFilterSelect();
+}
+
+function updateColabFilterSelect() {
+  const sel = document.getElementById('g-colab-filter');
+  if(!sel) return;
+  const cur = sel.value;
+  // Get colaboradores from selected filiais
+  const colabs = new Set();
+  filiaisSelecionadas.forEach(f => {
+    const list = colaboradores[f] || [];
+    list.forEach(c => colabs.add(c.nome));
+  });
+  if(filiaisSelecionadas.size === 0 || filiaisSelecionadas.size === filiais.length) {
+    // All filiais - show all colabs
+    Object.values(colaboradores).forEach(list => list.forEach(c => colabs.add(c.nome)));
+  }
+  const sorted = [...colabs].sort();
+  sel.innerHTML = '<option value="">Todos colaboradores</option>' + sorted.map(c => `<option${c===cur?' selected':''}>${c}</option>`).join('');
 }
 
 function toggleFilialDropdown() {
@@ -426,6 +480,7 @@ function clearFilters() {
   document.getElementById('g-date-fim').value = _fimMes;
   document.querySelectorAll('input[name=gestor-radio]').forEach(r=>r.checked=r.value==='');
   const lbl=document.getElementById('gestor-btn-label'); if(lbl)lbl.textContent='Por gestor';
+  const cs=document.getElementById('g-colab-filter');if(cs)cs.value='';
   populateFiliaisSelect();
   render();
 }
@@ -434,17 +489,19 @@ function getFilter() {
   return {
     filiais: filiaisSelecionadas,
     ini: document.getElementById('g-date-ini').value,
-    fim: document.getElementById('g-date-fim').value
+    fim: document.getElementById('g-date-fim').value,
+    colab: (document.getElementById('g-colab-filter')?.value || '')
   };
 }
 
 function filterData() {
-  const{filiais:fs, ini, fim} = getFilter();
+  const{filiais:fs, ini, fim, colab} = getFilter();
   return lancamentos.filter(l => {
     if(l.isPedido || l.isErro || !l.pneus) return false;
     if(fs.size > 0 && !fs.has(l.filial)) return false;
     if(ini && l.data < ini) return false;
     if(fim && l.data > fim) return false;
+    if(colab && l.colaborador !== colab) return false;
     return true;
   });
 }
@@ -464,7 +521,7 @@ function renderMetrics(data) {
   const{filiais:fs,ini,fim}=getFilter();
   const tPn=data.reduce((a,l)=>a+Number(l.pneus||0),0);
   const tPd=data.reduce((a,l)=>a+Number(l.pedidos||0),0);
-  const erros=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+  const erros=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
   const cols=[...new Set(data.map(l=>l.colaborador))];
   const tx=data.length>0?((erros.length/data.length)*100).toFixed(1):'0.0';
   document.getElementById('metrics-grid').innerHTML=`
@@ -481,7 +538,7 @@ function renderRanking(data) {
   data.forEach(l=>{const k=l.colaborador+'|'+l.filial;if(!ag[k])ag[k]={colaborador:l.colaborador,filial:l.filial,pneus:0,pedidos:0};ag[k].pneus+=Number(l.pneus||0);ag[k].pedidos+=Number(l.pedidos||0);});
   const{filiais:fs,ini,fim}=getFilter();
   const errosPor={};
-  lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)).forEach(l=>{const k=l.colaborador+'|'+l.filial;errosPor[k]=(errosPor[k]||0)+1;});
+  lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab)).forEach(l=>{const k=l.colaborador+'|'+l.filial;errosPor[k]=(errosPor[k]||0)+1;});
   const list=Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
   const max=list[0]?.pneus||1;
   const el=document.getElementById('ranking-list');
@@ -508,7 +565,7 @@ async function excluirPedido(key) {
 function renderPedidos() {
   const{filiais:fs,ini,fim}=getFilter();
   const busca=(document.getElementById('busca-pedido')?.value||'').trim().toLowerCase();
-  let data=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+  let data=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
   if(busca)data=data.filter(l=>(l.numPedido||'').toLowerCase().includes(busca)||(l.colaborador||'').toLowerCase().includes(busca));
   document.getElementById('pedidos-count').textContent=data.length+' pedido'+(data.length!==1?'s':'');
   const tb=document.getElementById('pedidos-body');
@@ -562,7 +619,7 @@ function fmtDataHora(ts) {
 
 function renderErros() {
   const{filiais:fs,ini,fim}=getFilter();
-  const todos=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+  const todos=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
   
   // Separadores = erros lançados pelo separador (isErro=false ou undefined)
   const sepErros = todos.filter(l=>!l.isErro);
@@ -712,7 +769,7 @@ function exportarMes() {
   const{filiais:fs,ini,fim}=getFilter();
   const dados=lancamentos.filter(l=>!l.isPedido&&!l.isErro&&l.pneus>0&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
   const pedidos=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
-  const erros=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+  const erros=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
   if(!dados.length&&!pedidos.length){showAlert('err','Nenhum dado.');return;}
   const wb=XLSX.utils.book_new();
   if(dados.length){
@@ -928,6 +985,79 @@ function renderGestorRadioList() {
   el.innerHTML = gestores.map(g=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px"><input type="radio" name="gestor-radio" value="${g._key}" onchange="filtrarPorGestor('${g._key}');document.getElementById('gestor-btn-label').textContent='${g.nome}';"> ${g.nome}</label>`).join('');
 }
 
+
+
+
+// ---- MARGEM DE PEDIDOS ----
+let margemPedidos = 1000;
+
+async function carregarMargem() {
+  try {
+    const data = await fbGet('configuracoes/margemPedidos');
+    if(data) {
+      margemPedidos = Number(data);
+      const inp = document.getElementById('margem-input');
+      const lbl = document.getElementById('margem-atual');
+      if(inp) inp.value = margemPedidos;
+      if(lbl) lbl.textContent = 'Margem atual: ' + margemPedidos.toLocaleString('pt-BR');
+    }
+  } catch(e){ console.error(e); }
+}
+
+async function salvarMargem() {
+  const val = parseInt(document.getElementById('margem-input').value);
+  if(!val || val < 1) { showAlert('err','Valor inválido.'); return; }
+  try {
+    await fbPut('configuracoes/margemPedidos', val);
+    margemPedidos = val;
+    document.getElementById('margem-atual').textContent = 'Margem atual: ' + val.toLocaleString('pt-BR');
+    showAlert('ok','Margem salva! Colaboradores já estão usando a nova margem.');
+  } catch(e){ showAlert('err','Erro ao salvar margem.'); }
+}
+
+// ---- FLAGS DE COLABORADOR ----
+let flagSelecionada = null; // {colaborador, filial} ou null
+
+function renderFlags() {
+  const{filiais:fs,ini,fim}=getFilter();
+  const dados = lancamentos.filter(l=>!l.isPedido&&!l.isErro&&l.pneus>0&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+  const ag = {};
+  dados.forEach(l=>{
+    const k=l.colaborador+'||'+l.filial;
+    if(!ag[k]) ag[k]={colaborador:l.colaborador,filial:l.filial,pneus:0};
+    ag[k].pneus+=Number(l.pneus||0);
+  });
+  const list = Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
+  const wrap = document.getElementById('flags-wrap');
+  const el = document.getElementById('flags-list');
+  if(!list.length){if(wrap)wrap.style.display='none';return;}
+  if(wrap) wrap.style.display='flex';
+  el.innerHTML = list.map(item=>{
+    const key=item.colaborador+'||'+item.filial;
+    const isActive = flagSelecionada && flagSelecionada.key===key;
+    return `<div onclick="toggleFlag('${item.colaborador.replace(/'/g,"\'")}','${item.filial.replace(/'/g,"\'")}','${key}')" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid ${isActive?'var(--text)':'var(--border)'};background:${isActive?'var(--text)':'rgba(255,255,255,.9)'};color:${isActive?'#fff':'var(--text)'}">
+      <span>${item.colaborador}</span>
+      <span style="opacity:.6;font-size:11px">${item.filial}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:11px;${isActive?'color:#fff':'color:var(--muted)'}">${item.pneus} 🛞</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleFlag(colaborador, filial, key) {
+  if(flagSelecionada && flagSelecionada.key===key) {
+    flagSelecionada = null;
+  } else {
+    flagSelecionada = {colaborador, filial, key};
+  }
+  renderFlags();
+  render();
+}
+
+function limparFlags() {
+  flagSelecionada = null;
+  renderFlags();
+  render();
+}
 
 
 // ---- MODO ESCURO ----
