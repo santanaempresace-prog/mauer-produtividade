@@ -131,6 +131,7 @@ tbody tr:hover td{background:var(--bg)}
     <div class="sb-divider"></div>
     <div class="sb-label">Cadastros</div>
     <div class="nav-item" onclick="setView('config',this)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M17.66 17.66l-1.41-1.41M6.75 17.66l1.41-1.41"/></svg>Filiais e colaboradores</div>
+    <div class="nav-item" onclick="setView('conferentes',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Conferentes</div>
     <div class="nav-item" onclick="setView('gestores',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Gestores</div>
     <div class="sb-footer">
       <div class="sb-stat-val" id="sb-pneus">—</div>
@@ -188,13 +189,22 @@ tbody tr:hover td{background:var(--bg)}
     <div class="view" id="view-erros">
       <div class="card">
         <div class="card-header"><div class="card-title">Registros de erros</div><span id="erros-count" class="badge badge-neu"></span></div>
-        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Filial</th><th>Colaborador</th><th>Motivo</th><th>Pedido</th><th>Observação</th><th>Conferente</th></tr></thead><tbody id="erros-body"></tbody></table></div>
+        <div class="tab-row" style="margin-bottom:14px">
+          <div class="tab active" id="tab-err-sep" onclick="setErroTab('separadores',this)">Separadores</div>
+          <div class="tab" id="tab-err-conf" onclick="setErroTab('conferentes',this)">Conferentes</div>
+        </div>
+        <div id="erros-sep-wrap">
+          <div class="table-wrap"><table><thead><tr><th>Data/Hora</th><th>Filial</th><th>Colaborador</th><th>Motivo</th><th>Pedido</th><th>Observação</th><th>Conferente</th></tr></thead><tbody id="erros-body"></tbody></table></div>
+        </div>
+        <div id="erros-conf-wrap" style="display:none">
+          <div class="table-wrap"><table><thead><tr><th>Data/Hora</th><th>Filial</th><th>Colaborador</th><th>Motivo</th><th>Pedido</th><th>Observação</th><th>Conferente</th></tr></thead><tbody id="erros-conf-body"></tbody></table></div>
+        </div>
       </div>
     </div>
     <div class="view" id="view-historico">
       <div class="card">
         <div class="card-header"><div class="card-title">Histórico</div><span id="hist-count" class="badge badge-neu"></span></div>
-        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Filial</th><th>Colaborador</th><th>Pedidos</th><th>Pneus</th><th>Erro</th></tr></thead><tbody id="hist-body"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Hora</th><th>Filial</th><th>Colaborador</th><th>Pedidos</th><th>Pneus</th><th>Status</th></tr></thead><tbody id="hist-body"></tbody></table></div>
       </div>
     </div>
     <div class="view" id="view-config">
@@ -215,6 +225,23 @@ tbody tr:hover td{background:var(--bg)}
         </div>
         <div class="tab-row" id="colab-tabs"></div>
         <div id="colab-list"></div>
+      </div>
+    </div>
+
+    <!-- VIEW CONFERENTES -->
+    <div class="view" id="view-conferentes">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><svg class="ic" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Conferentes por filial</div>
+          <span id="conf-count" class="badge badge-neu"></span>
+        </div>
+        <div class="field-row">
+          <select id="conf-filial-sel"><option value="">Selecione a filial</option></select>
+          <input type="text" id="new-conf" placeholder="Nome do conferente" onkeydown="if(event.key==='Enter')addConferente()">
+          <button class="btn btn-dark" onclick="addConferente()">+ Adicionar</button>
+        </div>
+        <div class="tab-row" id="conf-tabs"></div>
+        <div id="conf-list"></div>
       </div>
     </div>
 
@@ -295,6 +322,7 @@ async function carregarTudo() {
 
     // Lançamentos
     lancamentos = lancData ? Object.entries(lancData).map(([k,v]) => ({...v, _key:k})) : [];
+    lancamentos.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
 
     // Filiais
     filiais = filiaisData ? Object.entries(filiaisData).map(([k,v]) => ({...v, _key:k})) : [];
@@ -310,6 +338,7 @@ async function carregarTudo() {
 
     populateFiliaisSelect();
     await carregarGestores();
+    await carregarConferentes();
     render();
     setStatus('ok','Conectado ✓');
     const m = new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
@@ -471,13 +500,40 @@ function renderPedidos() {
   tb.innerHTML=[...data].sort((a,b)=>b.data.localeCompare(a.data)).map(l=>`<tr><td>${fmt(l.data)}</td><td><span class="badge badge-neu">${l.filial}</span></td><td>${l.colaborador}</td><td style="font-family:'DM Mono',monospace;font-weight:500">${l.numPedido||'—'}</td><td style="font-family:'DM Mono',monospace">${l.qtdPedido||'—'}</td><td><span class="badge badge-ok">Separado</span></td></tr>`).join('');
 }
 
+let erroTabAtual = 'separadores';
+
+function setErroTab(tab, el) {
+  erroTabAtual = tab;
+  document.querySelectorAll('#view-erros .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('erros-sep-wrap').style.display = tab==='separadores' ? '' : 'none';
+  document.getElementById('erros-conf-wrap').style.display = tab==='conferentes' ? '' : 'none';
+  renderErros();
+}
+
+function fmtHora(ts) {
+  if(!ts) return '—';
+  try { return new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); } catch(e){return '—';}
+}
+
 function renderErros() {
   const{filiais:fs,ini,fim}=getFilter();
-  const erros=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
-  document.getElementById('erros-count').textContent=erros.length+' registro'+(erros.length!==1?'s':'');
-  const tb=document.getElementById('erros-body');
-  if(!erros.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint)">Nenhum erro</td></tr>';return;}
-  tb.innerHTML=[...erros].sort((a,b)=>b.data.localeCompare(a.data)).map(e=>`<tr><td>${fmt(e.data)}</td><td><span class="badge badge-neu">${e.filial}</span></td><td>${e.colaborador}</td><td><span class="badge badge-warn">${e.motivo}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px">${e.pedidoErro||'—'}</td><td style="font-size:12px">${e.obs||'—'}</td><td>${e.conferente||'—'}</td></tr>`).join('');
+  const todos=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+  
+  // Separadores = erros lançados pelo separador (isErro=false ou undefined)
+  const sepErros = todos.filter(l=>!l.isErro);
+  // Conferentes = erros lançados pelo conferente (isErro=true)
+  const confErros = todos.filter(l=>l.isErro);
+  
+  document.getElementById('erros-count').textContent=todos.length+' registro'+(todos.length!==1?'s':'');
+  
+  const tbSep=document.getElementById('erros-body');
+  if(!sepErros.length){tbSep.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint)">Nenhum erro de separador</td></tr>';}
+  else{tbSep.innerHTML=sepErros.map(e=>`<tr><td>${fmt(e.data)}<div style="font-size:11px;color:var(--hint)">${fmtHora(e.timestamp)}</div></td><td><span class="badge badge-neu">${e.filial}</span></td><td>${e.colaborador}</td><td><span class="badge badge-warn">${e.motivo}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px">${e.pedidoErro||'—'}</td><td style="font-size:12px">${e.obs||'—'}</td><td>${e.conferente||'—'}</td></tr>`).join('');}
+  
+  const tbConf=document.getElementById('erros-conf-body');
+  if(!confErros.length){tbConf.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint)">Nenhum erro registrado por conferente</td></tr>';}
+  else{tbConf.innerHTML=confErros.map(e=>`<tr><td>${fmt(e.data)}<div style="font-size:11px;color:var(--hint)">${fmtHora(e.timestamp)}</div></td><td><span class="badge badge-neu">${e.filial}</span></td><td>${e.colaborador}</td><td><span class="badge badge-warn">${e.motivo}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px">${e.pedidoErro||'—'}</td><td style="font-size:12px">${e.obs||'—'}</td><td>${e.conferente||'—'}</td></tr>`).join('');}
 }
 
 function renderHistorico(data) {
@@ -485,7 +541,7 @@ function renderHistorico(data) {
   document.getElementById('hist-count').textContent=sorted.length+' registro'+(sorted.length!==1?'s':'');
   const tb=document.getElementById('hist-body');
   if(!sorted.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint)">Nenhum lançamento</td></tr>';return;}
-  tb.innerHTML=sorted.map(l=>`<tr><td>${fmt(l.data)}</td><td><span class="badge badge-neu">${l.filial}</span></td><td>${l.colaborador}</td><td style="font-family:'DM Mono',monospace">${l.pedidos||0}</td><td style="font-family:'DM Mono',monospace;font-weight:500">${l.pneus||0}</td><td>${l.motivo?`<span class="badge badge-warn">${l.motivo}</span>`:'<span class="badge badge-ok">ok</span>'}</td></tr>`).join('');
+  tb.innerHTML=sorted.map(l=>`<tr><td>${fmt(l.data)}</td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">${fmtHora(l.timestamp)}</td><td><span class="badge badge-neu">${l.filial}</span></td><td>${l.colaborador}</td><td style="font-family:'DM Mono',monospace">${l.pedidos||0}</td><td style="font-family:'DM Mono',monospace;font-weight:500">${l.pneus||0}</td><td>${l.motivo?`<span class="badge badge-warn">${l.motivo}</span>`:'<span class="badge badge-ok">ok</span>'}</td></tr>`).join('');
 }
 
 function fmt(d){if(!d)return'—';try{const[y,m,dd]=String(d).slice(0,10).split('-');return`${dd}/${m}/${y}`;}catch(e){return d;}}
@@ -603,6 +659,7 @@ function setView(view,el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
   if(view==='gestores'){renderGestoresList();return;}
+  if(view==='conferentes'){renderConferentesTabs();return;}
   render();
 }
 
@@ -652,6 +709,78 @@ function showAlert(type,msg) {
   const el=document.getElementById('top-alert');
   el.className='top-alert '+type+' visible';el.textContent=msg;
   setTimeout(()=>el.classList.remove('visible'),4000);
+}
+
+
+
+// ---- CONFERENTES ----
+let conferentes = {};
+let confTabAtivo = '';
+
+async function carregarConferentes() {
+  try {
+    const data = await fbGet('conferentes');
+    conferentes = {};
+    if(data){
+      Object.entries(data).forEach(([k,v])=>{
+        if(!conferentes[v.filial]) conferentes[v.filial]=[];
+        conferentes[v.filial].push({...v,_key:k});
+      });
+    }
+    if(currentView==='conferentes') renderConferentesTabs();
+  } catch(e){console.error(e);}
+}
+
+function renderConferentesTabs() {
+  const el = document.getElementById('conf-tabs');
+  const nomes = filiais.map(f=>f.nome);
+  if(!nomes.length){if(el)el.innerHTML='';const cl=document.getElementById('conf-list');if(cl)cl.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:12px">Cadastre filiais primeiro</div>';return;}
+  if(!confTabAtivo||!nomes.includes(confTabAtivo)) confTabAtivo=nomes[0];
+  if(el) el.innerHTML=nomes.map(f=>`<div class="tab${f===confTabAtivo?' active':''}" onclick="setConfTab('${f.replace(/'/g,"\'").replace(/"/g,'&quot;')}',this)">${f}</div>`).join('');
+  const total=Object.values(conferentes).reduce((a,c)=>a+c.length,0);
+  const cnt=document.getElementById('conf-count');
+  if(cnt) cnt.textContent=total+' conferente'+(total!==1?'s':'');
+  renderConferentesList();
+  // Update filial select
+  const cs=document.getElementById('conf-filial-sel');
+  if(cs){const cc=cs.value;cs.innerHTML='<option value="">Selecione a filial</option>'+nomes.map(f=>`<option${f===cc?' selected':''}>${f}</option>`).join('');}
+}
+
+function setConfTab(f,el){confTabAtivo=f;document.querySelectorAll('#conf-tabs .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderConferentesList();}
+
+function renderConferentesList(){
+  const el=document.getElementById('conf-list');
+  const list=conferentes[confTabAtivo]||[];
+  if(!list.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum conferente nesta filial</div>';return;}
+  el.innerHTML=list.map((c,i)=>`<div class="list-item"><div class="list-item-name">${c.nome}</div><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeConferente('${confTabAtivo.replace(/'/g,"\'")}',${i})">Remover</button></div>`).join('');
+}
+
+async function addConferente(){
+  const filial=document.getElementById('conf-filial-sel').value;
+  const nome=document.getElementById('new-conf').value.trim().toUpperCase();
+  if(!filial){showAlert('err','Selecione a filial.');return;}
+  if(!nome)return;
+  if(!conferentes[filial])conferentes[filial]=[];
+  if(conferentes[filial].find(c=>c.nome===nome)){showAlert('err','Conferente já cadastrado.');return;}
+  try{
+    const r=await fbPost('conferentes',{filial,nome});
+    conferentes[filial].push({filial,nome,_key:r.name});
+    confTabAtivo=filial;
+    document.getElementById('new-conf').value='';
+    renderConferentesTabs();
+    showAlert('ok','Conferente adicionado!');
+  }catch(e){showAlert('err','Erro ao adicionar.');}
+}
+
+async function removeConferente(filial,i){
+  const item=conferentes[filial][i];
+  if(!confirm('Remover "'+item.nome+'"?'))return;
+  try{
+    await fbDelete('conferentes/'+item._key);
+    conferentes[filial].splice(i,1);
+    renderConferentesTabs();
+    showAlert('ok','Conferente removido.');
+  }catch(e){showAlert('err','Erro ao remover.');}
 }
 
 
