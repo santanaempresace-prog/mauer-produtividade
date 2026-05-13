@@ -332,9 +332,9 @@ async function salvarPedidos(){
   const totalPneus=pedidosTemp.reduce((a,p)=>a+p.qt,0);
   try{
     for(let i=0;i<pedidosTemp.length;i++){
-      await fbPost('lancamentos',{data:date,filial,colaborador:colab,isPedido:true,numPedido:pedidosTemp[i].num,qtdPedido:pedidosTemp[i].qt,pedidos:0,pneus:0,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:''});
+      await fbPost('lancamentos',{data:date,filial,colaborador:colab,isPedido:true,numPedido:pedidosTemp[i].num,qtdPedido:pedidosTemp[i].qt,pedidos:0,pneus:0,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:Date.now()});
     }
-    await fbPost('lancamentos',{data:date,filial,colaborador:colab,pedidos:pedidosTemp.length,pneus:totalPneus,isPedido:false,isErro:false,numPedido:'',qtdPedido:0,motivo:'',pedidoErro:'',obs:'',conferente:''});
+    await fbPost('lancamentos',{data:date,filial,colaborador:colab,pedidos:pedidosTemp.length,pneus:totalPneus,isPedido:false,isErro:false,numPedido:'',qtdPedido:0,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:Date.now()});
     pedidosTemp=[];renderPedidoTemp();
     showAlert('ok',`${totalPneus} pneus enviados ao painel do gestor!`);
     await carregarHoje();
@@ -367,7 +367,7 @@ async function salvarErro(){
   const btn=document.getElementById('btn-salvar-erro');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Registrando...';
   try{
-    await fbPost('lancamentos',{data:date,filial,colaborador:colab,motivo,pedidoErro:pedErr,obs,conferente:conf,pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0});
+    await fbPost('lancamentos',{data:date,filial,colaborador:colab,motivo,pedidoErro:pedErr,obs,conferente:conf,pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0,timestamp:Date.now()});
     ['cf-colab','cf-motivo','cf-pedido-err','cf-obs'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('err');});
     showAlert('ok','Erro registrado no painel do gestor!');
     await carregarHoje();
