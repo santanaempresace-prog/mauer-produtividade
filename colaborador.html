@@ -195,8 +195,20 @@ textarea{resize:vertical;min-height:72px}
 
     <div class="card" style="margin-bottom:12px">
       <div class="card-title" style="margin-bottom:10px">🌎 Ranking geral — todas as filiais</div>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <button onclick="renderRankingGeral()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;width:100%">Carregar ranking geral</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">De</label>
+          <input type="date" id="geral-date-ini" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;width:100%">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">Até</label>
+          <input type="date" id="geral-date-fim" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;width:100%">
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="setGeralPeriodo('hoje')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer">Hoje</button>
+          <button onclick="setGeralPeriodo('mes')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer">Mês</button>
+          <button onclick="renderRankingGeral()" style="padding:6px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer">Buscar</button>
+        </div>
       </div>
       <div id="ranking-geral-wrap"></div>
     </div>
@@ -227,6 +239,11 @@ let pedidosTemp=[];
 async function init() {
   setStatus('loading','Conectando...');
   const today=new Date().toISOString().slice(0,10);
+  const _gIni=new Date();_gIni.setDate(1);
+  const _gIniStr=_gIni.toISOString().slice(0,10);
+  const _gFimStr=new Date(_gIni.getFullYear(),_gIni.getMonth()+1,0).toISOString().slice(0,10);
+  const elIni=document.getElementById('geral-date-ini');if(elIni){elIni.value=_gIniStr;}
+  const elFim=document.getElementById('geral-date-fim');if(elFim){elFim.value=_gFimStr;}
   ['p-date','cf-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
   try {
     const [filData,colData] = await Promise.all([fbGet('filiais'),fbGet('colaboradores')]);
@@ -369,14 +386,34 @@ function renderErroHistory(){
 // ---- GRÁFICO ----
 
 
+function setGeralPeriodo(tipo) {
+  const hoje = new Date().toISOString().slice(0,10);
+  const ini = new Date();
+  ini.setDate(1);
+  const iniMes = ini.toISOString().slice(0,10);
+  const fim = new Date(ini.getFullYear(), ini.getMonth()+1, 0).toISOString().slice(0,10);
+  if(tipo==='hoje') {
+    document.getElementById('geral-date-ini').value = hoje;
+    document.getElementById('geral-date-fim').value = hoje;
+  } else {
+    document.getElementById('geral-date-ini').value = iniMes;
+    document.getElementById('geral-date-fim').value = fim;
+  }
+  renderRankingGeral();
+}
+
 async function renderRankingGeral() {
   const wrap = document.getElementById('ranking-geral-wrap');
+  const ini = document.getElementById('geral-date-ini').value;
+  const fim = document.getElementById('geral-date-fim').value;
+  const today = new Date().toISOString().slice(0,10);
+  const dataIni = ini || today;
+  const dataFim = fim || today;
   wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Carregando ranking geral... 🛞</div>';
   try {
-    const today = new Date().toISOString().slice(0,10);
     const data = await fbGet('lancamentos');
     const todos = data ? Object.values(data) : [];
-    const hoje = todos.filter(l=>l.data===today&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
+    const hoje = todos.filter(l=>l.data>=dataIni&&l.data<=dataFim&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
     if(!hoje.length){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Nenhuma separação registrada hoje</div>';return;}
     
     // Agrupa por colaborador+filial
@@ -395,10 +432,11 @@ async function renderRankingGeral() {
     const cores=['#FFD700','#C0C0C0','#CD7F32','#3266ad','#1D9E75','#D85A30','#742774','#639922','#534AB7','#993556'];
     const medalhas=['🥇','🥈','🥉'];
     const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const labelPeriodo = dataIni===dataFim ? dataIni.split('-').reverse().join('/') : dataIni.split('-').reverse().join('/')+' → '+dataFim.split('-').reverse().join('/');
     
     const html=`<div class="race-track">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="font-size:13px;font-weight:600;color:#fff">🌎 Todas as filiais</div>
+        <div style="font-size:13px;font-weight:600;color:#fff">🌎 ${labelPeriodo}</div>
         <div style="font-size:11px;color:rgba(255,255,255,.4)">Atualizado ${hora}</div>
       </div>
       ${list.map((c,i)=>{
