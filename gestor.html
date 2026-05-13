@@ -95,12 +95,100 @@ tbody tr:hover td{background:var(--bg)}
 .top-alert{position:fixed;top:70px;left:50%;transform:translateX(-50%);padding:11px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:300;display:none;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);white-space:nowrap}
 .top-alert.visible{display:flex}.top-alert.ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}.top-alert.err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
 .view{display:none}.view.active{display:block}
+
+/* ---- LOGIN ---- */
+.login-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d1117 0%,#1a1f2e 50%,#0d1117 100%)}
+.login-overlay::before{content:'';position:absolute;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.25}
+.login-box{position:relative;z-index:1;background:rgba(255,255,255,.95);border-radius:16px;padding:36px 40px;width:380px;max-width:93vw;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-txt{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.5px}
+.login-logo-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.login-field{margin-bottom:16px}
+.login-field label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px}
+.login-field input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;background:var(--bg);transition:border-color .15s}
+.login-field input:focus{border-color:var(--border-strong);background:#fff}
+.login-field input.err{border-color:#e05252;background:#fff8f8}
+.login-btn{width:100%;padding:12px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px;transition:opacity .15s}
+.login-btn:hover{opacity:.87}
+.login-btn:disabled{opacity:.5;cursor:not-allowed}
+.login-err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b);border-radius:var(--rsm);padding:9px 14px;font-size:13px;margin-top:12px;display:none}
+.login-recovery{text-align:center;margin-top:16px;font-size:12px;color:var(--muted)}
+.login-recovery a{color:var(--text);font-weight:500;cursor:pointer;text-decoration:underline}
+.app-content{display:none}
+
+/* ---- TROCAR SENHA MODAL ---- */
+.pwd-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.pwd-modal-overlay.open{display:flex}
+.pwd-modal{background:#fff;border-radius:var(--radius);padding:28px;width:360px;max-width:93vw;box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.pwd-modal-title{font-size:15px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.pwd-field{margin-bottom:12px}
+.pwd-field label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px}
+.pwd-field input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;outline:none}
+.pwd-field input:focus{border-color:var(--border-strong)}
+
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--text);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:700px){.sidebar{display:none}.main{padding:14px}.topbar{padding:12px 14px}}
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <div style="font-size:32px;margin-bottom:6px">🛞</div>
+      <div class="login-logo-txt">Mauer Logística</div>
+      <div class="login-logo-sub">Painel do Gestor — Acesso Restrito</div>
+    </div>
+    <div class="login-field">
+      <label>Usuário</label>
+      <input type="text" id="login-user" placeholder="ex: caio.mauer" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pwd').focus()">
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="login-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
+    </div>
+    <button class="login-btn" id="login-btn" onclick="fazerLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-recovery">
+      <a onclick="abrirRecuperacao()">Esqueci minha senha</a>
+    </div>
+  </div>
+</div>
+
+<!-- TROCAR SENHA MODAL -->
+<div class="pwd-modal-overlay" id="pwd-modal">
+  <div class="pwd-modal">
+    <div class="pwd-modal-title">🔐 Alterar senha</div>
+    <div class="pwd-field"><label>Senha atual</label><input type="password" id="pwd-atual" placeholder="••••••••"></div>
+    <div class="pwd-field"><label>Nova senha</label><input type="password" id="pwd-nova" placeholder="••••••••"></div>
+    <div class="pwd-field"><label>Confirmar nova senha</label><input type="password" id="pwd-confirma" placeholder="••••••••"></div>
+    <div class="pwd-field"><label>E-mail de recuperação</label><input type="email" id="pwd-email" placeholder="seu@email.com"></div>
+    <div id="pwd-err" style="color:var(--red-t);font-size:12px;margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="fecharTrocarSenha()">Cancelar</button>
+      <button class="btn btn-dark" onclick="salvarNovaSenha()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECUPERAÇÃO MODAL -->
+<div class="pwd-modal-overlay" id="rec-modal">
+  <div class="pwd-modal">
+    <div class="pwd-modal-title">📧 Recuperar senha</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Digite seu usuário para enviar a senha para o e-mail cadastrado.</p>
+    <div class="pwd-field"><label>Usuário</label><input type="text" id="rec-user" placeholder="ex: caio.mauer"></div>
+    <div id="rec-msg" style="font-size:12px;margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="fecharRecuperacao()">Cancelar</button>
+      <button class="btn btn-dark" onclick="enviarRecuperacao()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="app-content" id="app-content">
 <div class="top-alert" id="top-alert"></div>
 
 <div class="modal-overlay" id="modal-fechar">
@@ -301,8 +389,153 @@ tbody tr:hover td{background:var(--bg)}
 
   </div>
 </div>
+</div><!-- end app-content -->
 
 <script>
+
+// ============================================================
+// SISTEMA DE LOGIN
+// ============================================================
+const USUARIOS_PADRAO = {
+  'caio.mauer':       { nome:'Caio',       hash:'8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', email:'' },
+  'alessandro.mauer': { nome:'Alessandro', hash:'8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', email:'' },
+  'mateus.mauer':     { nome:'Mateus',     hash:'8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', email:'' },
+  'ismael.mauer':     { nome:'Ismael',     hash:'8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', email:'' },
+};
+
+let gestorLogado = null;
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function fazerLogin() {
+  const user = document.getElementById('login-user').value.trim().toLowerCase();
+  const pwd  = document.getElementById('login-pwd').value;
+  const btn  = document.getElementById('login-btn');
+  const err  = document.getElementById('login-err');
+  if(!user || !pwd) { err.style.display=''; err.textContent='Preencha usuário e senha.'; return; }
+  btn.disabled=true; btn.textContent='Verificando...';
+  try {
+    const hash = await sha256(pwd);
+    // Busca usuário no Firebase primeiro
+    const fbUser = await fbGet('usuarios/' + user.replace(/\./g,'_'));
+    let dadosUser;
+    if(fbUser && fbUser.hash) {
+      dadosUser = fbUser;
+    } else if(USUARIOS_PADRAO[user]) {
+      dadosUser = USUARIOS_PADRAO[user];
+      // Se não existe no Firebase, cria com senha padrão
+      if(!fbUser) {
+        await fbPut('usuarios/' + user.replace(/\./g,'_'), {
+          usuario: user,
+          nome: USUARIOS_PADRAO[user].nome,
+          hash: USUARIOS_PADRAO[user].hash,
+          email: ''
+        });
+      }
+    } else {
+      throw new Error('Usuário não encontrado');
+    }
+    if(hash !== dadosUser.hash) throw new Error('Senha incorreta');
+    // Login OK
+    gestorLogado = { usuario: user, nome: dadosUser.nome, email: dadosUser.email||'' };
+    sessionStorage.setItem('mauerGestor', JSON.stringify(gestorLogado));
+    mostrarApp();
+  } catch(e) {
+    err.style.display=''; err.textContent='Usuário ou senha incorretos.';
+    document.getElementById('login-pwd').value='';
+    document.getElementById('login-pwd').classList.add('err');
+    setTimeout(()=>document.getElementById('login-pwd').classList.remove('err'),2000);
+  }
+  btn.disabled=false; btn.textContent='Entrar';
+}
+
+function mostrarApp() {
+  document.getElementById('login-overlay').style.display='none';
+  document.getElementById('app-content').style.display='block';
+  // Add user info to topbar
+  const tb = document.querySelector('.tb-actions');
+  const existing = document.getElementById('user-info-btn');
+  if(!existing && tb && gestorLogado) {
+    const div = document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:8px;';
+    div.innerHTML=`<span style="font-size:12px;color:var(--muted)">Olá, <strong>${gestorLogado.nome}</strong></span>
+      <button class="btn btn-outline btn-sm" id="user-info-btn" onclick="abrirTrocarSenha()">🔐 Senha</button>
+      <button class="btn btn-outline btn-sm" onclick="fazerLogout()" style="color:var(--red-t);border-color:var(--red-b)">Sair</button>`;
+    tb.appendChild(div);
+  }
+  carregarTudo();
+}
+
+function fazerLogout() {
+  sessionStorage.removeItem('mauerGestor');
+  gestorLogado = null;
+  location.reload();
+}
+
+// Verifica sessão ao carregar
+window.addEventListener('load', () => {
+  const sess = sessionStorage.getItem('mauerGestor');
+  if(sess) {
+    gestorLogado = JSON.parse(sess);
+    mostrarApp();
+  }
+});
+
+// ---- TROCAR SENHA ----
+function abrirTrocarSenha() {
+  document.getElementById('pwd-modal').classList.add('open');
+  if(gestorLogado?.email) document.getElementById('pwd-email').value = gestorLogado.email;
+}
+function fecharTrocarSenha() {
+  document.getElementById('pwd-modal').classList.remove('open');
+  ['pwd-atual','pwd-nova','pwd-confirma'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pwd-err').style.display='none';
+}
+
+async function salvarNovaSenha() {
+  const atual   = document.getElementById('pwd-atual').value;
+  const nova    = document.getElementById('pwd-nova').value;
+  const conf    = document.getElementById('pwd-confirma').value;
+  const email   = document.getElementById('pwd-email').value.trim();
+  const errEl   = document.getElementById('pwd-err');
+  if(!atual||!nova||!conf){ errEl.style.display='';errEl.textContent='Preencha todos os campos.';return; }
+  if(nova!==conf){ errEl.style.display='';errEl.textContent='As senhas novas não coincidem.';return; }
+  if(nova.length<4){ errEl.style.display='';errEl.textContent='Senha deve ter ao menos 4 caracteres.';return; }
+  const hashAtual = await sha256(atual);
+  const fbUser = await fbGet('usuarios/'+gestorLogado.usuario.replace(/\./g,'_'));
+  const hashCerto = fbUser?.hash || USUARIOS_PADRAO[gestorLogado.usuario]?.hash;
+  if(hashAtual !== hashCerto){ errEl.style.display='';errEl.textContent='Senha atual incorreta.';return; }
+  const hashNova = await sha256(nova);
+  await fbPut('usuarios/'+gestorLogado.usuario.replace(/\./g,'_'), {
+    usuario: gestorLogado.usuario,
+    nome: gestorLogado.nome,
+    hash: hashNova,
+    email: email
+  });
+  gestorLogado.email = email;
+  sessionStorage.setItem('mauerGestor', JSON.stringify(gestorLogado));
+  fecharTrocarSenha();
+  showAlert('ok','Senha alterada com sucesso!');
+}
+
+// ---- RECUPERAÇÃO ----
+function abrirRecuperacao() { document.getElementById('rec-modal').classList.add('open'); }
+function fecharRecuperacao() { document.getElementById('rec-modal').classList.remove('open'); document.getElementById('rec-user').value=''; document.getElementById('rec-msg').style.display='none'; }
+
+async function enviarRecuperacao() {
+  const user = document.getElementById('rec-user').value.trim().toLowerCase();
+  const msg  = document.getElementById('rec-msg');
+  if(!user){ msg.style.display='';msg.style.color='var(--red-t)';msg.textContent='Digite o usuário.';return; }
+  const fbUser = await fbGet('usuarios/'+user.replace(/\./g,'_'));
+  if(!fbUser?.email){ msg.style.display='';msg.style.color='var(--red-t)';msg.textContent='Nenhum e-mail cadastrado para este usuário. Contate o administrador.';return; }
+  msg.style.display='';msg.style.color='var(--green-t)';
+  msg.textContent=`E-mail de recuperação seria enviado para ${fbUser.email}. Por favor contate o administrador Caio para redefinição.`;
+}
+
+
 // ============================================================
 // FIREBASE CONFIG
 // ============================================================
@@ -1078,7 +1311,7 @@ function initDarkMode() {
 initDarkMode();
 
 
-// Default: mês atual
+// Default: mês atual — só roda após login
 const _hoje = new Date();
 const _iniMes = new Date(_hoje.getFullYear(), _hoje.getMonth(), 1).toISOString().slice(0,10);
 const _fimMes = new Date(_hoje.getFullYear(), _hoje.getMonth()+1, 0).toISOString().slice(0,10);
