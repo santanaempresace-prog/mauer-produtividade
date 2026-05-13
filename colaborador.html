@@ -366,15 +366,35 @@ async function addPedido(){
     return;
   }
 
-  // Verifica duplicata no Firebase (pedidos já salvos hoje)
+  // Verifica margem e duplicata no Firebase
   try {
     const hoje = getBrasiliaDateStr();
-    const data = await fbGet('lancamentos');
-    const todos = data ? Object.values(data) : [];
+    const [lancData, margemData] = await Promise.all([
+      fbGet('lancamentos'),
+      fbGet('configuracoes/margemPedidos')
+    ]);
+    const margem = margemData ? Number(margemData) : 1000;
+    const todos = lancData ? Object.values(lancData) : [];
+
+    // Verifica duplicata exata hoje
     const jaExiste = todos.find(l=>l.isPedido && l.numPedido===num && l.data===hoje);
     if(jaExiste){
       showDuplicateAlert(`🚫 Pedido ${num} já foi registrado hoje por ${jaExiste.colaborador} (${jaExiste.filial})!`,'err');
       return;
+    }
+
+    // Verifica margem — pega o último pedido registrado hoje
+    const pedidosHoje = todos.filter(l=>l.isPedido && l.data===hoje && l.numPedido);
+    if(pedidosHoje.length > 0) {
+      const nums = pedidosHoje.map(l=>Number(l.numPedido)).filter(n=>!isNaN(n));
+      if(nums.length > 0) {
+        const ultimo = Math.max(...nums);
+        const numInt = Number(num);
+        if(numInt < ultimo - margem || numInt > ultimo + margem) {
+          showDuplicateAlert(`⚠ Pedido ${num} está fora da margem permitida! Último pedido: ${ultimo} (margem: ±${margem.toLocaleString('pt-BR')})`, 'warn');
+          return;
+        }
+      }
     }
   } catch(e){ console.error(e); }
 
