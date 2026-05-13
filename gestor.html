@@ -518,7 +518,7 @@ function render() {
 }
 
 function renderMetrics(data) {
-  const{filiais:fs,ini,fim}=getFilter();
+  const{filiais:fs,ini,fim,colab}=getFilter();
   const tPn=data.reduce((a,l)=>a+Number(l.pneus||0),0);
   const tPd=data.reduce((a,l)=>a+Number(l.pedidos||0),0);
   const erros=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
@@ -536,7 +536,7 @@ const COLORS=['#1a1917','#3266ad','#1D9E75','#BA7517','#639922','#D85A30','#534A
 function renderRanking(data) {
   const ag={};
   data.forEach(l=>{const k=l.colaborador+'|'+l.filial;if(!ag[k])ag[k]={colaborador:l.colaborador,filial:l.filial,pneus:0,pedidos:0};ag[k].pneus+=Number(l.pneus||0);ag[k].pedidos+=Number(l.pedidos||0);});
-  const{filiais:fs,ini,fim}=getFilter();
+  const{filiais:fs,ini,fim,colab}=getFilter();
   const errosPor={};
   lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab)).forEach(l=>{const k=l.colaborador+'|'+l.filial;errosPor[k]=(errosPor[k]||0)+1;});
   const list=Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
@@ -563,7 +563,7 @@ async function excluirPedido(key) {
 }
 
 function renderPedidos() {
-  const{filiais:fs,ini,fim}=getFilter();
+  const{filiais:fs,ini,fim,colab}=getFilter();
   const busca=(document.getElementById('busca-pedido')?.value||'').trim().toLowerCase();
   let data=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
   if(busca)data=data.filter(l=>(l.numPedido||'').toLowerCase().includes(busca)||(l.colaborador||'').toLowerCase().includes(busca));
@@ -618,7 +618,7 @@ function fmtDataHora(ts) {
 }
 
 function renderErros() {
-  const{filiais:fs,ini,fim}=getFilter();
+  const{filiais:fs,ini,fim,colab}=getFilter();
   const todos=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
   
   // Separadores = erros lançados pelo separador (isErro=false ou undefined)
@@ -766,9 +766,9 @@ function setView(view,el) {
 
 // ---- EXPORTAR ----
 function exportarMes() {
-  const{filiais:fs,ini,fim}=getFilter();
-  const dados=lancamentos.filter(l=>!l.isPedido&&!l.isErro&&l.pneus>0&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
-  const pedidos=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+  const{filiais:fs,ini,fim,colab}=getFilter();
+  const dados=lancamentos.filter(l=>!l.isPedido&&!l.isErro&&l.pneus>0&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
+  const pedidos=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
   const erros=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
   if(!dados.length&&!pedidos.length){showAlert('err','Nenhum dado.');return;}
   const wb=XLSX.utils.book_new();
@@ -1019,7 +1019,7 @@ async function salvarMargem() {
 let flagSelecionada = null; // {colaborador, filial} ou null
 
 function renderFlags() {
-  const{filiais:fs,ini,fim}=getFilter();
+  const{filiais:fs,ini,fim,colab}=getFilter();
   const dados = lancamentos.filter(l=>!l.isPedido&&!l.isErro&&l.pneus>0&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
   const ag = {};
   dados.forEach(l=>{
