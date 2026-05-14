@@ -176,7 +176,11 @@ textarea{resize:vertical;min-height:72px}
         <div class="form-group"><label>Motivo <span class="req">*</span></label>
           <select id="cf-motivo"><option value="">Selecione</option><option>Medida invertida</option><option>Pneu a mais</option><option>Pneu a menos</option><option>Etiqueta faltando</option><option>Doca errada</option><option>Sem nome</option><option>Outro</option></select>
         </div>
-        <div class="form-group"><label>Nº pedido com erro</label><input type="text" id="cf-pedido-err" placeholder="Ex: 299226"></div>
+        <div class="form-group full"><label>Nº pedido com erro</label>
+          <input type="text" id="cf-pedido-err" placeholder="Ex: 299226" autocomplete="off" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'');buscarSeparador(this.value)">
+          <div id="separador-info" style="display:none;margin-top:6px;padding:9px 12px;background:var(--green-bg);border:1px solid var(--green-b);border-radius:var(--rsm);font-size:13px;color:var(--green-t)"></div>
+          <div id="separador-nao-found" style="display:none;margin-top:6px;padding:9px 12px;background:var(--amber-bg);border:1px solid var(--amber-b);border-radius:var(--rsm);font-size:13px;color:var(--amber-t)"></div>
+        </div>
         <div class="form-group full"><label>Observação</label><textarea id="cf-obs" placeholder="Descreva o erro..."></textarea></div>
       </div>
     </div>
@@ -263,6 +267,60 @@ async function carregarConferentesData() {
     }
   } catch(e){ console.error(e); }
 }
+
+
+let buscarTimer = null;
+
+async function buscarSeparador(num) {
+  const infoEl = document.getElementById('separador-info');
+  const naoEl  = document.getElementById('separador-nao-found');
+  const colabSel = document.getElementById('cf-colab');
+  
+  // Hide both
+  infoEl.style.display = 'none';
+  naoEl.style.display  = 'none';
+  
+  if(!num || num.length < 4) return;
+  
+  // Debounce - espera 600ms após parar de digitar
+  clearTimeout(buscarTimer);
+  buscarTimer = setTimeout(async () => {
+    try {
+      const data = await fbGet('lancamentos');
+      const todos = data ? Object.values(data) : [];
+      
+      // Busca pedido pelo número exato
+      const pedido = todos.find(l => l.isPedido && l.numPedido === num);
+      
+      if(pedido) {
+        // Preenche o colaborador automaticamente
+        infoEl.style.display = '';
+        infoEl.innerHTML = `✅ Pedido <strong>${num}</strong> separado por <strong>${pedido.colaborador}</strong> — ${pedido.filial} em ${pedido.data.split('-').reverse().join('/')}`;
+        
+        // Seleciona o colaborador automaticamente no select
+        const opts = colabSel.options;
+        for(let i=0;i<opts.length;i++){
+          if(opts[i].value === pedido.colaborador || opts[i].text === pedido.colaborador){
+            colabSel.value = opts[i].value;
+            colabSel.classList.add('ok');
+            setTimeout(()=>colabSel.classList.remove('ok'),2000);
+            break;
+          }
+        }
+        
+        // Se filial do pedido diferente da selecionada, avisa
+        const filialSel = document.getElementById('cf-filial').value;
+        if(filialSel && pedido.filial !== filialSel){
+          infoEl.innerHTML += `<br><span style="color:var(--amber-t)">⚠ Este pedido é da filial <strong>${pedido.filial}</strong>, diferente da selecionada.</span>`;
+        }
+      } else {
+        naoEl.style.display = '';
+        naoEl.textContent = `⚠ Pedido ${num} não encontrado no sistema.`;
+      }
+    } catch(e){ console.error(e); }
+  }, 600);
+}
+
 
 function loadConferentes(filialId, selId) {
   const filial = document.getElementById(filialId).value;
@@ -475,6 +533,8 @@ async function salvarErro(){
   try{
     await fbPost('lancamentos',{data:date,filial,colaborador:colab,motivo,pedidoErro:pedErr,obs,conferente:conf,pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0,timestamp:getBrasiliaTimestamp()});
     ['cf-colab','cf-motivo','cf-pedido-err','cf-obs'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('err');});
+    document.getElementById('separador-info').style.display='none';
+    document.getElementById('separador-nao-found').style.display='none';
     showAlert('ok','Erro registrado no painel do gestor!');
     await carregarHoje();
   }catch(e){showAlert('err','Erro ao registrar.');console.error(e);}
