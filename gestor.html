@@ -6,6 +6,7 @@
 <title>Painel do Gestor — Mauer</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;}
 
@@ -128,6 +129,26 @@ tbody tr:hover td{background:var(--bg)}
 
 
 /* ---- EXCEL FILTER ---- */
+
+/* ---- DASHBOARD ---- */
+.dash-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,.9);border:1px solid var(--border);border-radius:var(--radius);backdrop-filter:blur(6px)}
+.dash-filters select,.dash-filters input{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.dash-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.dash-card{background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;backdrop-filter:blur(6px)}
+.dash-card.full{grid-column:1/-1}
+.dash-card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dash-chart-wrap{position:relative;width:100%;height:240px}
+.dash-chart-wrap.tall{height:320px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;backdrop-filter:blur(6px)}
+.kpi-lbl{font-size:11px;color:var(--muted);font-weight:500;margin-bottom:4px}
+.kpi-val{font-size:28px;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+.kpi-sub{font-size:11px;color:var(--hint);margin-top:3px}
+.kpi-trend{font-size:12px;font-weight:500;margin-top:4px}
+.kpi-trend.up{color:var(--green-t)}.kpi-trend.down{color:var(--red-t)}
+@media(max-width:800px){.dash-grid,.dash-grid-3{grid-template-columns:1fr}.kpi-row{grid-template-columns:repeat(2,1fr)}}
+
 .col-filter-wrap{position:relative;display:inline-block}
 .col-filter-btn{background:none;border:none;cursor:pointer;padding:0 3px;color:var(--hint);font-size:10px;vertical-align:middle;line-height:1}
 .col-filter-btn.active{color:var(--text);background:var(--amber-bg);border-radius:3px}
@@ -234,6 +255,7 @@ tbody tr:hover td{background:var(--bg)}
 <div class="layout">
   <div class="sidebar">
     <div class="sb-label">Visualização</div>
+    <div class="nav-item" onclick="setView('dashboard',this)"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
     <div class="nav-item active" onclick="setView('ranking',this)"><svg class="ic" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Ranking</div>
     <div class="nav-item" onclick="setView('pedidos',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Rastreamento</div>
     <div class="nav-item" onclick="setView('erros',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Erros</div>
@@ -1109,6 +1131,7 @@ function setView(view,el) {
   document.getElementById('view-'+view).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
+  if(view==='dashboard'){initDashboard();return;}
   if(view==='gestores'){renderGestoresList();return;}
   if(view==='conferentes'){renderConferentesTabs();return;}
   render();
@@ -1336,6 +1359,257 @@ function renderGestorRadioList() {
 }
 
 
+
+
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+const dashCharts = {};
+
+function destroyChart(id) {
+  if(dashCharts[id]) { dashCharts[id].destroy(); delete dashCharts[id]; }
+}
+
+
+function initDashboard() {
+  // Set default period if not set
+  const ini = document.getElementById('dash-ini');
+  const fim = document.getElementById('dash-fim');
+  if(!ini?.value) {
+    const hoje = new Date();
+    ini.value = new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().slice(0,10);
+    fim.value = new Date(hoje.getFullYear(),hoje.getMonth()+1,0).toISOString().slice(0,10);
+  }
+  renderDashboard();
+}
+
+
+function setDashPeriodo(tipo) {
+  const hoje = new Date();
+  const fmt = d => d.toISOString().slice(0,10);
+  if(tipo==='hoje') {
+    document.getElementById('dash-ini').value = fmt(hoje);
+    document.getElementById('dash-fim').value = fmt(hoje);
+  } else if(tipo==='semana') {
+    const ini = new Date(hoje); ini.setDate(hoje.getDate()-6);
+    document.getElementById('dash-ini').value = fmt(ini);
+    document.getElementById('dash-fim').value = fmt(hoje);
+  } else if(tipo==='mes') {
+    document.getElementById('dash-ini').value = fmt(new Date(hoje.getFullYear(),hoje.getMonth(),1));
+    document.getElementById('dash-fim').value = fmt(new Date(hoje.getFullYear(),hoje.getMonth()+1,0));
+  }
+  renderDashboard();
+}
+
+function getDashFilter() {
+  return {
+    ini: document.getElementById('dash-ini')?.value || '',
+    fim: document.getElementById('dash-fim')?.value || '',
+    filial: document.getElementById('dash-filial')?.value || ''
+  };
+}
+
+function getDashData() {
+  const{ini,fim,filial} = getDashFilter();
+  const base = lancamentos.filter(l => (!ini||l.data>=ini) && (!fim||l.data<=fim) && (!filial||l.filial===filial));
+  const pneus   = base.filter(l=>!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
+  const pedidos  = base.filter(l=>l.isPedido);
+  const erros   = base.filter(l=>l.motivo);
+  return {pneus, pedidos, erros, ini, fim};
+}
+
+function renderDashboard() {
+  // Update dash-filial select
+  const ds = document.getElementById('dash-filial');
+  if(ds) {
+    const cur = ds.value;
+    ds.innerHTML = '<option value="">Todas as filiais</option>' + filiais.map(f=>`<option${f.nome===cur?' selected':''}>${f.nome}</option>`).join('');
+  }
+
+  const {pneus, pedidos, erros} = getDashData();
+
+  // KPIs
+  const totalPneus = pneus.reduce((a,l)=>a+Number(l.pneus||0),0);
+  const totalPedidos = pedidos.length;
+  const colabsAtivos = new Set(pneus.map(l=>l.colaborador+'|'+l.filial)).size;
+  const txErros = pneus.length>0?((erros.length/pneus.length)*100).toFixed(1):'0.0';
+
+  document.getElementById('kpi-pneus').textContent = totalPneus.toLocaleString('pt-BR');
+  document.getElementById('kpi-pedidos').textContent = totalPedidos.toLocaleString('pt-BR');
+  document.getElementById('kpi-colabs').textContent = colabsAtivos;
+  document.getElementById('kpi-erros').textContent = erros.length;
+  document.getElementById('kpi-erros-tx').textContent = txErros + '% dos lançamentos';
+
+  renderChartPneusFilial(pneus);
+  renderChartPedidosFilial(pedidos);
+  renderChartComparativo();
+  renderChartErrosMotivo(erros);
+  renderChartErrosFilial(erros);
+  renderChartEvolucao(pneus);
+}
+
+const CHART_COLORS = ['#1a1917','#3266ad','#1D9E75','#BA7517','#639922','#D85A30','#534AB7','#993556','#1a7a8a','#8a3d1a','#2d6b28','#6b1a2d'];
+
+function agruparPorFilial(data, campo='pneus') {
+  const ag = {};
+  data.forEach(l => {
+    if(!ag[l.filial]) ag[l.filial] = 0;
+    ag[l.filial] += Number(l[campo]||1);
+  });
+  return Object.entries(ag).sort((a,b)=>b[1]-a[1]);
+}
+
+function renderChartPneusFilial(pneus) {
+  destroyChart('pneus-filial');
+  const ag = agruparPorFilial(pneus,'pneus');
+  const ctx = document.getElementById('chart-pneus-filial');
+  if(!ctx||!ag.length) return;
+  dashCharts['pneus-filial'] = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: ag.map(([f])=>f),
+      datasets:[{label:'Pneus',data:ag.map(([,v])=>v),backgroundColor:CHART_COLORS,borderRadius:6,borderSkipped:false}]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.x.toLocaleString('pt-BR')} pneus`}}},
+      scales:{x:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11,weight:'500'}}}}
+    }
+  });
+}
+
+function renderChartPedidosFilial(pedidos) {
+  destroyChart('pedidos-filial');
+  const ag = {};
+  pedidos.forEach(l=>{ if(!ag[l.filial])ag[l.filial]=0; ag[l.filial]++; });
+  const sorted = Object.entries(ag).sort((a,b)=>b[1]-a[1]);
+  const ctx = document.getElementById('chart-pedidos-filial');
+  if(!ctx||!sorted.length) return;
+  dashCharts['pedidos-filial'] = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:sorted.map(([f])=>f),
+      datasets:[{label:'Pedidos',data:sorted.map(([,v])=>v),backgroundColor:CHART_COLORS.map(c=>c+'cc'),borderRadius:6,borderSkipped:false}]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.x} pedidos`}}},
+      scales:{x:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11,weight:'500'}}}}
+    }
+  });
+}
+
+function renderChartComparativo() {
+  destroyChart('comparativo');
+  const {pneus, pedidos, erros} = getDashData();
+  const tipo = document.getElementById('dash-comp-tipo')?.value || 'pneus_pedidos';
+  const todasFiliais = [...new Set([...pneus,...pedidos,...erros].map(l=>l.filial))].sort();
+  if(!todasFiliais.length) return;
+
+  let ds1, ds2, label1, label2;
+  if(tipo==='pneus_pedidos') {
+    const pnMap={}, pdMap={};
+    pneus.forEach(l=>{ pnMap[l.filial]=(pnMap[l.filial]||0)+Number(l.pneus||0); });
+    pedidos.forEach(l=>{ pdMap[l.filial]=(pdMap[l.filial]||0)+1; });
+    ds1={label:'Pneus',data:todasFiliais.map(f=>pnMap[f]||0),backgroundColor:'#1a1917',borderRadius:4};
+    ds2={label:'Pedidos',data:todasFiliais.map(f=>pdMap[f]||0),backgroundColor:'#3266ad',borderRadius:4};
+    label1='Pneus'; label2='Pedidos';
+  } else {
+    const pnMap={}, erMap={};
+    pneus.forEach(l=>{ pnMap[l.filial]=(pnMap[l.filial]||0)+Number(l.pneus||0); });
+    erros.forEach(l=>{ erMap[l.filial]=(erMap[l.filial]||0)+1; });
+    ds1={label:'Pneus',data:todasFiliais.map(f=>pnMap[f]||0),backgroundColor:'#1D9E75',borderRadius:4};
+    ds2={label:'Erros',data:todasFiliais.map(f=>erMap[f]||0),backgroundColor:'#e05252',borderRadius:4};
+    label1='Pneus'; label2='Erros';
+  }
+
+  const ctx = document.getElementById('chart-comparativo');
+  if(!ctx) return;
+  dashCharts['comparativo'] = new Chart(ctx, {
+    type:'bar',
+    data:{labels:todasFiliais, datasets:[ds1,ds2]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'top',labels:{font:{family:'DM Sans',size:12},color:'#1a1917'}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11,weight:'500'},maxRotation:30}},
+        y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function renderChartErrosMotivo(erros) {
+  destroyChart('erros-motivo');
+  const ag={};
+  erros.forEach(l=>{ ag[l.motivo||'Outro']=(ag[l.motivo||'Outro']||0)+1; });
+  const sorted=Object.entries(ag).sort((a,b)=>b[1]-a[1]);
+  const ctx=document.getElementById('chart-erros-motivo');
+  if(!ctx||!sorted.length){if(ctx)ctx.parentElement.innerHTML='<div style="text-align:center;padding:40px;color:var(--hint);font-size:13px">Nenhum erro no período</div>';return;}
+  dashCharts['erros-motivo']=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:sorted.map(([k])=>k),datasets:[{data:sorted.map(([,v])=>v),backgroundColor:CHART_COLORS,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Sans',size:11},color:'#1a1917',boxWidth:14}}}}
+  });
+}
+
+function renderChartErrosFilial(erros) {
+  destroyChart('erros-filial');
+  const ag={};
+  erros.forEach(l=>{ ag[l.filial]=(ag[l.filial]||0)+1; });
+  const sorted=Object.entries(ag).sort((a,b)=>b[1]-a[1]);
+  const ctx=document.getElementById('chart-erros-filial');
+  if(!ctx||!sorted.length){if(ctx)ctx.parentElement.innerHTML='<div style="text-align:center;padding:40px;color:var(--hint);font-size:13px">Nenhum erro no período</div>';return;}
+  dashCharts['erros-filial']=new Chart(ctx,{
+    type:'bar',
+    data:{labels:sorted.map(([f])=>f),datasets:[{label:'Erros',data:sorted.map(([,v])=>v),backgroundColor:'#e05252cc',borderRadius:6,borderSkipped:false}]},
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11}}}}
+    }
+  });
+}
+
+function renderChartEvolucao(pneus) {
+  destroyChart('evolucao');
+  const {ini,fim} = getDashFilter();
+  const byDate={};
+  pneus.forEach(l=>{ byDate[l.data]=(byDate[l.data]||0)+Number(l.pneus||0); });
+  const dates=Object.keys(byDate).sort();
+  if(!dates.length) return;
+  const labels=dates.map(d=>d.split('-').slice(1).reverse().join('/'));
+  const ctx=document.getElementById('chart-evolucao');
+  if(!ctx) return;
+
+  // Group by filial for stacked
+  const {filial} = getDashFilter();
+  if(filial) {
+    // Single filial - simple line
+    dashCharts['evolucao']=new Chart(ctx,{
+      type:'line',
+      data:{labels,datasets:[{label:filial,data:dates.map(d=>byDate[d]||0),borderColor:'#1a1917',backgroundColor:'rgba(26,25,23,.08)',fill:true,tension:.3,pointRadius:4,pointBackgroundColor:'#1a1917'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}}}
+    });
+  } else {
+    // All filiais stacked
+    const filiaisComDados=[...new Set(pneus.map(l=>l.filial))].sort();
+    const byFilialDate={};
+    pneus.forEach(l=>{ if(!byFilialDate[l.filial])byFilialDate[l.filial]={}; byFilialDate[l.filial][l.data]=(byFilialDate[l.filial][l.data]||0)+Number(l.pneus||0); });
+    const datasets=filiaisComDados.map((f,i)=>({
+      label:f, data:dates.map(d=>byFilialDate[f]?.[d]||0),
+      backgroundColor:CHART_COLORS[i%CHART_COLORS.length]+'99',
+      borderColor:CHART_COLORS[i%CHART_COLORS.length],
+      fill:true, tension:.3, pointRadius:3
+    }));
+    dashCharts['evolucao']=new Chart(ctx,{
+      type:'line',
+      data:{labels,datasets},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'DM Sans',size:11},color:'#1a1917',boxWidth:12}}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true,stacked:false}}}
+    });
+  }
+}
 
 
 // ---- MARGEM DE PEDIDOS ----
