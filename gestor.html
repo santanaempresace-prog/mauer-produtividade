@@ -822,7 +822,122 @@ function updateColabFilterSelect() {
   sel.innerHTML = '<option value="">Todos colaboradores</option>' + sorted.map(c => `<option${c===cur?' selected':''}>${c}</option>`).join('');
 }
 
-// toggleFilialDropdown replaced by xl-filter
+
+// ============================================================
+// EXCEL-STYLE FILTER ENGINE
+// ============================================================
+
+function toggleXlFilter(ddId) {
+  const dd = document.getElementById(ddId);
+  if(!dd) return;
+  const isOpen = dd.classList.contains('open');
+  document.querySelectorAll('.xl-dd.open,.col-filter-dd.open').forEach(d=>d.classList.remove('open'));
+  if(!isOpen) {
+    dd.classList.add('open');
+    if(ddId==='xl-filial-dd') buildXlFilialList();
+    if(ddId==='xl-colab-dd') buildXlColabList();
+    if(ddId==='xl-gestor-dd') buildXlGestorList();
+  }
+}
+
+function closeXlFilter(ddId) {
+  document.getElementById(ddId)?.classList.remove('open');
+}
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.xl-filter-wrap') && !e.target.closest('.col-filter-wrap')) {
+    document.querySelectorAll('.xl-dd.open,.col-filter-dd.open').forEach(d=>d.classList.remove('open'));
+  }
+});
+
+function xlSearch(inp, listId) {
+  const q = inp.value.toLowerCase();
+  document.querySelectorAll('#'+listId+' .xl-item').forEach(item=>{
+    item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function xlSort(listId, dir) {
+  const list = document.getElementById(listId);
+  if(!list) return;
+  const items = [...list.querySelectorAll('.xl-item')];
+  items.sort((a,b)=>{
+    const ta=a.textContent.trim(), tb=b.textContent.trim();
+    return dir==='asc'?ta.localeCompare(tb,'pt'):tb.localeCompare(ta,'pt');
+  });
+  items.forEach(i=>list.appendChild(i));
+}
+
+function xlSelectAll(listId, checked) {
+  document.querySelectorAll('#'+listId+' input[type=checkbox]').forEach(cb=>cb.checked=checked);
+}
+
+// ---- FILIAL FILTER ----
+function buildXlFilialList() {
+  const list = document.getElementById('xl-filial-list');
+  if(!list) return;
+  list.innerHTML = filiais.map(f=>`
+    <label class="xl-item">
+      <input type="checkbox" value="${f.nome}" ${filiaisSelecionadas.has(f.nome)?'checked':''} onchange="xlToggleFilial(this.value,this.checked)">
+      ${f.nome}
+    </label>`).join('');
+}
+
+function xlToggleFilial(nome, checked) {
+  if(checked) filiaisSelecionadas.add(nome);
+  else filiaisSelecionadas.delete(nome);
+}
+
+function applyXlFilial() {
+  closeXlFilter('xl-filial-dd');
+  atualizarBotaoFilial();
+  updateColabFilterSelect();
+  render();
+}
+
+// ---- COLAB FILTER ----
+function buildXlColabList() {
+  const list = document.getElementById('xl-colab-list');
+  if(!list) return;
+  const colabs = new Set();
+  if(filiaisSelecionadas.size===0 || filiaisSelecionadas.size===filiais.length) {
+    Object.values(colaboradores).forEach(arr=>arr.forEach(c=>colabs.add(c.nome)));
+  } else {
+    filiaisSelecionadas.forEach(f=>{(colaboradores[f]||[]).forEach(c=>colabs.add(c.nome));});
+  }
+  const sorted = [...colabs].sort();
+  list.innerHTML = `<label class="xl-item"><input type="radio" name="colab-radio" value="" ${!xlColabSelecionado?'checked':''} onchange="applyXlColab('','Todos colaboradores')"> Todos colaboradores</label>`
+    + sorted.map(c=>`<label class="xl-item"><input type="radio" name="colab-radio" value="${c}" ${xlColabSelecionado===c?'checked':''} onchange="applyXlColab('${c.replace(/'/g,"\\'")}','${c.replace(/'/g,"\\'")}'">${c}</label>`).join('');
+}
+
+function applyXlColab(val, label) {
+  xlColabSelecionado = val;
+  const btn = document.getElementById('colab-filter-btn');
+  const lbl = document.getElementById('colab-filter-label');
+  if(lbl) lbl.textContent = label || 'Todos colaboradores';
+  if(btn) btn.classList.toggle('has-filter', !!val);
+  closeXlFilter('xl-colab-dd');
+  render();
+}
+
+// ---- GESTOR FILTER ----
+function buildXlGestorList() {
+  const list = document.getElementById('xl-gestor-list');
+  if(!list) return;
+  const curBtn = document.getElementById('gestor-btn');
+  const curLbl = document.getElementById('gestor-btn-label');
+  list.innerHTML = `<label class="xl-item">
+      <input type="radio" name="gestor-radio" value="" checked
+        onchange="filtrarPorGestor('');closeXlFilter('xl-gestor-dd');if(curLbl)curLbl.textContent='Por gestor';if(curBtn)curBtn.classList.remove('has-filter')">
+      Todos os gestores
+    </label>`
+    + gestores.map(g=>`<label class="xl-item">
+      <input type="radio" name="gestor-radio" value="${g._key}"
+        onchange="filtrarPorGestor('${g._key}');closeXlFilter('xl-gestor-dd');document.getElementById('gestor-btn-label').textContent='${g.nome}';document.getElementById('gestor-btn').classList.add('has-filter')">
+      ${g.nome}
+    </label>`).join('');
+}
+
 
 function clearFilters() {
   filiaisSelecionadas = new Set(filiais.map(f=>f.nome));
@@ -1328,7 +1443,7 @@ async function carregarGestores() {
   try {
     const data = await fbGet('gestores');
     gestores = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
-    renderGestorRadioList();
+    buildXlGestorList();
     if(currentView==='gestores') renderGestoresList();
   } catch(e) { console.error(e); }
 }
@@ -1423,20 +1538,24 @@ function renderGestorRadioList() {
 const dashCharts = {};
 
 function destroyChart(id) {
-  if(dashCharts[id]) { dashCharts[id].destroy(); delete dashCharts[id]; }
+  if(dashCharts[id]) {
+    try { dashCharts[id].destroy(); } catch(e){}
+    delete dashCharts[id];
+  }
 }
 
 
 function initDashboard() {
   const ini = document.getElementById('dash-ini');
   const fim = document.getElementById('dash-fim');
-  if(!ini?.value) {
+  if(ini && !ini.value) {
     const hoje = new Date();
     ini.value = new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().slice(0,10);
     fim.value = new Date(hoje.getFullYear(),hoje.getMonth()+1,0).toISOString().slice(0,10);
   }
-  // Timeout ensures DOM is visible before Chart.js renders
-  setTimeout(renderDashboard, 80);
+  // Destroy all charts first to reset canvases
+  Object.keys(dashCharts).forEach(k=>destroyChart(k));
+  setTimeout(renderDashboard, 150);
 }
 
 
@@ -1518,8 +1637,10 @@ function agruparPorFilial(data, campo='pneus') {
 function renderChartPneusFilial(pneus) {
   destroyChart('pneus-filial');
   const ag = agruparPorFilial(pneus,'pneus');
+  const wrap = document.getElementById('chart-pneus-filial')?.closest('.dash-chart-wrap');
+  if(!ag.length){if(wrap)wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:13px">Sem dados no período</div>';return;}
+  if(wrap && !wrap.querySelector('canvas')) wrap.innerHTML='<canvas id="chart-pneus-filial"></canvas>';
   const ctx = document.getElementById('chart-pneus-filial');
-  if(!ag.length){if(ctx)ctx.closest('.dash-chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:13px">Sem dados no período</div>';return;}
   if(!ctx) return;
   dashCharts['pneus-filial'] = new Chart(ctx, {
     type:'bar',
