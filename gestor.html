@@ -1080,16 +1080,27 @@ function xlSort(listId,dir){
 }
 
 function buildXlFilialList(){
-  const list=document.getElementById('xl-filial-list');if(!list)return;
-  const isTodas=filiaisSelecionadas.size===filiais.length;
-  const sel1=filiaisSelecionadas.size===1?[...filiaisSelecionadas][0]:'';
-  list.innerHTML='<div class="xl-item" style="'+(isTodas?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmaFilial('')">'
-    +'<span style="display:inline-block;width:18px">'+(isTodas?'●':'○')+'</span> Todas as filiais</div>'
-    +filiais.map(f=>'<div class="xl-item" style="'+(sel1===f.nome&&!isTodas?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmaFilial(''+f.nome.replace(/'/g,"\'")+'')"><span style="display:inline-block;width:18px">'+(sel1===f.nome&&!isTodas?'●':'○')+'</span> '+f.nome+'</div>').join('');
+  var list=document.getElementById("xl-filial-list");
+  if(!list)return;
+  var isTodas=filiaisSelecionadas.size===filiais.length;
+  var sel1=filiaisSelecionadas.size===1?[...filiaisSelecionadas][0]:"";
+  var html="";
+  html+='<div class="xl-item';
+  if(isTodas)html+=' style="background:var(--bg);font-weight:600"';
+  html+=' onclick="selecionarUmaFilial(this)" data-nome="">';
+  html+=(isTodas?"●":"○")+" Todas as filiais</div>";
+  filiais.forEach(function(f){
+    var ativo=sel1===f.nome&&!isTodas;
+    html+='<div class="xl-item';
+    if(ativo)html+=' style="background:var(--bg);font-weight:600"';
+    html+=' onclick="selecionarUmaFilial(this)" data-nome="'+f.nome+'">';
+    html+=(ativo?"●":"○")+" "+f.nome+"</div>";
+  });
+  list.innerHTML=html;
 }
 
 function selecionarUmaFilial(el){
-  const nome = el && typeof el==='object' ? el.dataset?.nome : el;
+  var nome = (el && el.dataset) ? el.dataset.nome : (el||'');
   filiaisSelecionadas=nome?new Set([nome]):new Set(filiais.map(f=>f.nome));
   closeXlFilter('xl-filial-dd');
   atualizarBotaoFilial();updateColabFilterSelect();render();
