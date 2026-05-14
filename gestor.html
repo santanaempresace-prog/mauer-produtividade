@@ -830,7 +830,7 @@ function clearFilters() {
   document.querySelectorAll('input[name=gestor-radio]').forEach(r=>r.checked=r.value==='');
   const lbl=document.getElementById('gestor-btn-label'); if(lbl)lbl.textContent='Por gestor';
   xlColabSelecionado='';
-  const lbl=document.getElementById('colab-filter-label');if(lbl)lbl.textContent='Todos colaboradores';
+  const lbl2=document.getElementById('colab-filter-label');if(lbl2)lbl2.textContent='Todos colaboradores';
   const cbtn=document.getElementById('colab-filter-btn');if(cbtn)cbtn.classList.remove('has-filter');
   populateFiliaisSelect();
   render();
