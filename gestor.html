@@ -128,7 +128,7 @@ tbody tr:hover td{background:var(--bg)}
 .pwd-field input:focus{border-color:var(--border-strong)}
 
 
-/* ---- EXCEL FILTER ---- */
+
 
 /* ---- DASHBOARD ---- */
 .dash-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,.9);border:1px solid var(--border);border-radius:var(--radius);backdrop-filter:blur(6px)}
@@ -149,8 +149,47 @@ tbody tr:hover td{background:var(--bg)}
 .kpi-trend.up{color:var(--green-t)}.kpi-trend.down{color:var(--red-t)}
 @media(max-width:800px){.dash-grid,.dash-grid-3{grid-template-columns:1fr}.kpi-row{grid-template-columns:repeat(2,1fr)}}
 
+
+/* ---- EXCEL FILTER STYLE ---- */
+.xl-filter-wrap{position:relative;display:inline-block;min-width:160px}
+.xl-filter-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;white-space:nowrap;min-width:160px;transition:all .15s;backdrop-filter:blur(4px)}
+.xl-filter-btn:hover{border-color:var(--border-strong)}
+.xl-filter-btn.has-filter{background:var(--text);color:#fff;border-color:var(--text)}
+.xl-filter-btn.has-filter .xl-arr{color:#fff}
+.xl-arr{font-size:10px;color:var(--hint);flex-shrink:0}
+.xl-dd{position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:220px;max-width:300px;display:none;flex-direction:column;overflow:hidden}
+.xl-dd.open{display:flex}
+.xl-dd-head{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center}
+.xl-dd-search{flex:1;padding:5px 9px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;background:var(--bg)}
+.xl-dd-search:focus{border-color:var(--border-strong)}
+.xl-sort-row{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid var(--border)}
+.xl-sort-btn{flex:1;padding:4px 8px;font-family:'DM Sans',sans-serif;font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
+.xl-sort-btn:hover{background:var(--border)}
+.xl-sort-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
+.xl-list{overflow-y:auto;max-height:200px;padding:4px 0}
+.xl-item{display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px;color:var(--text)}
+.xl-item:hover{background:var(--bg)}
+.xl-item input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--text);flex-shrink:0}
+.xl-footer{padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:6px}
+.xl-footer button{flex:1;padding:5px 8px;font-family:'DM Sans',sans-serif;font-size:11px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text);font-weight:500}
+.xl-footer button.xl-ok{background:var(--text);color:#fff;border-color:var(--text)}
+.xl-footer button:hover:not(.xl-ok){background:var(--border)}
 .col-filter-wrap{position:relative;display:inline-block}
 .col-filter-btn{background:none;border:none;cursor:pointer;padding:0 3px;color:var(--hint);font-size:10px;vertical-align:middle;line-height:1}
+.col-filter-btn.active{color:var(--text)}
+.col-filter-dd{position:absolute;top:100%;left:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:200px;padding:8px 0;max-height:280px;display:none;flex-direction:column}
+.col-filter-dd.open{display:flex}
+.col-filter-search{margin:0 8px 6px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;outline:none}
+.col-filter-search:focus{border-color:var(--border-strong)}
+.col-filter-list{overflow-y:auto;flex:1;padding:0 4px}
+.col-filter-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px}
+.col-filter-item:hover{background:var(--bg)}
+.col-filter-item input{width:14px;height:14px;cursor:pointer;flex-shrink:0}
+.col-filter-footer{padding:8px;border-top:1px solid var(--border);display:flex;gap:6px;margin-top:4px}
+.col-filter-footer button{flex:1;padding:5px;font-size:11px;font-family:'DM Sans',sans-serif;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text)}
+.col-filter-footer button:hover{background:var(--border)}
+
+.col-filter-btn_old{background:none;border:none;cursor:pointer;padding:0 3px;color:var(--hint);font-size:10px;vertical-align:middle;line-height:1}
 .col-filter-btn.active{color:var(--text);background:var(--amber-bg);border-radius:3px}
 .col-filter-dd{position:absolute;top:100%;left:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:200px;padding:8px 0;max-height:280px;display:none;flex-direction:column}
 .col-filter-dd.open{display:flex}
@@ -273,16 +312,24 @@ tbody tr:hover td{background:var(--bg)}
 
   <div class="main">
     <div class="filters" style="flex-wrap:wrap;gap:8px;margin-bottom:10px">
-      <div style="position:relative">
-        <button class="btn btn-outline btn-sm" onclick="toggleFilialDropdown()" id="filial-btn" style="min-width:160px;justify-content:space-between">
-          <span id="filial-btn-label">Todas as filiais</span> ▾
+      <div class="xl-filter-wrap" id="xl-filial-wrap">
+        <button class="xl-filter-btn" id="filial-btn" onclick="toggleXlFilter('xl-filial-dd')">
+          <span id="filial-btn-label">Todas as filiais</span><span class="xl-arr">▾</span>
         </button>
-        <div id="filial-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:200px;padding:8px 0;margin-top:4px;max-height:260px;overflow-y:auto">
-          <div style="padding:6px 12px;font-size:12px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);margin-bottom:4px">Selecione as filiais</div>
-          <div id="filial-checkbox-list"></div>
-          <div style="padding:8px 12px;border-top:1px solid var(--border);margin-top:4px;display:flex;gap:6px">
-            <button class="btn btn-outline btn-sm" style="flex:1" onclick="selecionarTodasFiliais()">Todas</button>
-            <button class="btn btn-outline btn-sm" style="flex:1" onclick="limparFiliais()">Nenhuma</button>
+        <div class="xl-dd" id="xl-filial-dd">
+          <div class="xl-dd-head">
+            <input class="xl-dd-search" placeholder="🔍 Buscar filial..." oninput="xlSearch(this,'xl-filial-list')">
+          </div>
+          <div class="xl-sort-row">
+            <button class="xl-sort-btn" onclick="xlSort('xl-filial-list','asc')">↑ A-Z</button>
+            <button class="xl-sort-btn" onclick="xlSort('xl-filial-list','desc')">↓ Z-A</button>
+            <button class="xl-sort-btn" onclick="xlSelectAll('xl-filial-list',true)">✓ Todos</button>
+            <button class="xl-sort-btn" onclick="xlSelectAll('xl-filial-list',false)">✗ Nenhum</button>
+          </div>
+          <div class="xl-list" id="xl-filial-list"></div>
+          <div class="xl-footer">
+            <button onclick="closeXlFilter('xl-filial-dd')">Cancelar</button>
+            <button class="xl-ok" onclick="applyXlFilial()">OK</button>
           </div>
         </div>
       </div>
@@ -292,21 +339,42 @@ tbody tr:hover td{background:var(--bg)}
         <span style="font-size:12px;color:var(--muted)">até</span>
         <input type="date" id="g-date-fim" onchange="render()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;cursor:pointer">
       </div>
-      <div style="position:relative">
-        <button class="btn btn-outline btn-sm" onclick="toggleGestorDropdown()" id="gestor-btn" style="min-width:140px;justify-content:space-between">
-          <span id="gestor-btn-label">Por gestor</span> ▾
+      <div class="xl-filter-wrap">
+        <button class="xl-filter-btn" id="gestor-btn" onclick="toggleXlFilter('xl-gestor-dd')">
+          <span id="gestor-btn-label">Por gestor</span><span class="xl-arr">▾</span>
         </button>
-        <div id="gestor-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:180px;padding:8px 0;margin-top:4px;max-height:240px;overflow-y:auto">
-          <div style="padding:6px 12px;font-size:12px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);margin-bottom:4px">Filtrar por gestor</div>
-          <label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px">
-            <input type="radio" name="gestor-radio" value="" checked onchange="filtrarPorGestor('')"> Todos os gestores
-          </label>
-          <div id="gestor-radio-list"></div>
+        <div class="xl-dd" id="xl-gestor-dd">
+          <div class="xl-dd-head">
+            <input class="xl-dd-search" placeholder="🔍 Buscar gestor..." oninput="xlSearch(this,'xl-gestor-list')">
+          </div>
+          <div class="xl-list" id="xl-gestor-list">
+            <label class="xl-item"><input type="radio" name="gestor-radio" value="" checked onchange="filtrarPorGestor('');closeXlFilter('xl-gestor-dd');document.getElementById('gestor-btn-label').textContent='Por gestor';document.getElementById('gestor-btn').classList.remove('has-filter')"> Todos os gestores</label>
+          </div>
+          <div class="xl-footer">
+            <button onclick="closeXlFilter('xl-gestor-dd')">Fechar</button>
+          </div>
         </div>
       </div>
-      <select id="g-colab-filter" onchange="render()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer;min-width:160px">
-        <option value="">Todos colaboradores</option>
-      </select>
+      <div class="xl-filter-wrap">
+        <button class="xl-filter-btn" id="colab-filter-btn" onclick="toggleXlFilter('xl-colab-dd')">
+          <span id="colab-filter-label">Todos colaboradores</span><span class="xl-arr">▾</span>
+        </button>
+        <div class="xl-dd" id="xl-colab-dd">
+          <div class="xl-dd-head">
+            <input class="xl-dd-search" placeholder="🔍 Buscar colaborador..." oninput="xlSearch(this,'xl-colab-list')">
+          </div>
+          <div class="xl-sort-row">
+            <button class="xl-sort-btn" onclick="xlSort('xl-colab-list','asc')">↑ A-Z</button>
+            <button class="xl-sort-btn" onclick="xlSort('xl-colab-list','desc')">↓ Z-A</button>
+          </div>
+          <div class="xl-list" id="xl-colab-list">
+            <label class="xl-item"><input type="radio" name="colab-radio" value="" checked onchange="applyXlColab('','Todos colaboradores')"> Todos colaboradores</label>
+          </div>
+          <div class="xl-footer">
+            <button onclick="closeXlFilter('xl-colab-dd')">Fechar</button>
+          </div>
+        </div>
+      </div>
       <button class="btn btn-outline btn-sm" onclick="clearFilters()">Limpar</button>
     </div>
     <div class="metrics-grid" id="metrics-grid"><div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--hint)"><div class="spinner" style="margin:0 auto 8px"></div><br>Conectando ao Firebase...</div></div>
@@ -753,15 +821,7 @@ function updateColabFilterSelect() {
   sel.innerHTML = '<option value="">Todos colaboradores</option>' + sorted.map(c => `<option${c===cur?' selected':''}>${c}</option>`).join('');
 }
 
-function toggleFilialDropdown() {
-  const dd = document.getElementById('filial-dropdown');
-  dd.style.display = dd.style.display === 'none' ? '' : 'none';
-}
-document.addEventListener('click', function(e) {
-  const btn = document.getElementById('filial-btn');
-  const dd = document.getElementById('filial-dropdown');
-  if(dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none';
-});
+// toggleFilialDropdown replaced by xl-filter
 
 function clearFilters() {
   filiaisSelecionadas = new Set(filiais.map(f=>f.nome));
@@ -769,7 +829,9 @@ function clearFilters() {
   document.getElementById('g-date-fim').value = _fimMes;
   document.querySelectorAll('input[name=gestor-radio]').forEach(r=>r.checked=r.value==='');
   const lbl=document.getElementById('gestor-btn-label'); if(lbl)lbl.textContent='Por gestor';
-  const cs=document.getElementById('g-colab-filter');if(cs)cs.value='';
+  xlColabSelecionado='';
+  const lbl=document.getElementById('colab-filter-label');if(lbl)lbl.textContent='Todos colaboradores';
+  const cbtn=document.getElementById('colab-filter-btn');if(cbtn)cbtn.classList.remove('has-filter');
   populateFiliaisSelect();
   render();
 }
@@ -779,7 +841,7 @@ function getFilter() {
     filiais: filiaisSelecionadas,
     ini: document.getElementById('g-date-ini').value,
     fim: document.getElementById('g-date-fim').value,
-    colab: (document.getElementById('g-colab-filter')?.value || '')
+    colab: xlColabSelecionado || ''
   };
 }
 
@@ -1342,15 +1404,7 @@ function filtrarPorGestor(key) {
 
 
 
-function toggleGestorDropdown() {
-  const dd = document.getElementById('gestor-dropdown');
-  dd.style.display = dd.style.display === 'none' ? '' : 'none';
-}
-document.addEventListener('click', function(e) {
-  const btn = document.getElementById('gestor-btn');
-  const dd = document.getElementById('gestor-dropdown');
-  if(dd && btn && !btn.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none';
-});
+// toggleGestorDropdown replaced by xl-filter
 
 function renderGestorRadioList() {
   const el = document.getElementById('gestor-radio-list');
@@ -1373,7 +1427,6 @@ function destroyChart(id) {
 
 
 function initDashboard() {
-  // Set default period if not set
   const ini = document.getElementById('dash-ini');
   const fim = document.getElementById('dash-fim');
   if(!ini?.value) {
@@ -1381,7 +1434,8 @@ function initDashboard() {
     ini.value = new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().slice(0,10);
     fim.value = new Date(hoje.getFullYear(),hoje.getMonth()+1,0).toISOString().slice(0,10);
   }
-  renderDashboard();
+  // Timeout ensures DOM is visible before Chart.js renders
+  setTimeout(renderDashboard, 80);
 }
 
 
@@ -1464,7 +1518,8 @@ function renderChartPneusFilial(pneus) {
   destroyChart('pneus-filial');
   const ag = agruparPorFilial(pneus,'pneus');
   const ctx = document.getElementById('chart-pneus-filial');
-  if(!ctx||!ag.length) return;
+  if(!ag.length){if(ctx)ctx.closest('.dash-chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:13px">Sem dados no período</div>';return;}
+  if(!ctx) return;
   dashCharts['pneus-filial'] = new Chart(ctx, {
     type:'bar',
     data:{
