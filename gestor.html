@@ -1114,37 +1114,46 @@ function buildXlColabList(){
     Object.values(colaboradores).forEach(arr=>arr.forEach(c=>colabs.add(c.nome)));
   else filiaisSelecionadas.forEach(f=>{(colaboradores[f]||[]).forEach(c=>colabs.add(c.nome));});
   const sorted=[...colabs].sort();
-  let html='<div class="xl-item" style="'+(!xlColabSelecionado?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmColab(null,'Todos colaboradores')">';
-  html+='<span style="margin-right:8px">'+(!xlColabSelecionado?'●':'○')+'</span> Todos colaboradores</div>';
+  var html='';
+  html+='<div class="xl-item"';
+  if(!xlColabSelecionado)html+=' style="background:var(--bg);font-weight:600"';
+  html+=' onclick="selecionarUmColab(this)" data-nome="">';
+  html+=(!xlColabSelecionado?'●':'○')+' Todos colaboradores</div>';
   sorted.forEach(function(c){
-    html+='<div class="xl-item" style="'+(xlColabSelecionado===c?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmColab(this.dataset.nome,this.dataset.nome)" data-nome="'+c+'">';
-    html+='<span style="margin-right:8px">'+(xlColabSelecionado===c?'●':'○')+'</span> '+c+'</div>';
+    var ativo=xlColabSelecionado===c;
+    html+='<div class="xl-item"';
+    if(ativo)html+=' style="background:var(--bg);font-weight:600"';
+    html+=' onclick="selecionarUmColab(this)" data-nome="'+c+'">';
+    html+=(ativo?'●':'○')+' '+c+'</div>';
   });
   list.innerHTML=html;
 }
 
-function selecionarUmColab(val,label){
-  xlColabSelecionado=val||'';
+function selecionarUmColab(el){
+  var val=(el&&el.dataset)?el.dataset.nome:(el||'');
+  xlColabSelecionado=val;
   const btn=document.getElementById('colab-filter-btn');
   const lbl=document.getElementById('colab-filter-label');
-  if(lbl)lbl.textContent=label||'Todos colaboradores';
+  if(lbl)lbl.textContent=val||'Todos colaboradores';
   if(btn)btn.classList.toggle('has-filter',!!val);
   closeXlFilter('xl-colab-dd');render();
 }
 
 function buildXlGestorList(){
-  const list=document.getElementById('xl-gestor-list');
+  var list=document.getElementById('xl-gestor-list');
   if(!list)return;
-  let html='<div class="xl-item" style="background:var(--bg);font-weight:600" onclick="selecionarUmGestor(null,'Por gestor')">';
-  html+='<span style="margin-right:8px">●</span> Todos os gestores</div>';
+  var html='<div class="xl-item" style="background:var(--bg);font-weight:600" onclick="selecionarUmGestor(this)" data-key="" data-nome="">';
+  html+='● Todos os gestores</div>';
   gestores.forEach(function(g){
-    html+='<div class="xl-item" onclick="selecionarUmGestor(this.dataset.key,this.dataset.nome)" data-key="'+g._key+'" data-nome="'+g.nome+'">';
-    html+='<span style="margin-right:8px">○</span> '+g.nome+'</div>';
+    html+='<div class="xl-item" onclick="selecionarUmGestor(this)" data-key="'+g._key+'" data-nome="'+g.nome+'">';
+    html+='○ '+g.nome+'</div>';
   });
   list.innerHTML=html;
 }
 
-function selecionarUmGestor(key,label){
+function selecionarUmGestor(el){
+  var key=(el&&el.dataset)?el.dataset.key:'';
+  var label=(el&&el.dataset)?el.dataset.nome:'';
   filtrarPorGestor(key||'');
   const btn=document.getElementById('gestor-btn');
   const lbl=document.getElementById('gestor-btn-label');
