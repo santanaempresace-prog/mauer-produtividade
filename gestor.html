@@ -126,6 +126,23 @@ tbody tr:hover td{background:var(--bg)}
 .pwd-field input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;outline:none}
 .pwd-field input:focus{border-color:var(--border-strong)}
 
+
+/* ---- EXCEL FILTER ---- */
+.col-filter-wrap{position:relative;display:inline-block}
+.col-filter-btn{background:none;border:none;cursor:pointer;padding:0 3px;color:var(--hint);font-size:10px;vertical-align:middle;line-height:1}
+.col-filter-btn.active{color:var(--text);background:var(--amber-bg);border-radius:3px}
+.col-filter-dd{position:absolute;top:100%;left:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:200px;padding:8px 0;max-height:280px;display:none;flex-direction:column}
+.col-filter-dd.open{display:flex}
+.col-filter-search{margin:0 8px 6px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;outline:none}
+.col-filter-search:focus{border-color:var(--border-strong)}
+.col-filter-list{overflow-y:auto;flex:1;padding:0 4px}
+.col-filter-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px}
+.col-filter-item:hover{background:var(--bg)}
+.col-filter-item input{width:14px;height:14px;cursor:pointer;flex-shrink:0}
+.col-filter-footer{padding:8px;border-top:1px solid var(--border);display:flex;gap:6px;margin-top:4px}
+.col-filter-footer button{flex:1;padding:5px;font-size:11px;font-family:'DM Sans',sans-serif;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text)}
+.col-filter-footer button:hover{background:var(--border)}
+
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--text);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:700px){.sidebar{display:none}.main{padding:14px}.topbar{padding:12px 14px}}
@@ -279,7 +296,13 @@ tbody tr:hover td{background:var(--bg)}
       <div class="card">
         <div class="card-header"><div class="card-title">Rastreamento de pedidos</div><span id="pedidos-count" class="badge badge-neu"></span></div>
         <div class="filters" style="margin-bottom:12px"><input type="text" id="busca-pedido" placeholder="Buscar nº pedido ou colaborador..." style="flex:1;min-width:180px" oninput="renderPedidos()"></div>
-        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Hora</th><th>Filial</th><th>Colaborador</th><th>Nº Pedido</th><th>Qtd Pneus</th><th>Status</th><th>Ação</th></tr></thead><tbody id="pedidos-body"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr>
+  <th><div class="col-filter-wrap">Data<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-data')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-data"></div></div></th>
+  <th>Hora</th>
+  <th><div class="col-filter-wrap">Filial<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-filial')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-filial"></div></div></th>
+  <th><div class="col-filter-wrap">Colaborador<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-colab')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-colab"></div></div></th>
+  <th>Nº Pedido</th><th>Qtd Pneus</th><th>Status</th><th>Ação</th>
+</tr></thead><tbody id="pedidos-body"></tbody></table></div>
       </div>
     </div>
     <div class="view" id="view-erros">
@@ -290,10 +313,21 @@ tbody tr:hover td{background:var(--bg)}
           <div class="tab" id="tab-err-conf" onclick="setErroTab('conferentes',this)">Conferentes</div>
         </div>
         <div id="erros-sep-wrap">
-          <div class="table-wrap"><table><thead><tr><th>Data/Hora</th><th>Filial</th><th>Colaborador</th><th>Motivo</th><th>Pedido</th><th>Observação</th><th>Conferente</th></tr></thead><tbody id="erros-body"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr>
+  <th>Data/Hora</th>
+  <th><div class="col-filter-wrap">Filial<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-err-filial')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-err-filial"></div></div></th>
+  <th><div class="col-filter-wrap">Colaborador<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-err-colab')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-err-colab"></div></div></th>
+  <th><div class="col-filter-wrap">Motivo<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-err-motivo')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-err-motivo"></div></div></th>
+  <th>Pedido</th><th>Observação</th><th>Conferente</th>
+</tr></thead><tbody id="erros-body"></tbody></table></div>
         </div>
         <div id="erros-conf-wrap" style="display:none">
-          <div class="table-wrap"><table><thead><tr><th>Data/Hora</th><th>Filial</th><th>Colaborador</th><th>Motivo</th><th>Pedido</th><th>Observação</th><th>Conferente</th></tr></thead><tbody id="erros-conf-body"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr>
+  <th>Data/Hora</th>
+  <th><div class="col-filter-wrap">Filial<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-errc-filial')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-errc-filial"></div></div></th>
+  <th><div class="col-filter-wrap">Colaborador<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-errc-colab')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-errc-colab"></div></div></th>
+  <th>Motivo</th><th>Pedido</th><th>Observação</th><th>Conferente</th><th>Ação</th>
+</tr></thead><tbody id="erros-conf-body"></tbody></table></div>
         </div>
       </div>
     </div>
@@ -785,20 +819,44 @@ function renderRanking(data) {
 }
 
 
-async function excluirPedido(key) {
-  if(!confirm('Excluir este pedido?')) return;
+
+async function excluirErroConf(key) {
+  if(!confirm('Excluir este registro de erro?')) return;
   try {
     await fbDelete('lancamentos/'+key);
     lancamentos = lancamentos.filter(l=>l._key!==key);
+    renderErros();
+    showAlert('ok','Erro excluído.');
+  } catch(e){ showAlert('err','Erro ao excluir.'); }
+}
+
+
+async function excluirPedido(key) {
+  const pedido = lancamentos.find(l=>l._key===key);
+  if(!pedido) return;
+  if(!confirm(`Excluir pedido ${pedido.numPedido||''}?\n\nOs erros de conferência relacionados a este pedido também serão excluídos.`)) return;
+  try {
+    // Apaga o pedido
+    await fbDelete('lancamentos/'+key);
+    // Apaga erros de conferência com o mesmo número de pedido
+    const errosRelacionados = lancamentos.filter(l=>l.isErro && l.pedidoErro === pedido.numPedido);
+    for(const e of errosRelacionados){
+      await fbDelete('lancamentos/'+e._key);
+    }
+    lancamentos = lancamentos.filter(l=>l._key!==key && !(l.isErro && l.pedidoErro===pedido.numPedido));
     renderPedidos();
-    showAlert('ok','Pedido excluído.');
+    renderErros();
+    showAlert('ok',`Pedido ${pedido.numPedido||''} e ${errosRelacionados.length} erro(s) relacionado(s) excluídos.`);
   } catch(e) { showAlert('err','Erro ao excluir.'); console.error(e); }
 }
 
 function renderPedidos() {
   const{filiais:fs,ini,fim,colab}=getFilter();
   const busca=(document.getElementById('busca-pedido')?.value||'').trim().toLowerCase();
-  let data=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
+  let data=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab)
+    && passesColFilter('cf-ped-data',fmt(l.data))
+    && passesColFilter('cf-ped-filial',l.filial||'—')
+    && passesColFilter('cf-ped-colab',l.colaborador||'—'));
   if(busca)data=data.filter(l=>(l.numPedido||'').toLowerCase().includes(busca)||(l.colaborador||'').toLowerCase().includes(busca));
   document.getElementById('pedidos-count').textContent=data.length+' pedido'+(data.length!==1?'s':'');
   const tb=document.getElementById('pedidos-body');
@@ -855,9 +913,14 @@ function renderErros() {
   const todos=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
   
   // Separadores = erros lançados pelo separador (isErro=false ou undefined)
-  const sepErros = todos.filter(l=>!l.isErro);
+  const sepErros = todos.filter(l=>!l.isErro
+    && passesColFilter('cf-err-filial',l.filial||'—')
+    && passesColFilter('cf-err-colab',l.colaborador||'—')
+    && passesColFilter('cf-err-motivo',l.motivo||'—'));
   // Conferentes = erros lançados pelo conferente (isErro=true)
-  const confErros = todos.filter(l=>l.isErro);
+  const confErros = todos.filter(l=>l.isErro
+    && passesColFilter('cf-errc-filial',l.filial||'—')
+    && passesColFilter('cf-errc-colab',l.colaborador||'—'));
   
   document.getElementById('erros-count').textContent=todos.length+' registro'+(todos.length!==1?'s':'');
   
@@ -867,7 +930,7 @@ function renderErros() {
   
   const tbConf=document.getElementById('erros-conf-body');
   if(!confErros.length){tbConf.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint)">Nenhum erro registrado por conferente</td></tr>';}
-  else{tbConf.innerHTML=confErros.map(e=>`<tr><td>${fmt(e.data)}<div style="font-size:11px;color:var(--hint)">${fmtHora(e.timestamp)}</div></td><td><span class="badge badge-neu">${e.filial}</span></td><td>${e.colaborador}</td><td><span class="badge badge-warn">${e.motivo}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px">${e.pedidoErro||'—'}</td><td style="font-size:12px">${e.obs||'—'}</td><td>${e.conferente||'—'}</td></tr>`).join('');}
+  else{tbConf.innerHTML=confErros.map(e=>`<tr><td>${fmt(e.data)}<div style="font-size:11px;color:var(--hint)">${fmtHora(e.timestamp)}</div></td><td><span class="badge badge-neu">${e.filial}</span></td><td>${e.colaborador}</td><td><span class="badge badge-warn">${e.motivo}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px">${e.pedidoErro||'—'}</td><td style="font-size:12px">${e.obs||'—'}</td><td>${e.conferente||'—'}</td><td><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="excluirErroConf('${e._key}')">Excluir</button></td></tr>`).join('');}
 }
 
 function renderHistorico(data) {
@@ -928,12 +991,38 @@ async function addFilial() {
 }
 
 async function removeFilial(i) {
-  if(!confirm(`Remover "${filiais[i].nome}"?`)) return;
+  const nome = filiais[i].nome;
+  const confirm1 = confirm(`⚠ Remover filial "${nome}"?\n\nISTO IRÁ APAGAR todos os lançamentos, colaboradores, conferentes e erros desta filial.`);
+  if(!confirm1) return;
+  const confirm2 = prompt(`Digite o nome da filial "${nome}" para confirmar:`);
+  if(confirm2?.trim().toUpperCase() !== nome.trim().toUpperCase()){showAlert('err','Nome incorreto. Exclusão cancelada.');return;}
+  showAlert('ok','Excluindo dados da filial...');
   try {
+    // Apaga filial
     await fbDelete('filiais/'+filiais[i]._key);
-    filiais.splice(i,1); populateFiliaisSelect(); renderFiliaisList(); render();
-    showAlert('ok','Filial removida.');
-  } catch(e) { showAlert('err','Erro ao remover.'); }
+    // Apaga colaboradores da filial
+    const colabsFilial = colaboradores[nome] || [];
+    for(const c of colabsFilial) await fbDelete('colaboradores/'+c._key);
+    // Apaga conferentes da filial
+    const confData = await fbGet('conferentes');
+    if(confData){
+      for(const [k,v] of Object.entries(confData)){
+        if(v.filial===nome) await fbDelete('conferentes/'+k);
+      }
+    }
+    // Apaga lançamentos da filial
+    const lancData = await fbGet('lancamentos');
+    if(lancData){
+      for(const [k,v] of Object.entries(lancData)){
+        if(v.filial===nome) await fbDelete('lancamentos/'+k);
+      }
+    }
+    filiais.splice(i,1);
+    delete colaboradores[nome];
+    lancamentos = lancamentos.filter(l=>l.filial!==nome);
+    populateFiliaisSelect(); renderFiliaisList(); render();
+    showAlert('ok','Filial e todos os dados excluídos.');
+  } catch(e) { showAlert('err','Erro ao remover filial.'); console.error(e); }
 }
 
 // ---- COLABORADORES ----
@@ -956,6 +1045,34 @@ function renderColabList() {
   if(!list.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum colaborador</div>';return;}
   el.innerHTML=list.map((c,i)=>`<div class="list-item"><div class="list-item-name">${c.nome}</div><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeColab('${colabTabAtivo.replace(/'/g,"\\'")}',${i})">Remover</button></div>`).join('');
 }
+
+
+function editColab(i){
+  document.getElementById('cname-'+i).style.display='none';
+  document.getElementById('cinput-'+i).style.display='';
+  document.getElementById('cedit-'+i).style.display='none';
+  document.getElementById('csave-'+i).style.display='';
+  document.getElementById('cinput-'+i).focus();
+}
+function cancelEditColab(i){
+  document.getElementById('cname-'+i).style.display='';
+  document.getElementById('cinput-'+i).style.display='none';
+  document.getElementById('cedit-'+i).style.display='';
+  document.getElementById('csave-'+i).style.display='none';
+}
+async function saveColab(filial,i){
+  const novo=document.getElementById('cinput-'+i).value.trim().toUpperCase();
+  if(!novo)return;
+  const item=colaboradores[filial][i];
+  try{
+    await fbPatch('colaboradores/'+item._key,{nome:novo,filial});
+    colaboradores[filial][i].nome=novo;
+    cancelEditColab(i);
+    renderColabList();
+    showAlert('ok','Colaborador atualizado.');
+  }catch(e){showAlert('err','Erro ao salvar.');}
+}
+
 
 async function addColab() {
   const filial=document.getElementById('colab-filial-sel').value;
@@ -1290,6 +1407,123 @@ function limparFlags() {
   flagSelecionada = null;
   renderFlags();
   render();
+}
+
+
+
+// ---- EXCEL COLUMN FILTERS ----
+const colFilters = {}; // { filterId: Set of selected values }
+
+function toggleColFilter(e, filterId) {
+  e.stopPropagation();
+  // Close all other dropdowns
+  document.querySelectorAll('.col-filter-dd.open').forEach(d=>{
+    if(d.id!==filterId) d.classList.remove('open');
+  });
+  const dd = document.getElementById(filterId);
+  if(!dd) return;
+  if(dd.classList.contains('open')){dd.classList.remove('open');return;}
+  // Build filter options based on current data
+  buildColFilterOptions(filterId);
+  dd.classList.add('open');
+}
+
+function buildColFilterOptions(filterId) {
+  const dd = document.getElementById(filterId);
+  if(!dd) return;
+  const{filiais:fs,ini,fim,colab}=getFilter();
+  
+  let values = new Set();
+  let source = [];
+  
+  if(filterId.startsWith('cf-ped-')){
+    source = lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
+    const field = filterId.replace('cf-ped-','');
+    source.forEach(l=>{
+      if(field==='data') values.add(fmt(l.data));
+      else if(field==='filial') values.add(l.filial||'—');
+      else if(field==='colab') values.add(l.colaborador||'—');
+    });
+  } else if(filterId.startsWith('cf-err-')){
+    source = lancamentos.filter(l=>l.motivo&&!l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+    const field = filterId.replace('cf-err-','');
+    source.forEach(l=>{
+      if(field==='filial') values.add(l.filial||'—');
+      else if(field==='colab') values.add(l.colaborador||'—');
+      else if(field==='motivo') values.add(l.motivo||'—');
+    });
+  } else if(filterId.startsWith('cf-errc-')){
+    source = lancamentos.filter(l=>l.motivo&&l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
+    const field = filterId.replace('cf-errc-','');
+    source.forEach(l=>{
+      if(field==='filial') values.add(l.filial||'—');
+      else if(field==='colab') values.add(l.colaborador||'—');
+    });
+  }
+
+  const sorted = [...values].sort();
+  const selected = colFilters[filterId] || new Set(sorted);
+  colFilters[filterId] = selected;
+
+  dd.innerHTML = `
+    <input class="col-filter-search" placeholder="Buscar..." oninput="filterColOptions(this,'${filterId}')">
+    <div class="col-filter-list" id="cfl-${filterId}">
+      ${sorted.map(v=>`<label class="col-filter-item">
+        <input type="checkbox" value="${v.replace(/"/g,'&quot;')}" ${selected.has(v)?'checked':''} onchange="toggleColValue('${filterId}','${v.replace(/'/g,"\'").replace(/"/g,'&quot;')}',this.checked)">
+        <span>${v}</span>
+      </label>`).join('')}
+    </div>
+    <div class="col-filter-footer">
+      <button onclick="selectAllCol('${filterId}')">Todos</button>
+      <button onclick="clearAllCol('${filterId}')">Nenhum</button>
+      <button onclick="applyColFilter('${filterId}')" style="background:var(--text);color:#fff;border-color:var(--text)">OK</button>
+    </div>`;
+}
+
+function filterColOptions(inp, filterId) {
+  const q = inp.value.toLowerCase();
+  document.querySelectorAll(`#cfl-${filterId} .col-filter-item`).forEach(item=>{
+    item.style.display = item.querySelector('span').textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function toggleColValue(filterId, value, checked) {
+  if(!colFilters[filterId]) colFilters[filterId] = new Set();
+  if(checked) colFilters[filterId].add(value);
+  else colFilters[filterId].delete(value);
+  const btn = document.querySelector(`[onclick*="'${filterId}'"]`);
+  if(btn) btn.classList.toggle('active', colFilters[filterId].size > 0);
+}
+
+function selectAllCol(filterId) {
+  document.querySelectorAll(`#cfl-${filterId} input[type=checkbox]`).forEach(cb=>{
+    cb.checked=true; colFilters[filterId]?.add(cb.value);
+  });
+}
+
+function clearAllCol(filterId) {
+  document.querySelectorAll(`#cfl-${filterId} input[type=checkbox]`).forEach(cb=>{
+    cb.checked=false;
+  });
+  colFilters[filterId] = new Set();
+}
+
+function applyColFilter(filterId) {
+  document.getElementById(filterId)?.classList.remove('open');
+  // Update button style
+  const btn = document.querySelector(`.col-filter-btn[onclick*="'${filterId}'"]`);
+  if(btn) btn.classList.toggle('active', colFilters[filterId] && colFilters[filterId].size > 0);
+  renderPedidos(); renderErros();
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.col-filter-dd.open').forEach(d=>d.classList.remove('open'));
+});
+
+function passesColFilter(filterId, value) {
+  if(!colFilters[filterId] || colFilters[filterId].size===0) return true;
+  return colFilters[filterId].has(value);
 }
 
 
