@@ -689,6 +689,7 @@ async function fbPatch(path, data) {
 // ESTADO
 // ============================================================
 let lancamentos=[], filiais=[], colaboradores={}, currentView='ranking', colabTabAtivo='';
+let xlColabSelecionado = '';
 
 async function carregarTudo() {
   setStatus('loading','Carregando...');
