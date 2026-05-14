@@ -1088,25 +1088,32 @@ function buildXlFilialList(){
     +filiais.map(f=>'<div class="xl-item" style="'+(sel1===f.nome&&!isTodas?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmaFilial(''+f.nome.replace(/'/g,"\'")+'')"><span style="display:inline-block;width:18px">'+(sel1===f.nome&&!isTodas?'●':'○')+'</span> '+f.nome+'</div>').join('');
 }
 
-function selecionarUmaFilial(nome){
+function selecionarUmaFilial(el){
+  const nome = el && typeof el==='object' ? el.dataset?.nome : el;
   filiaisSelecionadas=nome?new Set([nome]):new Set(filiais.map(f=>f.nome));
   closeXlFilter('xl-filial-dd');
   atualizarBotaoFilial();updateColabFilterSelect();render();
 }
 
 function buildXlColabList(){
-  const list=document.getElementById('xl-colab-list');if(!list)return;
+  const list=document.getElementById('xl-colab-list');
+  if(!list)return;
   const colabs=new Set();
   if(!filiaisSelecionadas.size||filiaisSelecionadas.size===filiais.length)
     Object.values(colaboradores).forEach(arr=>arr.forEach(c=>colabs.add(c.nome)));
   else filiaisSelecionadas.forEach(f=>{(colaboradores[f]||[]).forEach(c=>colabs.add(c.nome));});
   const sorted=[...colabs].sort();
-  list.innerHTML='<div class="xl-item" style="'+(!xlColabSelecionado?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmColab('','Todos colaboradores')"><span style="display:inline-block;width:18px">'+(!xlColabSelecionado?'●':'○')+'</span> Todos colaboradores</div>'
-    +sorted.map(c=>'<div class="xl-item" style="'+(xlColabSelecionado===c?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmColab(''+c.replace(/'/g,"\'")+'',''+c.replace(/'/g,"\'")+'')"><span style="display:inline-block;width:18px">'+(xlColabSelecionado===c?'●':'○')+'</span> '+c+'</div>').join('');
+  let html='<div class="xl-item" style="'+(!xlColabSelecionado?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmColab(null,'Todos colaboradores')">';
+  html+='<span style="margin-right:8px">'+(!xlColabSelecionado?'●':'○')+'</span> Todos colaboradores</div>';
+  sorted.forEach(function(c){
+    html+='<div class="xl-item" style="'+(xlColabSelecionado===c?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmColab(this.dataset.nome,this.dataset.nome)" data-nome="'+c+'">';
+    html+='<span style="margin-right:8px">'+(xlColabSelecionado===c?'●':'○')+'</span> '+c+'</div>';
+  });
+  list.innerHTML=html;
 }
 
 function selecionarUmColab(val,label){
-  xlColabSelecionado=val;
+  xlColabSelecionado=val||'';
   const btn=document.getElementById('colab-filter-btn');
   const lbl=document.getElementById('colab-filter-label');
   if(lbl)lbl.textContent=label||'Todos colaboradores';
@@ -1115,13 +1122,19 @@ function selecionarUmColab(val,label){
 }
 
 function buildXlGestorList(){
-  const list=document.getElementById('xl-gestor-list');if(!list)return;
-  list.innerHTML='<div class="xl-item" style="background:var(--bg);font-weight:600" onclick="selecionarUmGestor('','Por gestor')"><span style="display:inline-block;width:18px">●</span> Todos os gestores</div>'
-    +gestores.map(g=>'<div class="xl-item" onclick="selecionarUmGestor(''+g._key+'',''+g.nome.replace(/'/g,"\'")+'')"><span style="display:inline-block;width:18px">○</span> '+g.nome+'</div>').join('');
+  const list=document.getElementById('xl-gestor-list');
+  if(!list)return;
+  let html='<div class="xl-item" style="background:var(--bg);font-weight:600" onclick="selecionarUmGestor(null,'Por gestor')">';
+  html+='<span style="margin-right:8px">●</span> Todos os gestores</div>';
+  gestores.forEach(function(g){
+    html+='<div class="xl-item" onclick="selecionarUmGestor(this.dataset.key,this.dataset.nome)" data-key="'+g._key+'" data-nome="'+g.nome+'">';
+    html+='<span style="margin-right:8px">○</span> '+g.nome+'</div>';
+  });
+  list.innerHTML=html;
 }
 
 function selecionarUmGestor(key,label){
-  filtrarPorGestor(key);
+  filtrarPorGestor(key||'');
   const btn=document.getElementById('gestor-btn');
   const lbl=document.getElementById('gestor-btn-label');
   if(lbl)lbl.textContent=label||'Por gestor';
