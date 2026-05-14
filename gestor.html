@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel do Gestor — Mauer</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+// ============================================================
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;}
@@ -827,968 +828,6 @@ function updateColabFilterSelect() {
 // EXCEL-STYLE FILTER ENGINE
 // ============================================================
 
-function toggleXlFilter(ddId) {
-  const dd = document.getElementById(ddId);
-  if(!dd) return;
-  const isOpen = dd.classList.contains('open');
-  document.querySelectorAll('.xl-dd.open,.col-filter-dd.open').forEach(d=>d.classList.remove('open'));
-  if(!isOpen) {
-    dd.classList.add('open');
-    if(ddId==='xl-filial-dd') buildXlFilialList();
-    if(ddId==='xl-colab-dd') buildXlColabList();
-    if(ddId==='xl-gestor-dd') buildXlGestorList();
-  }
-}
-
-function closeXlFilter(ddId) {
-  document.getElementById(ddId)?.classList.remove('open');
-}
-
-document.addEventListener('click', e=>{
-  if(!e.target.closest('.xl-filter-wrap') && !e.target.closest('.col-filter-wrap')) {
-    document.querySelectorAll('.xl-dd.open,.col-filter-dd.open').forEach(d=>d.classList.remove('open'));
-  }
-});
-
-function xlSearch(inp, listId) {
-  const q = inp.value.toLowerCase();
-  document.querySelectorAll('#'+listId+' .xl-item').forEach(item=>{
-    item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none';
-  });
-}
-
-function xlSort(listId, dir) {
-  const list = document.getElementById(listId);
-  if(!list) return;
-  const items = [...list.querySelectorAll('.xl-item')];
-  items.sort((a,b)=>{
-    const ta=a.textContent.trim(), tb=b.textContent.trim();
-    return dir==='asc'?ta.localeCompare(tb,'pt'):tb.localeCompare(ta,'pt');
-  });
-  items.forEach(i=>list.appendChild(i));
-}
-
-function xlSelectAll(listId, checked) {
-  document.querySelectorAll('#'+listId+' input[type=checkbox]').forEach(cb=>cb.checked=checked);
-}
-
-// ---- FILIAL FILTER ----
-function buildXlFilialList() {
-  const list = document.getElementById('xl-filial-list');
-  if(!list) return;
-  list.innerHTML = filiais.map(f=>`
-    <label class="xl-item">
-      <input type="checkbox" value="${f.nome}" ${filiaisSelecionadas.has(f.nome)?'checked':''} onchange="xlToggleFilial(this.value,this.checked)">
-      ${f.nome}
-    </label>`).join('');
-}
-
-function xlToggleFilial(nome, checked) {
-  if(checked) filiaisSelecionadas.add(nome);
-  else filiaisSelecionadas.delete(nome);
-}
-
-function applyXlFilial() {
-  closeXlFilter('xl-filial-dd');
-  atualizarBotaoFilial();
-  updateColabFilterSelect();
-  render();
-}
-
-// ---- COLAB FILTER ----
-function buildXlColabList() {
-  const list = document.getElementById('xl-colab-list');
-  if(!list) return;
-  const colabs = new Set();
-  if(filiaisSelecionadas.size===0 || filiaisSelecionadas.size===filiais.length) {
-    Object.values(colaboradores).forEach(arr=>arr.forEach(c=>colabs.add(c.nome)));
-  } else {
-    filiaisSelecionadas.forEach(f=>{(colaboradores[f]||[]).forEach(c=>colabs.add(c.nome));});
-  }
-  const sorted = [...colabs].sort();
-  list.innerHTML = `<label class="xl-item"><input type="radio" name="colab-radio" value="" ${!xlColabSelecionado?'checked':''} onchange="applyXlColab('','Todos colaboradores')"> Todos colaboradores</label>`
-    + sorted.map(c=>`<label class="xl-item"><input type="radio" name="colab-radio" value="${c}" ${xlColabSelecionado===c?'checked':''} onchange="applyXlColab('${c.replace(/'/g,"\\'")}','${c.replace(/'/g,"\\'")}'">${c}</label>`).join('');
-}
-
-function applyXlColab(val, label) {
-  xlColabSelecionado = val;
-  const btn = document.getElementById('colab-filter-btn');
-  const lbl = document.getElementById('colab-filter-label');
-  if(lbl) lbl.textContent = label || 'Todos colaboradores';
-  if(btn) btn.classList.toggle('has-filter', !!val);
-  closeXlFilter('xl-colab-dd');
-  render();
-}
-
-// ---- GESTOR FILTER ----
-function buildXlGestorList() {
-  const list = document.getElementById('xl-gestor-list');
-  if(!list) return;
-  const curBtn = document.getElementById('gestor-btn');
-  const curLbl = document.getElementById('gestor-btn-label');
-  list.innerHTML = `<label class="xl-item">
-      <input type="radio" name="gestor-radio" value="" checked
-        onchange="filtrarPorGestor('');closeXlFilter('xl-gestor-dd');if(curLbl)curLbl.textContent='Por gestor';if(curBtn)curBtn.classList.remove('has-filter')">
-      Todos os gestores
-    </label>`
-    + gestores.map(g=>`<label class="xl-item">
-      <input type="radio" name="gestor-radio" value="${g._key}"
-        onchange="filtrarPorGestor('${g._key}');closeXlFilter('xl-gestor-dd');document.getElementById('gestor-btn-label').textContent='${g.nome}';document.getElementById('gestor-btn').classList.add('has-filter')">
-      ${g.nome}
-    </label>`).join('');
-}
-
-
-function clearFilters() {
-  filiaisSelecionadas = new Set(filiais.map(f=>f.nome));
-  document.getElementById('g-date-ini').value = _iniMes;
-  document.getElementById('g-date-fim').value = _fimMes;
-  document.querySelectorAll('input[name=gestor-radio]').forEach(r=>r.checked=r.value==='');
-  const lbl=document.getElementById('gestor-btn-label'); if(lbl)lbl.textContent='Por gestor';
-  xlColabSelecionado='';
-  const lbl2=document.getElementById('colab-filter-label');if(lbl2)lbl2.textContent='Todos colaboradores';
-  const cbtn=document.getElementById('colab-filter-btn');if(cbtn)cbtn.classList.remove('has-filter');
-  populateFiliaisSelect();
-  render();
-}
-
-function getFilter() {
-  return {
-    filiais: filiaisSelecionadas,
-    ini: document.getElementById('g-date-ini').value,
-    fim: document.getElementById('g-date-fim').value,
-    colab: xlColabSelecionado || ''
-  };
-}
-
-function filterData() {
-  const{filiais:fs, ini, fim, colab} = getFilter();
-  return lancamentos.filter(l => {
-    if(l.isPedido || l.isErro || !l.pneus) return false;
-    if(fs.size > 0 && !fs.has(l.filial)) return false;
-    if(ini && l.data < ini) return false;
-    if(fim && l.data > fim) return false;
-    if(colab && l.colaborador !== colab) return false;
-    return true;
-  });
-}
-
-function render() {
-  const data = filterData();
-  renderMetrics(data);
-  if(currentView==='ranking') renderRanking(data);
-  else if(currentView==='pedidos') renderPedidos();
-  else if(currentView==='erros') renderErros();
-  else if(currentView==='historico') renderHistorico(data);
-  else if(currentView==='config') {renderFiliaisList();renderColabTabs();}
-  document.getElementById('sb-pneus').textContent = filterData().reduce((a,l)=>a+Number(l.pneus||0),0).toLocaleString('pt-BR');
-}
-
-function renderMetrics(data) {
-  const{filiais:fs,ini,fim,colab}=getFilter();
-  const tPn=data.reduce((a,l)=>a+Number(l.pneus||0),0);
-  const tPd=data.reduce((a,l)=>a+Number(l.pedidos||0),0);
-  const erros=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
-  const cols=[...new Set(data.map(l=>l.colaborador))];
-  const tx=data.length>0?((erros.length/data.length)*100).toFixed(1):'0.0';
-  document.getElementById('metrics-grid').innerHTML=`
-    <div class="metric-card"><div class="metric-lbl">Pneus separados</div><div class="metric-val">${tPn.toLocaleString('pt-BR')}</div><div class="metric-sub">no período</div></div>
-    <div class="metric-card"><div class="metric-lbl">Pedidos</div><div class="metric-val">${tPd.toLocaleString('pt-BR')}</div><div class="metric-sub">separações</div></div>
-    <div class="metric-card"><div class="metric-lbl">Colaboradores</div><div class="metric-val">${cols.length}</div><div class="metric-sub">ativos</div></div>
-    <div class="metric-card"><div class="metric-lbl">Erros</div><div class="metric-val" style="color:${erros.length>0?'#8b2424':'#2d6b28'}">${erros.length}</div><div class="metric-sub">${tx}% dos lançamentos</div></div>`;
-}
-
-const COLORS=['#1a1917','#3266ad','#1D9E75','#BA7517','#639922','#D85A30','#534AB7','#993556'];
-
-function renderRanking(data) {
-  const ag={};
-  data.forEach(l=>{const k=l.colaborador+'|'+l.filial;if(!ag[k])ag[k]={colaborador:l.colaborador,filial:l.filial,pneus:0,pedidos:0};ag[k].pneus+=Number(l.pneus||0);ag[k].pedidos+=Number(l.pedidos||0);});
-  const{filiais:fs,ini,fim,colab}=getFilter();
-  const errosPor={};
-  lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab)).forEach(l=>{const k=l.colaborador+'|'+l.filial;errosPor[k]=(errosPor[k]||0)+1;});
-  const list=Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
-  const max=list[0]?.pneus||1;
-  const el=document.getElementById('ranking-list');
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--hint)">Nenhum dado</div>';return;}
-  el.innerHTML=list.map((item,i)=>{
-    const pct=Math.round((item.pneus/max)*100);
-    const errs=errosPor[item.colaborador+'|'+item.filial]||0;
-    const eb=errs>0?`<span class="badge badge-bad">${errs} erro${errs>1?'s':''}</span>`:`<span class="badge badge-ok">sem erros</span>`;
-    return`<div class="rank-row"><div class="rank-num">${i+1}º</div><div style="min-width:110px"><div style="font-size:13px;font-weight:500">${item.colaborador}</div><div style="font-size:11px;color:var(--muted)">${item.filial}</div></div><div class="bar-wrap"><div class="bar" style="width:${pct}%;background:${COLORS[i%COLORS.length]}"></div></div><div class="rank-val">${item.pneus.toLocaleString('pt-BR')} <span style="font-size:11px;color:var(--hint)">pneus</span></div><div>${eb}</div></div>`;
-  }).join('');
-}
-
-
-
-async function excluirErroConf(key) {
-  if(!confirm('Excluir este registro de erro?')) return;
-  try {
-    await fbDelete('lancamentos/'+key);
-    lancamentos = lancamentos.filter(l=>l._key!==key);
-    renderErros();
-    showAlert('ok','Erro excluído.');
-  } catch(e){ showAlert('err','Erro ao excluir.'); }
-}
-
-
-async function excluirPedido(key) {
-  const pedido = lancamentos.find(l=>l._key===key);
-  if(!pedido) return;
-  if(!confirm(`Excluir pedido ${pedido.numPedido||''}?\n\nOs erros de conferência relacionados a este pedido também serão excluídos.`)) return;
-  try {
-    // Apaga o pedido
-    await fbDelete('lancamentos/'+key);
-    // Apaga erros de conferência com o mesmo número de pedido
-    const errosRelacionados = lancamentos.filter(l=>l.isErro && l.pedidoErro === pedido.numPedido);
-    for(const e of errosRelacionados){
-      await fbDelete('lancamentos/'+e._key);
-    }
-    lancamentos = lancamentos.filter(l=>l._key!==key && !(l.isErro && l.pedidoErro===pedido.numPedido));
-    renderPedidos();
-    renderErros();
-    showAlert('ok',`Pedido ${pedido.numPedido||''} e ${errosRelacionados.length} erro(s) relacionado(s) excluídos.`);
-  } catch(e) { showAlert('err','Erro ao excluir.'); console.error(e); }
-}
-
-function renderPedidos() {
-  const{filiais:fs,ini,fim,colab}=getFilter();
-  const busca=(document.getElementById('busca-pedido')?.value||'').trim().toLowerCase();
-  let data=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab)
-    && passesColFilter('cf-ped-data',fmt(l.data))
-    && passesColFilter('cf-ped-filial',l.filial||'—')
-    && passesColFilter('cf-ped-colab',l.colaborador||'—'));
-  if(busca)data=data.filter(l=>(l.numPedido||'').toLowerCase().includes(busca)||(l.colaborador||'').toLowerCase().includes(busca));
-  document.getElementById('pedidos-count').textContent=data.length+' pedido'+(data.length!==1?'s':'');
-  const tb=document.getElementById('pedidos-body');
-  if(!data.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint)">Nenhum pedido</td></tr>';return;}
-  tb.innerHTML=[...data].sort((a,b)=>{
-    const dd = b.data.localeCompare(a.data);
-    if(dd!==0) return dd;
-    return (b.timestamp||0)-(a.timestamp||0);
-  }).map(l=>`<tr>
-    <td>${fmt(l.data)}</td>
-    <td style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace">${fmtHora(l.timestamp)}</td>
-    <td><span class="badge badge-neu">${l.filial}</span></td>
-    <td>${l.colaborador}</td>
-    <td style="font-family:'DM Mono',monospace;font-weight:500">${l.numPedido||'—'}</td>
-    <td style="font-family:'DM Mono',monospace">${l.qtdPedido||'—'}</td>
-    <td><span class="badge badge-ok">Separado</span></td>
-    <td><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="excluirPedido('${l._key}')">Excluir</button></td>
-  </tr>`).join('');
-}
-
-let erroTabAtual = 'separadores';
-
-function setErroTab(tab, el) {
-  erroTabAtual = tab;
-  document.querySelectorAll('#view-erros .tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('erros-sep-wrap').style.display = tab==='separadores' ? '' : 'none';
-  document.getElementById('erros-conf-wrap').style.display = tab==='conferentes' ? '' : 'none';
-  renderErros();
-}
-
-function fmtHora(ts) {
-  if(!ts) return '—';
-  try {
-    return new Date(ts).toLocaleTimeString('pt-BR',{
-      hour:'2-digit', minute:'2-digit',
-      timeZone:'America/Sao_Paulo'
-    });
-  } catch(e){return '—';}
-}
-
-function fmtDataHora(ts) {
-  if(!ts) return '—';
-  try {
-    const d = new Date(ts);
-    const data = d.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'});
-    const hora = d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
-    return data + ' ' + hora;
-  } catch(e){return '—';}
-}
-
-function renderErros() {
-  const{filiais:fs,ini,fim,colab}=getFilter();
-  const todos=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
-  
-  // Separadores = erros lançados pelo separador (isErro=false ou undefined)
-  const sepErros = todos.filter(l=>!l.isErro
-    && passesColFilter('cf-err-filial',l.filial||'—')
-    && passesColFilter('cf-err-colab',l.colaborador||'—')
-    && passesColFilter('cf-err-motivo',l.motivo||'—'));
-  // Conferentes = erros lançados pelo conferente (isErro=true)
-  const confErros = todos.filter(l=>l.isErro
-    && passesColFilter('cf-errc-filial',l.filial||'—')
-    && passesColFilter('cf-errc-colab',l.colaborador||'—'));
-  
-  document.getElementById('erros-count').textContent=todos.length+' registro'+(todos.length!==1?'s':'');
-  
-  const tbSep=document.getElementById('erros-body');
-  if(!sepErros.length){tbSep.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint)">Nenhum erro de separador</td></tr>';}
-  else{tbSep.innerHTML=sepErros.map(e=>`<tr><td>${fmt(e.data)}<div style="font-size:11px;color:var(--hint)">${fmtHora(e.timestamp)}</div></td><td><span class="badge badge-neu">${e.filial}</span></td><td>${e.colaborador}</td><td><span class="badge badge-warn">${e.motivo}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px">${e.pedidoErro||'—'}</td><td style="font-size:12px">${e.obs||'—'}</td><td>${e.conferente||'—'}</td></tr>`).join('');}
-  
-  const tbConf=document.getElementById('erros-conf-body');
-  if(!confErros.length){tbConf.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint)">Nenhum erro registrado por conferente</td></tr>';}
-  else{tbConf.innerHTML=confErros.map(e=>`<tr><td>${fmt(e.data)}<div style="font-size:11px;color:var(--hint)">${fmtHora(e.timestamp)}</div></td><td><span class="badge badge-neu">${e.filial}</span></td><td>${e.colaborador}</td><td><span class="badge badge-warn">${e.motivo}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px">${e.pedidoErro||'—'}</td><td style="font-size:12px">${e.obs||'—'}</td><td>${e.conferente||'—'}</td><td><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="excluirErroConf('${e._key}')">Excluir</button></td></tr>`).join('');}
-}
-
-function renderHistorico(data) {
-  const sorted=[...data].sort((a,b)=>b.data.localeCompare(a.data));
-  document.getElementById('hist-count').textContent=sorted.length+' registro'+(sorted.length!==1?'s':'');
-  const tb=document.getElementById('hist-body');
-  if(!sorted.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint)">Nenhum lançamento</td></tr>';return;}
-  tb.innerHTML=sorted.map(l=>`<tr><td>${fmt(l.data)}</td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">${fmtHora(l.timestamp)}</td><td><span class="badge badge-neu">${l.filial}</span></td><td>${l.colaborador}</td><td style="font-family:'DM Mono',monospace">${l.pedidos||0}</td><td style="font-family:'DM Mono',monospace;font-weight:500">${l.pneus||0}</td><td>${l.motivo?`<span class="badge badge-warn">${l.motivo}</span>`:'<span class="badge badge-ok">ok</span>'}</td></tr>`).join('');
-}
-
-function fmt(d){if(!d)return'—';try{const[y,m,dd]=String(d).slice(0,10).split('-');return`${dd}/${m}/${y}`;}catch(e){return d;}}
-
-// ---- FILIAIS ----
-function renderFiliaisList() {
-  document.getElementById('filiais-count').textContent=filiais.length+' filial'+(filiais.length!==1?'s':'');
-  const el=document.getElementById('filiais-list');
-  if(!filiais.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:12px">Nenhuma filial</div>';return;}
-  el.innerHTML=filiais.map((f,i)=>`
-    <div class="list-item">
-      <div class="list-item-name">
-        <span id="fname-${i}">${f.nome}</span>
-        <input class="edit-input" id="finput-${i}" value="${f.nome}" style="display:none" onkeydown="if(event.key==='Enter')saveFilial(${i});if(event.key==='Escape')cancelEditFilial(${i})">
-      </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-outline btn-sm" id="fedit-${i}" onclick="editFilial(${i})">Editar</button>
-        <button class="btn btn-sm" id="fsave-${i}" style="display:none;background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)" onclick="saveFilial(${i})">Salvar</button>
-        <button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeFilial(${i})">Remover</button>
-      </div>
-    </div>`).join('');
-}
-
-function editFilial(i){document.getElementById('fname-'+i).style.display='none';document.getElementById('finput-'+i).style.display='';document.getElementById('fedit-'+i).style.display='none';document.getElementById('fsave-'+i).style.display='';document.getElementById('finput-'+i).focus();}
-function cancelEditFilial(i){document.getElementById('fname-'+i).style.display='';document.getElementById('finput-'+i).style.display='none';document.getElementById('fedit-'+i).style.display='';document.getElementById('fsave-'+i).style.display='none';}
-
-async function saveFilial(i) {
-  const novo = document.getElementById('finput-'+i).value.trim();
-  if(!novo) return;
-  try {
-    await fbPatch('filiais/'+filiais[i]._key, {nome:novo});
-    filiais[i].nome = novo;
-    cancelEditFilial(i); populateFiliaisSelect(); renderFiliaisList();
-    showAlert('ok','Filial renomeada.');
-  } catch(e) { showAlert('err','Erro ao salvar.'); }
-}
-
-async function addFilial() {
-  const inp = document.getElementById('new-filial'); const name = inp.value.trim();
-  if(!name) return;
-  if(filiais.find(f=>f.nome===name)){showAlert('err','Filial já cadastrada.');return;}
-  try {
-    const r = await fbPost('filiais', {nome:name});
-    filiais.push({nome:name, _key:r.name});
-    inp.value = '';
-    colaboradores[name] = [];
-    populateFiliaisSelect(); renderFiliaisList();
-    showAlert('ok','Filial adicionada!');
-  } catch(e) { showAlert('err','Erro ao adicionar.'); console.error(e); }
-}
-
-async function removeFilial(i) {
-  const nome = filiais[i].nome;
-  const confirm1 = confirm(`⚠ Remover filial "${nome}"?\n\nISTO IRÁ APAGAR todos os lançamentos, colaboradores, conferentes e erros desta filial.`);
-  if(!confirm1) return;
-  const confirm2 = prompt(`Digite o nome da filial "${nome}" para confirmar:`);
-  if(confirm2?.trim().toUpperCase() !== nome.trim().toUpperCase()){showAlert('err','Nome incorreto. Exclusão cancelada.');return;}
-  showAlert('ok','Excluindo dados da filial...');
-  try {
-    // Apaga filial
-    await fbDelete('filiais/'+filiais[i]._key);
-    // Apaga colaboradores da filial
-    const colabsFilial = colaboradores[nome] || [];
-    for(const c of colabsFilial) await fbDelete('colaboradores/'+c._key);
-    // Apaga conferentes da filial
-    const confData = await fbGet('conferentes');
-    if(confData){
-      for(const [k,v] of Object.entries(confData)){
-        if(v.filial===nome) await fbDelete('conferentes/'+k);
-      }
-    }
-    // Apaga lançamentos da filial
-    const lancData = await fbGet('lancamentos');
-    if(lancData){
-      for(const [k,v] of Object.entries(lancData)){
-        if(v.filial===nome) await fbDelete('lancamentos/'+k);
-      }
-    }
-    filiais.splice(i,1);
-    delete colaboradores[nome];
-    lancamentos = lancamentos.filter(l=>l.filial!==nome);
-    populateFiliaisSelect(); renderFiliaisList(); render();
-    showAlert('ok','Filial e todos os dados excluídos.');
-  } catch(e) { showAlert('err','Erro ao remover filial.'); console.error(e); }
-}
-
-// ---- COLABORADORES ----
-function renderColabTabs() {
-  const el = document.getElementById('colab-tabs');
-  const nomes = filiais.map(f=>f.nome);
-  if(!nomes.length){el.innerHTML='';document.getElementById('colab-list').innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:12px">Cadastre filiais primeiro</div>';return;}
-  if(!colabTabAtivo||!nomes.includes(colabTabAtivo)) colabTabAtivo=nomes[0];
-  el.innerHTML=nomes.map(f=>`<div class="tab${f===colabTabAtivo?' active':''}" onclick="setColabTab('${f.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',this)">${f}</div>`).join('');
-  const total=Object.values(colaboradores).reduce((a,c)=>a+c.length,0);
-  document.getElementById('colab-count').textContent=total+' colaborador'+(total!==1?'es':'');
-  renderColabList();
-}
-
-function setColabTab(f,el){colabTabAtivo=f;document.querySelectorAll('#colab-tabs .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderColabList();}
-
-function renderColabList() {
-  const el=document.getElementById('colab-list');
-  const list=colaboradores[colabTabAtivo]||[];
-  if(!list.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum colaborador</div>';return;}
-  el.innerHTML=list.map((c,i)=>`<div class="list-item"><div class="list-item-name">${c.nome}</div><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeColab('${colabTabAtivo.replace(/'/g,"\\'")}',${i})">Remover</button></div>`).join('');
-}
-
-
-function editColab(i){
-  document.getElementById('cname-'+i).style.display='none';
-  document.getElementById('cinput-'+i).style.display='';
-  document.getElementById('cedit-'+i).style.display='none';
-  document.getElementById('csave-'+i).style.display='';
-  document.getElementById('cinput-'+i).focus();
-}
-function cancelEditColab(i){
-  document.getElementById('cname-'+i).style.display='';
-  document.getElementById('cinput-'+i).style.display='none';
-  document.getElementById('cedit-'+i).style.display='';
-  document.getElementById('csave-'+i).style.display='none';
-}
-async function saveColab(filial,i){
-  const novo=document.getElementById('cinput-'+i).value.trim().toUpperCase();
-  if(!novo)return;
-  const item=colaboradores[filial][i];
-  try{
-    await fbPatch('colaboradores/'+item._key,{nome:novo,filial});
-    colaboradores[filial][i].nome=novo;
-    cancelEditColab(i);
-    renderColabList();
-    showAlert('ok','Colaborador atualizado.');
-  }catch(e){showAlert('err','Erro ao salvar.');}
-}
-
-
-async function addColab() {
-  const filial=document.getElementById('colab-filial-sel').value;
-  const nome=document.getElementById('new-colab').value.trim().toUpperCase();
-  if(!filial){showAlert('err','Selecione a filial.');return;}
-  if(!nome) return;
-  if(!colaboradores[filial]) colaboradores[filial]=[];
-  if(colaboradores[filial].find(c=>c.nome===nome)){showAlert('err','Colaborador já cadastrado.');return;}
-  try {
-    const r = await fbPost('colaboradores', {filial, nome});
-    colaboradores[filial].push({filial, nome, _key:r.name});
-    colabTabAtivo=filial;
-    document.getElementById('new-colab').value='';
-    renderColabTabs();
-    showAlert('ok','Colaborador adicionado!');
-  } catch(e) { showAlert('err','Erro ao adicionar.'); console.error(e); }
-}
-
-async function removeColab(filial,i) {
-  const item=colaboradores[filial][i];
-  if(!confirm(`Remover "${item.nome}"?`)) return;
-  try {
-    await fbDelete('colaboradores/'+item._key);
-    colaboradores[filial].splice(i,1);
-    renderColabTabs();
-    showAlert('ok','Colaborador removido.');
-  } catch(e) { showAlert('err','Erro ao remover.'); }
-}
-
-// ---- VIEWS ----
-function setView(view,el) {
-  currentView=view;
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('view-'+view).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  el.classList.add('active');
-  if(view==='dashboard'){initDashboard();return;}
-  if(view==='gestores'){renderGestoresList();return;}
-  if(view==='conferentes'){renderConferentesTabs();return;}
-  render();
-}
-
-// ---- EXPORTAR ----
-function exportarMes() {
-  const{filiais:fs,ini,fim,colab}=getFilter();
-  const dados=lancamentos.filter(l=>!l.isPedido&&!l.isErro&&l.pneus>0&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
-  const pedidos=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
-  const erros=lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
-  if(!dados.length&&!pedidos.length){showAlert('err','Nenhum dado.');return;}
-  const wb=XLSX.utils.book_new();
-  if(dados.length){
-    const rows=[['Data','Filial','Colaborador','Pedidos','Pneus','Conferente']];
-    [...dados].sort((a,b)=>a.data.localeCompare(b.data)).forEach(l=>rows.push([fmt(l.data),l.filial,l.colaborador,l.pedidos||0,l.pneus||0,l.conferente||'']));
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Lançamentos');
-  }
-  if(erros.length){
-    const er=[['Data','Filial','Colaborador','Motivo','Nº Pedido','Observação','Conferente']];
-    erros.forEach(l=>er.push([fmt(l.data),l.filial,l.colaborador,l.motivo,l.pedidoErro||'',l.obs||'',l.conferente||'']));
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(er),'Erros');
-  }
-  if(pedidos.length){
-    const pr=[['Data','Filial','Colaborador','Nº Pedido','Qtd Pneus']];
-    pedidos.forEach(l=>pr.push([fmt(l.data),l.filial,l.colaborador,l.numPedido||'',l.qtdPedido||'']));
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pr),'Rastreamento');
-  }
-  const mes=new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(' ','_');
-  XLSX.writeFile(wb,`produtividade_mauer_${mes}.xlsx`);
-  showAlert('ok','Exportado!');
-}
-
-// ---- FECHAR MÊS ----
-function openModal(){document.getElementById('modal-fechar').classList.add('open');document.getElementById('confirm-input').value='';}
-function closeModal(){document.getElementById('modal-fechar').classList.remove('open');}
-async function fecharMes() {
-  const val=document.getElementById('confirm-input').value.trim().toUpperCase();
-  if(val!=='FECHAR'){const inp=document.getElementById('confirm-input');inp.classList.add('err');setTimeout(()=>inp.classList.remove('err'),1500);return;}
-  closeModal();
-  try {
-    await fbDelete('lancamentos');
-    lancamentos=[];render();showAlert('ok','Mês fechado!');
-  } catch(e){showAlert('err','Erro ao fechar.');}
-}
-document.getElementById('modal-fechar').addEventListener('click',function(e){if(e.target===this)closeModal();});
-
-function showAlert(type,msg) {
-  const el=document.getElementById('top-alert');
-  el.className='top-alert '+type+' visible';el.textContent=msg;
-  setTimeout(()=>el.classList.remove('visible'),4000);
-}
-
-
-
-// ---- CONFERENTES ----
-let conferentes = {};
-let confTabAtivo = '';
-
-async function carregarConferentes() {
-  try {
-    const data = await fbGet('conferentes');
-    conferentes = {};
-    if(data){
-      Object.entries(data).forEach(([k,v])=>{
-        if(!conferentes[v.filial]) conferentes[v.filial]=[];
-        conferentes[v.filial].push({...v,_key:k});
-      });
-    }
-    if(currentView==='conferentes') renderConferentesTabs();
-  } catch(e){console.error(e);}
-}
-
-function renderConferentesTabs() {
-  const el = document.getElementById('conf-tabs');
-  const nomes = filiais.map(f=>f.nome);
-  if(!nomes.length){if(el)el.innerHTML='';const cl=document.getElementById('conf-list');if(cl)cl.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:12px">Cadastre filiais primeiro</div>';return;}
-  if(!confTabAtivo||!nomes.includes(confTabAtivo)) confTabAtivo=nomes[0];
-  if(el) el.innerHTML=nomes.map(f=>`<div class="tab${f===confTabAtivo?' active':''}" onclick="setConfTab('${f.replace(/'/g,"\'").replace(/"/g,'&quot;')}',this)">${f}</div>`).join('');
-  const total=Object.values(conferentes).reduce((a,c)=>a+c.length,0);
-  const cnt=document.getElementById('conf-count');
-  if(cnt) cnt.textContent=total+' conferente'+(total!==1?'s':'');
-  renderConferentesList();
-  // Update filial select
-  const cs=document.getElementById('conf-filial-sel');
-  if(cs){const cc=cs.value;cs.innerHTML='<option value="">Selecione a filial</option>'+nomes.map(f=>`<option${f===cc?' selected':''}>${f}</option>`).join('');}
-}
-
-function setConfTab(f,el){confTabAtivo=f;document.querySelectorAll('#conf-tabs .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderConferentesList();}
-
-function renderConferentesList(){
-  const el=document.getElementById('conf-list');
-  const list=conferentes[confTabAtivo]||[];
-  if(!list.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum conferente nesta filial</div>';return;}
-  el.innerHTML=list.map((c,i)=>`<div class="list-item"><div class="list-item-name">${c.nome}</div><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeConferente('${confTabAtivo.replace(/'/g,"\'")}',${i})">Remover</button></div>`).join('');
-}
-
-async function addConferente(){
-  const filial=document.getElementById('conf-filial-sel').value;
-  const nome=document.getElementById('new-conf').value.trim().toUpperCase();
-  if(!filial){showAlert('err','Selecione a filial.');return;}
-  if(!nome)return;
-  if(!conferentes[filial])conferentes[filial]=[];
-  if(conferentes[filial].find(c=>c.nome===nome)){showAlert('err','Conferente já cadastrado.');return;}
-  try{
-    const r=await fbPost('conferentes',{filial,nome});
-    conferentes[filial].push({filial,nome,_key:r.name});
-    confTabAtivo=filial;
-    document.getElementById('new-conf').value='';
-    renderConferentesTabs();
-    showAlert('ok','Conferente adicionado!');
-  }catch(e){showAlert('err','Erro ao adicionar.');}
-}
-
-async function removeConferente(filial,i){
-  const item=conferentes[filial][i];
-  if(!confirm('Remover "'+item.nome+'"?'))return;
-  try{
-    await fbDelete('conferentes/'+item._key);
-    conferentes[filial].splice(i,1);
-    renderConferentesTabs();
-    showAlert('ok','Conferente removido.');
-  }catch(e){showAlert('err','Erro ao remover.');}
-}
-
-
-// ---- GESTORES ----
-let gestores = [];
-
-async function carregarGestores() {
-  try {
-    const data = await fbGet('gestores');
-    gestores = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
-    buildXlGestorList();
-    if(currentView==='gestores') renderGestoresList();
-  } catch(e) { console.error(e); }
-}
-
-function renderGestoresList() {
-  const el = document.getElementById('gestores-list');
-  const cnt = document.getElementById('gestores-count');
-  if(cnt) cnt.textContent = gestores.length + ' gestor' + (gestores.length!==1?'es':'');
-  if(!el) return;
-  if(!gestores.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum gestor cadastrado</div>';return;}
-  el.innerHTML = gestores.map((g) => `
-    <div style="padding:14px 6px;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div>
-          <div style="font-weight:500;font-size:13px">${g.nome}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Usu&aacute;rio: ${g.usuario||'n&atilde;o definido'}</div>
-        </div>
-        <button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeGestor('${g._key}')">Remover</button>
-      </div>
-      <div style="font-size:11px;font-weight:500;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Filiais vinculadas</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${filiais.map(f=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:3px 8px"><input type="checkbox" ${(g.filiais||[]).includes(f.nome)?'checked':''} onchange="vincularFilial('${g._key}','${f.nome}',this.checked)"> ${f.nome}</label>`).join('')}
-      </div>
-    </div>`).join('');
-}
-
-async function addGestor() {
-  const nome = document.getElementById('new-gestor-nome').value.trim();
-  const usuario = document.getElementById('new-gestor-usuario').value.trim();
-  if(!nome){showAlert('err','Digite o nome do gestor.');return;}
-  try {
-    const r = await fbPost('gestores',{nome,usuario,filiais:[]});
-    gestores.push({nome,usuario,filiais:[],_key:r.name});
-    document.getElementById('new-gestor-nome').value='';
-    document.getElementById('new-gestor-usuario').value='';
-    renderGestoresList();
-    showAlert('ok','Gestor adicionado!');
-  } catch(e){showAlert('err','Erro ao adicionar.');}
-}
-
-async function vincularFilial(gestorKey, filialNome, checked) {
-  const g = gestores.find(g=>g._key===gestorKey);
-  if(!g) return;
-  if(!g.filiais) g.filiais=[];
-  if(checked && !g.filiais.includes(filialNome)) g.filiais.push(filialNome);
-  else if(!checked) g.filiais = g.filiais.filter(f=>f!==filialNome);
-  try {
-    await fbPatch('gestores/'+gestorKey,{filiais:g.filiais});
-    showAlert('ok','Vinculo atualizado!');
-  } catch(e){showAlert('err','Erro ao salvar.');}
-}
-
-async function removeGestor(key) {
-  if(!confirm('Remover este gestor?')) return;
-  try {
-    await fbDelete('gestores/'+key);
-    gestores = gestores.filter(g=>g._key!==key);
-    renderGestoresList();
-    showAlert('ok','Gestor removido.');
-  } catch(e){showAlert('err','Erro ao remover.');}
-}
-
-function filtrarPorGestor(key) {
-  if(!key) {
-    filiaisSelecionadas = new Set(filiais.map(f=>f.nome));
-  } else {
-    const g = gestores.find(g=>g._key===key);
-    if(g && g.filiais && g.filiais.length) filiaisSelecionadas = new Set(g.filiais);
-    else filiaisSelecionadas = new Set();
-  }
-  populateFiliaisSelect();
-  render();
-}
-
-
-
-// toggleGestorDropdown replaced by xl-filter
-
-function renderGestorRadioList() {
-  const el = document.getElementById('gestor-radio-list');
-  if(!el) return;
-  el.innerHTML = gestores.map(g=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px"><input type="radio" name="gestor-radio" value="${g._key}" onchange="filtrarPorGestor('${g._key}');document.getElementById('gestor-btn-label').textContent='${g.nome}';"> ${g.nome}</label>`).join('');
-}
-
-
-
-
-
-// ============================================================
-// DASHBOARD
-// ============================================================
-const dashCharts = {};
-
-function destroyChart(id) {
-  if(dashCharts[id]) {
-    try { dashCharts[id].destroy(); } catch(e){}
-    delete dashCharts[id];
-  }
-}
-
-
-function initDashboard() {
-  const ini = document.getElementById('dash-ini');
-  const fim = document.getElementById('dash-fim');
-  if(ini && !ini.value) {
-    const hoje = new Date();
-    ini.value = new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().slice(0,10);
-    fim.value = new Date(hoje.getFullYear(),hoje.getMonth()+1,0).toISOString().slice(0,10);
-  }
-  // Destroy all charts first to reset canvases
-  Object.keys(dashCharts).forEach(k=>destroyChart(k));
-  setTimeout(renderDashboard, 150);
-}
-
-
-function setDashPeriodo(tipo) {
-  const hoje = new Date();
-  const fmt = d => d.toISOString().slice(0,10);
-  if(tipo==='hoje') {
-    document.getElementById('dash-ini').value = fmt(hoje);
-    document.getElementById('dash-fim').value = fmt(hoje);
-  } else if(tipo==='semana') {
-    const ini = new Date(hoje); ini.setDate(hoje.getDate()-6);
-    document.getElementById('dash-ini').value = fmt(ini);
-    document.getElementById('dash-fim').value = fmt(hoje);
-  } else if(tipo==='mes') {
-    document.getElementById('dash-ini').value = fmt(new Date(hoje.getFullYear(),hoje.getMonth(),1));
-    document.getElementById('dash-fim').value = fmt(new Date(hoje.getFullYear(),hoje.getMonth()+1,0));
-  }
-  renderDashboard();
-}
-
-function getDashFilter() {
-  return {
-    ini: document.getElementById('dash-ini')?.value || '',
-    fim: document.getElementById('dash-fim')?.value || '',
-    filial: document.getElementById('dash-filial')?.value || ''
-  };
-}
-
-function getDashData() {
-  const{ini,fim,filial} = getDashFilter();
-  const base = lancamentos.filter(l => (!ini||l.data>=ini) && (!fim||l.data<=fim) && (!filial||l.filial===filial));
-  const pneus   = base.filter(l=>!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
-  const pedidos  = base.filter(l=>l.isPedido);
-  const erros   = base.filter(l=>l.motivo);
-  return {pneus, pedidos, erros, ini, fim};
-}
-
-function renderDashboard() {
-  // Update dash-filial select
-  const ds = document.getElementById('dash-filial');
-  if(ds) {
-    const cur = ds.value;
-    ds.innerHTML = '<option value="">Todas as filiais</option>' + filiais.map(f=>`<option${f.nome===cur?' selected':''}>${f.nome}</option>`).join('');
-  }
-
-  const {pneus, pedidos, erros} = getDashData();
-
-  // KPIs
-  const totalPneus = pneus.reduce((a,l)=>a+Number(l.pneus||0),0);
-  const totalPedidos = pedidos.length;
-  const colabsAtivos = new Set(pneus.map(l=>l.colaborador+'|'+l.filial)).size;
-  const txErros = pneus.length>0?((erros.length/pneus.length)*100).toFixed(1):'0.0';
-
-  document.getElementById('kpi-pneus').textContent = totalPneus.toLocaleString('pt-BR');
-  document.getElementById('kpi-pedidos').textContent = totalPedidos.toLocaleString('pt-BR');
-  document.getElementById('kpi-colabs').textContent = colabsAtivos;
-  document.getElementById('kpi-erros').textContent = erros.length;
-  document.getElementById('kpi-erros-tx').textContent = txErros + '% dos lançamentos';
-
-  renderChartPneusFilial(pneus);
-  renderChartPedidosFilial(pedidos);
-  renderChartComparativo();
-  renderChartErrosMotivo(erros);
-  renderChartErrosFilial(erros);
-  renderChartEvolucao(pneus);
-}
-
-const CHART_COLORS = ['#1a1917','#3266ad','#1D9E75','#BA7517','#639922','#D85A30','#534AB7','#993556','#1a7a8a','#8a3d1a','#2d6b28','#6b1a2d'];
-
-function agruparPorFilial(data, campo='pneus') {
-  const ag = {};
-  data.forEach(l => {
-    if(!ag[l.filial]) ag[l.filial] = 0;
-    ag[l.filial] += Number(l[campo]||1);
-  });
-  return Object.entries(ag).sort((a,b)=>b[1]-a[1]);
-}
-
-function renderChartPneusFilial(pneus) {
-  destroyChart('pneus-filial');
-  const ag = agruparPorFilial(pneus,'pneus');
-  const wrap = document.getElementById('chart-pneus-filial')?.closest('.dash-chart-wrap');
-  if(!ag.length){if(wrap)wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:13px">Sem dados no período</div>';return;}
-  if(wrap && !wrap.querySelector('canvas')) wrap.innerHTML='<canvas id="chart-pneus-filial"></canvas>';
-  const ctx = document.getElementById('chart-pneus-filial');
-  if(!ctx) return;
-  dashCharts['pneus-filial'] = new Chart(ctx, {
-    type:'bar',
-    data:{
-      labels: ag.map(([f])=>f),
-      datasets:[{label:'Pneus',data:ag.map(([,v])=>v),backgroundColor:CHART_COLORS,borderRadius:6,borderSkipped:false}]
-    },
-    options:{
-      indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.x.toLocaleString('pt-BR')} pneus`}}},
-      scales:{x:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11,weight:'500'}}}}
-    }
-  });
-}
-
-function renderChartPedidosFilial(pedidos) {
-  destroyChart('pedidos-filial');
-  const ag = {};
-  pedidos.forEach(l=>{ if(!ag[l.filial])ag[l.filial]=0; ag[l.filial]++; });
-  const sorted = Object.entries(ag).sort((a,b)=>b[1]-a[1]);
-  const ctx = document.getElementById('chart-pedidos-filial');
-  if(!ctx||!sorted.length) return;
-  dashCharts['pedidos-filial'] = new Chart(ctx, {
-    type:'bar',
-    data:{
-      labels:sorted.map(([f])=>f),
-      datasets:[{label:'Pedidos',data:sorted.map(([,v])=>v),backgroundColor:CHART_COLORS.map(c=>c+'cc'),borderRadius:6,borderSkipped:false}]
-    },
-    options:{
-      indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.x} pedidos`}}},
-      scales:{x:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11,weight:'500'}}}}
-    }
-  });
-}
-
-function renderChartComparativo() {
-  destroyChart('comparativo');
-  const {pneus, pedidos, erros} = getDashData();
-  const tipo = document.getElementById('dash-comp-tipo')?.value || 'pneus_pedidos';
-  const todasFiliais = [...new Set([...pneus,...pedidos,...erros].map(l=>l.filial))].sort();
-  if(!todasFiliais.length) return;
-
-  let ds1, ds2, label1, label2;
-  if(tipo==='pneus_pedidos') {
-    const pnMap={}, pdMap={};
-    pneus.forEach(l=>{ pnMap[l.filial]=(pnMap[l.filial]||0)+Number(l.pneus||0); });
-    pedidos.forEach(l=>{ pdMap[l.filial]=(pdMap[l.filial]||0)+1; });
-    ds1={label:'Pneus',data:todasFiliais.map(f=>pnMap[f]||0),backgroundColor:'#1a1917',borderRadius:4};
-    ds2={label:'Pedidos',data:todasFiliais.map(f=>pdMap[f]||0),backgroundColor:'#3266ad',borderRadius:4};
-    label1='Pneus'; label2='Pedidos';
-  } else {
-    const pnMap={}, erMap={};
-    pneus.forEach(l=>{ pnMap[l.filial]=(pnMap[l.filial]||0)+Number(l.pneus||0); });
-    erros.forEach(l=>{ erMap[l.filial]=(erMap[l.filial]||0)+1; });
-    ds1={label:'Pneus',data:todasFiliais.map(f=>pnMap[f]||0),backgroundColor:'#1D9E75',borderRadius:4};
-    ds2={label:'Erros',data:todasFiliais.map(f=>erMap[f]||0),backgroundColor:'#e05252',borderRadius:4};
-    label1='Pneus'; label2='Erros';
-  }
-
-  const ctx = document.getElementById('chart-comparativo');
-  if(!ctx) return;
-  dashCharts['comparativo'] = new Chart(ctx, {
-    type:'bar',
-    data:{labels:todasFiliais, datasets:[ds1,ds2]},
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:true,position:'top',labels:{font:{family:'DM Sans',size:12},color:'#1a1917'}}},
-      scales:{
-        x:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11,weight:'500'},maxRotation:30}},
-        y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}
-      }
-    }
-  });
-}
-
-function renderChartErrosMotivo(erros) {
-  destroyChart('erros-motivo');
-  const ag={};
-  erros.forEach(l=>{ ag[l.motivo||'Outro']=(ag[l.motivo||'Outro']||0)+1; });
-  const sorted=Object.entries(ag).sort((a,b)=>b[1]-a[1]);
-  const ctx=document.getElementById('chart-erros-motivo');
-  if(!ctx||!sorted.length){if(ctx)ctx.parentElement.innerHTML='<div style="text-align:center;padding:40px;color:var(--hint);font-size:13px">Nenhum erro no período</div>';return;}
-  dashCharts['erros-motivo']=new Chart(ctx,{
-    type:'doughnut',
-    data:{labels:sorted.map(([k])=>k),datasets:[{data:sorted.map(([,v])=>v),backgroundColor:CHART_COLORS,borderWidth:2,borderColor:'#fff'}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Sans',size:11},color:'#1a1917',boxWidth:14}}}}
-  });
-}
-
-function renderChartErrosFilial(erros) {
-  destroyChart('erros-filial');
-  const ag={};
-  erros.forEach(l=>{ ag[l.filial]=(ag[l.filial]||0)+1; });
-  const sorted=Object.entries(ag).sort((a,b)=>b[1]-a[1]);
-  const ctx=document.getElementById('chart-erros-filial');
-  if(!ctx||!sorted.length){if(ctx)ctx.parentElement.innerHTML='<div style="text-align:center;padding:40px;color:var(--hint);font-size:13px">Nenhum erro no período</div>';return;}
-  dashCharts['erros-filial']=new Chart(ctx,{
-    type:'bar',
-    data:{labels:sorted.map(([f])=>f),datasets:[{label:'Erros',data:sorted.map(([,v])=>v),backgroundColor:'#e05252cc',borderRadius:6,borderSkipped:false}]},
-    options:{
-      indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{x:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11}}}}
-    }
-  });
-}
-
-function renderChartEvolucao(pneus) {
-  destroyChart('evolucao');
-  const {ini,fim} = getDashFilter();
-  const byDate={};
-  pneus.forEach(l=>{ byDate[l.data]=(byDate[l.data]||0)+Number(l.pneus||0); });
-  const dates=Object.keys(byDate).sort();
-  if(!dates.length) return;
-  const labels=dates.map(d=>d.split('-').slice(1).reverse().join('/'));
-  const ctx=document.getElementById('chart-evolucao');
-  if(!ctx) return;
-
-  // Group by filial for stacked
-  const {filial} = getDashFilter();
-  if(filial) {
-    // Single filial - simple line
-    dashCharts['evolucao']=new Chart(ctx,{
-      type:'line',
-      data:{labels,datasets:[{label:filial,data:dates.map(d=>byDate[d]||0),borderColor:'#1a1917',backgroundColor:'rgba(26,25,23,.08)',fill:true,tension:.3,pointRadius:4,pointBackgroundColor:'#1a1917'}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}}}
-    });
-  } else {
-    // All filiais stacked
-    const filiaisComDados=[...new Set(pneus.map(l=>l.filial))].sort();
-    const byFilialDate={};
-    pneus.forEach(l=>{ if(!byFilialDate[l.filial])byFilialDate[l.filial]={}; byFilialDate[l.filial][l.data]=(byFilialDate[l.filial][l.data]||0)+Number(l.pneus||0); });
-    const datasets=filiaisComDados.map((f,i)=>({
-      label:f, data:dates.map(d=>byFilialDate[f]?.[d]||0),
-      backgroundColor:CHART_COLORS[i%CHART_COLORS.length]+'99',
-      borderColor:CHART_COLORS[i%CHART_COLORS.length],
-      fill:true, tension:.3, pointRadius:3
-    }));
-    dashCharts['evolucao']=new Chart(ctx,{
-      type:'line',
-      data:{labels,datasets},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'DM Sans',size:11},color:'#1a1917',boxWidth:12}}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true,stacked:false}}}
-    });
-  }
-}
-
-
 // ---- MARGEM DE PEDIDOS ----
 let margemPedidos = 1000;
 
@@ -2003,6 +1042,178 @@ const _fimMes = new Date(_hoje.getFullYear(), _hoje.getMonth()+1, 0).toISOString
 document.getElementById('g-date-ini').value = _iniMes;
 document.getElementById('g-date-fim').value = _fimMes;
 carregarTudo();
+
+// ============================================================
+// EXCEL-STYLE FILTER ENGINE
+// ============================================================
+
+function toggleXlFilter(ddId) {
+  const dd = document.getElementById(ddId);
+  if(!dd) return;
+  const isOpen = dd.classList.contains('open');
+  document.querySelectorAll('.xl-dd.open,.col-filter-dd.open').forEach(d=>d.classList.remove('open'));
+  if(!isOpen) {
+    dd.classList.add('open');
+    if(ddId==='xl-filial-dd') buildXlFilialList();
+    if(ddId==='xl-colab-dd') buildXlColabList();
+    if(ddId==='xl-gestor-dd') buildXlGestorList();
+  }
+}
+
+function closeXlFilter(ddId) { document.getElementById(ddId)?.classList.remove('open'); }
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.xl-filter-wrap')&&!e.target.closest('.col-filter-wrap'))
+    document.querySelectorAll('.xl-dd.open,.col-filter-dd.open').forEach(d=>d.classList.remove('open'));
+});
+
+function xlSearch(inp,listId){
+  const q=inp.value.toLowerCase();
+  document.querySelectorAll('#'+listId+' .xl-item').forEach(i=>{i.style.display=i.textContent.toLowerCase().includes(q)?'':'none';});
+}
+
+function xlSort(listId,dir){
+  const list=document.getElementById(listId);if(!list)return;
+  const items=[...list.querySelectorAll('.xl-item')];
+  items.sort((a,b)=>dir==='asc'?a.textContent.trim().localeCompare(b.textContent.trim(),'pt'):b.textContent.trim().localeCompare(a.textContent.trim(),'pt'));
+  items.forEach(i=>list.appendChild(i));
+}
+
+function buildXlFilialList(){
+  const list=document.getElementById('xl-filial-list');if(!list)return;
+  const isTodas=filiaisSelecionadas.size===filiais.length;
+  const sel1=filiaisSelecionadas.size===1?[...filiaisSelecionadas][0]:'';
+  list.innerHTML='<div class="xl-item" style="'+(isTodas?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmaFilial('')">'
+    +'<span style="display:inline-block;width:18px">'+(isTodas?'●':'○')+'</span> Todas as filiais</div>'
+    +filiais.map(f=>'<div class="xl-item" style="'+(sel1===f.nome&&!isTodas?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmaFilial(''+f.nome.replace(/'/g,"\'")+'')"><span style="display:inline-block;width:18px">'+(sel1===f.nome&&!isTodas?'●':'○')+'</span> '+f.nome+'</div>').join('');
+}
+
+function selecionarUmaFilial(nome){
+  filiaisSelecionadas=nome?new Set([nome]):new Set(filiais.map(f=>f.nome));
+  closeXlFilter('xl-filial-dd');
+  atualizarBotaoFilial();updateColabFilterSelect();render();
+}
+
+function buildXlColabList(){
+  const list=document.getElementById('xl-colab-list');if(!list)return;
+  const colabs=new Set();
+  if(!filiaisSelecionadas.size||filiaisSelecionadas.size===filiais.length)
+    Object.values(colaboradores).forEach(arr=>arr.forEach(c=>colabs.add(c.nome)));
+  else filiaisSelecionadas.forEach(f=>{(colaboradores[f]||[]).forEach(c=>colabs.add(c.nome));});
+  const sorted=[...colabs].sort();
+  list.innerHTML='<div class="xl-item" style="'+(!xlColabSelecionado?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmColab('','Todos colaboradores')"><span style="display:inline-block;width:18px">'+(!xlColabSelecionado?'●':'○')+'</span> Todos colaboradores</div>'
+    +sorted.map(c=>'<div class="xl-item" style="'+(xlColabSelecionado===c?'background:var(--bg);font-weight:600':'')+'" onclick="selecionarUmColab(''+c.replace(/'/g,"\'")+'',''+c.replace(/'/g,"\'")+'')"><span style="display:inline-block;width:18px">'+(xlColabSelecionado===c?'●':'○')+'</span> '+c+'</div>').join('');
+}
+
+function selecionarUmColab(val,label){
+  xlColabSelecionado=val;
+  const btn=document.getElementById('colab-filter-btn');
+  const lbl=document.getElementById('colab-filter-label');
+  if(lbl)lbl.textContent=label||'Todos colaboradores';
+  if(btn)btn.classList.toggle('has-filter',!!val);
+  closeXlFilter('xl-colab-dd');render();
+}
+
+function buildXlGestorList(){
+  const list=document.getElementById('xl-gestor-list');if(!list)return;
+  list.innerHTML='<div class="xl-item" style="background:var(--bg);font-weight:600" onclick="selecionarUmGestor('','Por gestor')"><span style="display:inline-block;width:18px">●</span> Todos os gestores</div>'
+    +gestores.map(g=>'<div class="xl-item" onclick="selecionarUmGestor(''+g._key+'',''+g.nome.replace(/'/g,"\'")+'')"><span style="display:inline-block;width:18px">○</span> '+g.nome+'</div>').join('');
+}
+
+function selecionarUmGestor(key,label){
+  filtrarPorGestor(key);
+  const btn=document.getElementById('gestor-btn');
+  const lbl=document.getElementById('gestor-btn-label');
+  if(lbl)lbl.textContent=label||'Por gestor';
+  if(btn)btn.classList.toggle('has-filter',!!key);
+  closeXlFilter('xl-gestor-dd');
+}
+
+function renderGestorRadioList(){buildXlGestorList();}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+const dashCharts={};
+function destroyChart(id){if(dashCharts[id]){try{dashCharts[id].destroy();}catch(e){}delete dashCharts[id];}}
+
+function setDashPeriodo(tipo){
+  const hoje=new Date(),f=d=>d.toISOString().slice(0,10);
+  const ini=document.getElementById('dash-ini'),fim=document.getElementById('dash-fim');
+  if(tipo==='hoje'){ini.value=f(hoje);fim.value=f(hoje);}
+  else if(tipo==='semana'){const s=new Date(hoje);s.setDate(hoje.getDate()-6);ini.value=f(s);fim.value=f(hoje);}
+  else if(tipo==='mes'){ini.value=f(new Date(hoje.getFullYear(),hoje.getMonth(),1));fim.value=f(new Date(hoje.getFullYear(),hoje.getMonth()+1,0));}
+  renderDashboard();
+}
+
+function getDashFilter(){return{ini:document.getElementById('dash-ini')?.value||'',fim:document.getElementById('dash-fim')?.value||'',filial:document.getElementById('dash-filial')?.value||''};}
+
+function getDashData(){
+  const{ini,fim,filial}=getDashFilter();
+  const base=lancamentos.filter(l=>(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!filial||l.filial===filial));
+  return{pneus:base.filter(l=>!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0),pedidos:base.filter(l=>l.isPedido),erros:base.filter(l=>l.motivo)};
+}
+
+function initDashboard(){
+  const ini=document.getElementById('dash-ini'),fim=document.getElementById('dash-fim');
+  if(ini&&!ini.value){const hoje=new Date();ini.value=new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().slice(0,10);fim.value=new Date(hoje.getFullYear(),hoje.getMonth()+1,0).toISOString().slice(0,10);}
+  Object.keys(dashCharts).forEach(k=>destroyChart(k));
+  setTimeout(renderDashboard,150);
+}
+
+function renderDashboard(){
+  const ds=document.getElementById('dash-filial');
+  if(ds){const cur=ds.value;ds.innerHTML='<option value="">Todas as filiais</option>'+filiais.map(f=>'<option'+(f.nome===cur?' selected':'')+'>'+f.nome+'</option>').join('');}
+  const{pneus,pedidos,erros}=getDashData();
+  const tPn=pneus.reduce((a,l)=>a+Number(l.pneus||0),0);
+  const el=id=>document.getElementById(id);
+  if(el('kpi-pneus'))el('kpi-pneus').textContent=tPn.toLocaleString('pt-BR');
+  if(el('kpi-pedidos'))el('kpi-pedidos').textContent=pedidos.length;
+  if(el('kpi-colabs'))el('kpi-colabs').textContent=new Set(pneus.map(l=>l.colaborador+'|'+l.filial)).size;
+  if(el('kpi-erros'))el('kpi-erros').textContent=erros.length;
+  if(el('kpi-erros-tx'))el('kpi-erros-tx').textContent=(pneus.length?((erros.length/pneus.length)*100).toFixed(1):'0.0')+'% dos lanç.';
+  const CORES=['#1a1917','#3266ad','#1D9E75','#BA7517','#639922','#D85A30','#534AB7','#993556','#1a7a8a','#8a3d1a','#2d6b28'];
+  function agF(data,campo){const ag={};data.forEach(l=>{if(!ag[l.filial])ag[l.filial]=0;ag[l.filial]+=(campo?Number(l[campo]||0):1);});return Object.entries(ag).sort((a,b)=>b[1]-a[1]);}
+  function agC(data,campo){const ag={};data.forEach(l=>{const k=l[campo]||'Outro';ag[k]=(ag[k]||0)+1;});return Object.entries(ag).sort((a,b)=>b[1]-a[1]);}
+  function barH(canvasId,chartId,data,label){
+    destroyChart(chartId);const ctx=document.getElementById(canvasId);if(!ctx)return;
+    if(!data.length){ctx.closest('.dash-chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:13px">Sem dados</div>';return;}
+    dashCharts[chartId]=new Chart(ctx,{type:'bar',data:{labels:data.map(([f])=>f),datasets:[{label,data:data.map(([,v])=>v),backgroundColor:CORES,borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11,weight:'500'}}}}}});
+  }
+  function donut(canvasId,chartId,data){
+    destroyChart(chartId);const ctx=document.getElementById(canvasId);if(!ctx)return;
+    if(!data.length){ctx.closest('.dash-chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:13px">Sem erros</div>';return;}
+    dashCharts[chartId]=new Chart(ctx,{type:'doughnut',data:{labels:data.map(([k])=>k),datasets:[{data:data.map(([,v])=>v),backgroundColor:CORES,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'DM Sans',size:11},color:'#1a1917',boxWidth:14}}}}});
+  }
+  barH('chart-pneus-filial','pneus-filial',agF(pneus,'pneus'),'Pneus');
+  barH('chart-pedidos-filial','pedidos-filial',agF(pedidos,null),'Pedidos');
+  donut('chart-erros-motivo','erros-motivo',agC(erros,'motivo'));
+  barH('chart-erros-filial','erros-filial',agF(erros,null),'Erros');
+  // Comparativo
+  destroyChart('comparativo');
+  const tipo=document.getElementById('dash-comp-tipo')?.value||'pneus_pedidos';
+  const todasF=[...new Set([...pneus,...pedidos,...erros].map(l=>l.filial))].sort();
+  const ctxC=document.getElementById('chart-comparativo');
+  if(ctxC&&todasF.length){
+    let ds1,ds2;
+    if(tipo==='pneus_pedidos'){const pm={},pdm={};pneus.forEach(l=>{pm[l.filial]=(pm[l.filial]||0)+Number(l.pneus||0);});pedidos.forEach(l=>{pdm[l.filial]=(pdm[l.filial]||0)+1;});ds1={label:'Pneus',data:todasF.map(f=>pm[f]||0),backgroundColor:'#1a1917',borderRadius:4};ds2={label:'Pedidos',data:todasF.map(f=>pdm[f]||0),backgroundColor:'#3266ad',borderRadius:4};}
+    else{const pm={},em={};pneus.forEach(l=>{pm[l.filial]=(pm[l.filial]||0)+Number(l.pneus||0);});erros.forEach(l=>{em[l.filial]=(em[l.filial]||0)+1;});ds1={label:'Pneus',data:todasF.map(f=>pm[f]||0),backgroundColor:'#1D9E75',borderRadius:4};ds2={label:'Erros',data:todasF.map(f=>em[f]||0),backgroundColor:'#e05252',borderRadius:4};}
+    dashCharts['comparativo']=new Chart(ctxC,{type:'bar',data:{labels:todasF,datasets:[ds1,ds2]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{family:'DM Sans',size:12},color:'#1a1917'}}},scales:{x:{grid:{display:false},ticks:{color:'#1a1917',font:{size:11},maxRotation:30}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}}}});
+  }
+  // Evolução
+  destroyChart('evolucao');
+  const{filial}=getDashFilter();
+  const byDate={};pneus.forEach(l=>{byDate[l.data]=(byDate[l.data]||0)+Number(l.pneus||0);});
+  const dates=Object.keys(byDate).sort();
+  const ctxE=document.getElementById('chart-evolucao');
+  if(ctxE&&dates.length){
+    const labels=dates.map(d=>d.split('-').slice(1).reverse().join('/'));
+    if(filial){dashCharts['evolucao']=new Chart(ctxE,{type:'line',data:{labels,datasets:[{label:filial,data:dates.map(d=>byDate[d]||0),borderColor:'#1a1917',backgroundColor:'rgba(26,25,23,.08)',fill:true,tension:.3,pointRadius:4,pointBackgroundColor:'#1a1917'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}}}});}
+    else{const fD=[...new Set(pneus.map(l=>l.filial))].sort();const bFD={};pneus.forEach(l=>{if(!bFD[l.filial])bFD[l.filial]={};bFD[l.filial][l.data]=(bFD[l.filial][l.data]||0)+Number(l.pneus||0);});dashCharts['evolucao']=new Chart(ctxE,{type:'line',data:{labels,datasets:fD.map((f,i)=>({label:f,data:dates.map(d=>bFD[f]?.[d]||0),backgroundColor:CORES[i%CORES.length]+'55',borderColor:CORES[i%CORES.length],fill:false,tension:.3,pointRadius:3}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'DM Sans',size:11},color:'#1a1917',boxWidth:12}}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11}}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}}}});}
+  }
+}
+
+
 </script>
 </body>
 </html>
