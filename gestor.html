@@ -391,7 +391,7 @@ tbody tr:hover td{background:var(--bg)}
   <th>Hora</th>
   <th><div class="col-filter-wrap">Filial<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-filial')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-filial"></div></div></th>
   <th><div class="col-filter-wrap">Colaborador<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-colab')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-colab"></div></div></th>
-  <th>Nº Pedido</th><th>Qtd Pneus</th><th>Status</th><th>Ação</th>
+  <th>Nº Pedido</th><th>Qtd Pneus</th><th>Conferência</th><th>Ação</th>
 </tr></thead><tbody id="pedidos-body"></tbody></table></div>
       </div>
     </div>
@@ -666,7 +666,7 @@ async function enviarRecuperacao() {
 // ============================================================
 // ESTADO
 // ============================================================
-let lancamentos=[], filiais=[], colaboradores={}, currentView='ranking', colabTabAtivo='';
+let lancamentos=[], filiais=[], colaboradores={}, confirmacoes=[], currentView='ranking', colabTabAtivo='';
 let xlColabSelecionado='', gestores=[], conferentes={}, confTabAtivo='';
 let filiaisSelecionadas=new Set();
 let erroTabAtual='separadores';
@@ -687,8 +687,9 @@ async function fbPatch(path,data){const r=await fetch('https://mauer-produtivida
 async function carregarTudo(){
   setStatus('loading','Carregando...');
   try{
-    const[lancData,filData,colData]=await Promise.all([fbGet('lancamentos'),fbGet('filiais'),fbGet('colaboradores')]);
+    const[lancData,filData,colData,confData]=await Promise.all([fbGet('lancamentos'),fbGet('filiais'),fbGet('colaboradores'),fbGet('confirmacoes')]);
     lancamentos=lancData?Object.entries(lancData).map(([k,v])=>({...v,_key:k})):[];
+    confirmacoes=confData?Object.entries(confData).map(([k,v])=>({...v,_key:k})):[];
     lancamentos.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
     filiais=filData?Object.entries(filData).map(([k,v])=>({...v,_key:k})):[];
     colaboradores={};
@@ -829,9 +830,13 @@ function renderMetrics(data){
   const tx=data.length>0?((erros.length/data.length)*100).toFixed(1):'0.0';
   const mg=document.getElementById('metrics-grid');
   if(!mg)return;
+  const{filiais:fs2,ini:ini2,fim:fim2}=getFilter();
+  const pedidosDoPeriodo=lancamentos.filter(l=>l.isPedido&&(fs2.size===0||fs2.has(l.filial))&&(!ini2||l.data>=ini2)&&(!fim2||l.data<=fim2));
+  const confDoPeriodo=confirmacoes.filter(c=>(fs2.size===0||fs2.has(c.filial))&&(!ini2||c.data>=ini2)&&(!fim2||c.data<=fim2));
+  const txConf=pedidosDoPeriodo.length>0?Math.round((confDoPeriodo.length/pedidosDoPeriodo.length)*100):0;
   mg.innerHTML='<div class="metric-card"><div class="metric-lbl">Pneus separados</div><div class="metric-val">'+tPn.toLocaleString('pt-BR')+'</div><div class="metric-sub">no período</div></div>'
     +'<div class="metric-card"><div class="metric-lbl">Pedidos</div><div class="metric-val">'+tPd.toLocaleString('pt-BR')+'</div><div class="metric-sub">separações</div></div>'
-    +'<div class="metric-card"><div class="metric-lbl">Colaboradores</div><div class="metric-val">'+cols.length+'</div><div class="metric-sub">ativos</div></div>'
+    +'<div class="metric-card"><div class="metric-lbl">Conferidos</div><div class="metric-val" style="color:'+(txConf===100?'#2d6b28':'#7a4f0d')+'">'+txConf+'%</div><div class="metric-sub">'+confDoPeriodo.length+'/'+pedidosDoPeriodo.length+' pedidos</div></div>'
     +'<div class="metric-card"><div class="metric-lbl">Erros</div><div class="metric-val" style="color:'+(erros.length>0?'#8b2424':'#2d6b28')+'">'+erros.length+'</div><div class="metric-sub">'+tx+'% dos lançamentos</div></div>';
 }
 
@@ -869,7 +874,13 @@ function renderPedidos(){
   const cnt=document.getElementById('pedidos-count');if(cnt)cnt.textContent=data.length+' pedido'+(data.length!==1?'s':'');
   const tb=document.getElementById('pedidos-body');if(!tb)return;
   if(!data.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--hint)">Nenhum pedido</td></tr>';return;}
-  tb.innerHTML=data.sort((a,b)=>b.data.localeCompare(a.data)||(b.timestamp||0)-(a.timestamp||0)).map(l=>'<tr><td>'+fmt(l.data)+'</td><td style="font-size:12px;color:var(--muted);font-family:\'DM Mono\',monospace">'+fmtHora(l.timestamp)+'</td><td><span class="badge badge-neu">'+l.filial+'</span></td><td>'+l.colaborador+'</td><td style="font-family:\'DM Mono\',monospace;font-weight:500">'+(l.numPedido||'—')+'</td><td style="font-family:\'DM Mono\',monospace">'+(l.qtdPedido||'—')+'</td><td><span class="badge badge-ok">Separado</span></td><td><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="excluirPedido(\''+l._key+'\')">Excluir</button></td></tr>').join('');
+  tb.innerHTML=data.sort((a,b)=>b.data.localeCompare(a.data)||(b.timestamp||0)-(a.timestamp||0)).map(l=>{
+    const conf=confirmacoes.find(c=>String(c.numPedido)===String(l.numPedido)&&c.filial===l.filial&&c.data===l.data);
+    const statusCell=conf
+      ?'<span class="badge badge-ok">✓ Conferido</span><div style="font-size:11px;color:var(--muted);margin-top:2px">por '+conf.conferente+'</div>'
+      :'<span class="badge badge-warn">Pendente</span>';
+    return'<tr><td>'+fmt(l.data)+'</td><td style="font-size:12px;color:var(--muted);font-family:\'DM Mono\',monospace">'+fmtHora(l.timestamp)+'</td><td><span class="badge badge-neu">'+l.filial+'</span></td><td>'+l.colaborador+'</td><td style="font-family:\'DM Mono\',monospace;font-weight:500">'+(l.numPedido||'—')+'</td><td style="font-family:\'DM Mono\',monospace">'+(l.qtdPedido||'—')+'</td><td>'+statusCell+'</td><td><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="excluirPedido(\''+l._key+'\')">Excluir</button></td></tr>';
+  }).join('');
 }
 
 async function excluirPedido(key){
