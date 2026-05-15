@@ -27,7 +27,7 @@ body::before{content:'';position:fixed;inset:0;background:url('https://raw.githu
 .alert.show{display:flex}
 .alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
 .alert-err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
-.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
 .tab-btn{padding:9px 6px;border:none;border-radius:var(--rsm);background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;line-height:1.3}
 .tab-btn.active{background:var(--text);color:#fff}
 .tab-btn span{display:block;font-size:10px;font-weight:400;opacity:.75;margin-top:1px}
@@ -101,6 +101,25 @@ textarea{resize:vertical;min-height:72px}
 .dup-alert.dup-warn{background:#fdf3e3;color:#7a4f0d;border:1px solid #f0d090}
 .dup-alert.dup-err{background:#faeaea;color:#8b2424;border:1px solid #f0b8b8}
 
+
+/* ---- CONFIRMAR PEDIDOS ---- */
+.ped-conf-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--rsm);border:1px solid var(--border);margin-bottom:8px;background:var(--surface);transition:all .2s}
+.ped-conf-item.confirmado{background:var(--green-bg);border-color:var(--green-b)}
+.ped-conf-item.pendente{background:var(--surface)}
+.ped-conf-num{font-family:'DM Mono',monospace;font-weight:600;font-size:15px;min-width:80px}
+.ped-conf-info{flex:1}
+.ped-conf-colab{font-size:13px;font-weight:500}
+.ped-conf-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.ped-conf-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.ped-conf-status.ok{background:var(--green-bg);color:var(--green-t)}
+.ped-conf-status.pend{background:var(--amber-bg);color:var(--amber-t);border:1px solid var(--amber-b)}
+.btn-confirmar{padding:7px 14px;background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn-confirmar:hover{background:var(--green-t);color:#fff}
+.btn-confirmar.confirmed{background:var(--green-t);color:#fff;cursor:default}
+.conf-resumo-card{flex:1;min-width:100px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;text-align:center}
+.conf-resumo-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:600}
+.conf-resumo-lbl{font-size:11px;color:var(--muted);margin-top:3px}
+
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:480px){.form-grid{grid-template-columns:1fr}.pedido-add-row{grid-template-columns:1fr 90px auto}.chart-metrics{grid-template-columns:repeat(2,1fr)}}
@@ -119,6 +138,7 @@ textarea{resize:vertical;min-height:72px}
 
   <div class="tabs">
     <button class="tab-btn active" onclick="setTab('pedido',this)">Registrar pedido<span>Separador</span></button>
+    <button class="tab-btn" onclick="setTab('confirmar',this)">✅ Confirmar<span>Conferência</span></button>
     <button class="tab-btn" onclick="setTab('conferente',this)">Conferente<span>Lançar erros</span></button>
     <button class="tab-btn" onclick="setTab('grafico',this)">🏁 Corrida<span>Ranking ao vivo</span></button>
   </div>
@@ -193,7 +213,31 @@ textarea{resize:vertical;min-height:72px}
     </div>
   </div>
 
-  <!-- TAB 3: GRÁFICO -->
+  <!-- TAB 3: CONFIRMAR -->
+  <div class="tab-content" id="tab-confirmar">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:12px">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Confirmar pedidos conferidos
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;background:var(--blue-bg,#e8f3fd);border:1px solid #a8ccf0;border-radius:var(--rsm);padding:10px 14px;color:#1a4b8c">
+        Selecione sua filial para ver os pedidos separados hoje. Confirme cada pedido após a conferência física.
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <select id="conf-filial-check" onchange="carregarPedidosParaConferir()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;flex:1">
+          <option value="">Selecione a filial</option>
+        </select>
+        <input type="date" id="conf-data-check" onchange="carregarPedidosParaConferir()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none">
+        <button onclick="carregarPedidosParaConferir()" style="padding:9px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Atualizar</button>
+      </div>
+      <div id="conf-resumo" style="display:none;margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap"></div>
+      <div id="conf-pedidos-list">
+        <div style="text-align:center;padding:32px;color:var(--hint);font-size:13px">Selecione a filial e data para ver os pedidos</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: GRÁFICO -->
   <div class="tab-content" id="tab-grafico">
     <div class="card" style="margin-bottom:12px">
       <div class="card-title" style="margin-bottom:10px">🏁 Ranking de corrida — hoje</div>
@@ -346,6 +390,133 @@ function getBrasiliaDateStr() {
 }
 
 
+
+// ============================================================
+// ABA CONFIRMAR PEDIDOS
+// ============================================================
+
+async function carregarPedidosParaConferir() {
+  const filial = document.getElementById('conf-filial-check')?.value;
+  const data   = document.getElementById('conf-data-check')?.value;
+  const listEl = document.getElementById('conf-pedidos-list');
+  const resumoEl = document.getElementById('conf-resumo');
+  if(!listEl) return;
+  if(!filial) {
+    listEl.innerHTML='<div style="text-align:center;padding:32px;color:var(--hint);font-size:13px">Selecione a filial e data</div>';
+    return;
+  }
+  listEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--hint);font-size:13px">Carregando pedidos... 🛞</div>';
+  try {
+    const hoje = data || getBrasiliaDateStr();
+    const [lancData, confData] = await Promise.all([
+      fbGet('lancamentos'),
+      fbGet('confirmacoes')
+    ]);
+    const todos = lancData ? Object.values(lancData) : [];
+    // Pedidos individuais da filial no dia
+    const pedidos = todos.filter(l=>l.isPedido && l.filial===filial && l.data===hoje && l.numPedido)
+      .sort((a,b)=>Number(a.numPedido)-Number(b.numPedido));
+    // Confirmações já feitas
+    const confirmacoesHoje = confData ? Object.entries(confData)
+      .filter(([k,v])=>v.filial===filial && v.data===hoje)
+      .map(([k,v])=>({...v,_key:k})) : [];
+    const confirmadosSet = new Set(confirmacoesHoje.map(c=>String(c.numPedido)));
+
+    if(!pedidos.length) {
+      if(resumoEl) resumoEl.style.display='none';
+      listEl.innerHTML='<div style="text-align:center;padding:32px;color:var(--hint);font-size:13px">Nenhum pedido registrado nesta filial nesta data</div>';
+      return;
+    }
+
+    // Resumo
+    const total = pedidos.length;
+    const confirmados = pedidos.filter(p=>confirmadosSet.has(String(p.numPedido))).length;
+    const pendentes = total - confirmados;
+    if(resumoEl) {
+      resumoEl.style.display='flex';
+      resumoEl.innerHTML=
+        '<div class="conf-resumo-card"><div class="conf-resumo-val">'+total+'</div><div class="conf-resumo-lbl">Total de pedidos</div></div>'+
+        '<div class="conf-resumo-card" style="background:var(--green-bg);border-color:var(--green-b)"><div class="conf-resumo-val" style="color:var(--green-t)">'+confirmados+'</div><div class="conf-resumo-lbl" style="color:var(--green-t)">Confirmados</div></div>'+
+        '<div class="conf-resumo-card" style="background:var(--amber-bg);border-color:var(--amber-b)"><div class="conf-resumo-val" style="color:var(--amber-t)">'+pendentes+'</div><div class="conf-resumo-lbl" style="color:var(--amber-t)">Pendentes</div></div>';
+    }
+
+    // Lista de pedidos
+    listEl.innerHTML = pedidos.map(p=>{
+      const isConf = confirmadosSet.has(String(p.numPedido));
+      const conf = isConf ? confirmacoesHoje.find(c=>String(c.numPedido)===String(p.numPedido)) : null;
+      return '<div class="ped-conf-item '+(isConf?'confirmado':'pendente')+'" id="pci-'+p.numPedido+'">'
+        +'<div class="ped-conf-num">#'+p.numPedido+'</div>'
+        +'<div class="ped-conf-info">'
+          +'<div class="ped-conf-colab">'+p.colaborador+'</div>'
+          +'<div class="ped-conf-sub">'+(p.qtdPedido||'?')+' pneu'+(p.qtdPedido!==1?'s':'')+' · '+(p.data?p.data.split('-').reverse().join('/'):hoje)+'</div>'
+          +(isConf?'<div style="font-size:11px;color:var(--green-t);margin-top:3px">✓ Conferido por '+(conf?.conferente||'conferente')+'</div>':'')
+        +'</div>'
+        +(isConf
+          ? '<span class="ped-conf-status ok">✓ Conferido</span>'
+          : '<button class="btn-confirmar" onclick="confirmarPedido(this)" data-pedido="'+p.numPedido+'" data-filial="'+filial+'" data-data="'+hoje+'" data-colab="'+p.colaborador+'" data-qtd="'+(p.qtdPedido||0)+'">Confirmar</button>'
+        )
+        +'</div>';
+    }).join('');
+
+  } catch(e) {
+    listEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--red-t);font-size:13px">Erro ao carregar pedidos</div>';
+    console.error(e);
+  }
+}
+
+async function confirmarPedido(btn) {
+  const numPedido = btn.dataset.pedido;
+  const filial    = btn.dataset.filial;
+  const data      = btn.dataset.data;
+  const colaborador = btn.dataset.colab;
+  const qtd       = btn.dataset.qtd;
+
+  // Pega nome do conferente
+  const confSel = document.getElementById('cf-nome');
+  let conferente = confSel?.value || '';
+
+  if(!conferente) {
+    // Pede o nome se não estiver selecionado
+    conferente = prompt('Digite seu nome (conferente):');
+    if(!conferente) return;
+    conferente = conferente.trim().toUpperCase();
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Confirmando...';
+
+  try {
+    await fbPost('confirmacoes', {
+      numPedido,
+      filial,
+      data,
+      colaborador,
+      qtd: Number(qtd),
+      conferente,
+      timestamp: Date.now()
+    });
+
+    // Update UI
+    const item = document.getElementById('pci-'+numPedido);
+    if(item) {
+      item.classList.remove('pendente');
+      item.classList.add('confirmado');
+      item.querySelector('.ped-conf-info').innerHTML +=
+        '<div style="font-size:11px;color:var(--green-t);margin-top:3px">✓ Conferido por '+conferente+'</div>';
+      btn.outerHTML = '<span class="ped-conf-status ok">✓ Conferido</span>';
+    }
+
+    // Reload to update resumo
+    setTimeout(carregarPedidosParaConferir, 500);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar';
+    alert('Erro ao confirmar. Tente novamente.');
+    console.error(e);
+  }
+}
+
+
 async function init() {
   setStatus('loading','Conectando...');
   const today=new Date().toISOString().slice(0,10);
@@ -361,6 +532,9 @@ async function init() {
     colaboradores = {};
     if(colData){Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});}
     populateFilialSelects();
+  // Populate confirmar filial select
+  const cfc=document.getElementById('conf-filial-check');
+  if(cfc){const cc=cfc.value;cfc.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option'+(f.nome===cc?' selected':'')+'>'+f.nome+'</option>').join('');}
     await carregarConferentesData();
     await carregarHoje();
     setStatus('ok','Conectado ✓');
@@ -402,6 +576,7 @@ function setTab(tab,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
   if(tab==='grafico'){renderRankingCorrida();renderChart();}
+  if(tab==='confirmar'){carregarPedidosParaConferir();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente')renderErroHistory();
 }
