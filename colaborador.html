@@ -441,15 +441,21 @@ async function addPedido(){
       return;
     }
 
-    // Verifica margem — pega o último pedido registrado hoje
-    const pedidosHoje = todos.filter(l=>l.isPedido && l.data===hoje && l.numPedido);
-    if(pedidosHoje.length > 0) {
-      const nums = pedidosHoje.map(l=>Number(l.numPedido)).filter(n=>!isNaN(n));
-      if(nums.length > 0) {
-        const ultimo = Math.max(...nums);
+    // Verifica margem — pega o último pedido registrado em qualquer dia (globalmente)
+    const todosPedidos = todos.filter(l=>l.isPedido && l.numPedido);
+    if(todosPedidos.length > 0) {
+      // Ordena por timestamp ou data para pegar o mais recente
+      const sorted = todosPedidos
+        .map(l=>({num:Number(l.numPedido), ts:l.timestamp||0, data:l.data||''}))
+        .filter(l=>!isNaN(l.num) && l.num > 0)
+        .sort((a,b)=>b.ts-a.ts || b.data.localeCompare(a.data));
+      if(sorted.length > 0) {
+        // Pega o maior número entre os últimos 50 pedidos (janela recente)
+        const recentes = sorted.slice(0, 50);
+        const ultimo = Math.max(...recentes.map(l=>l.num));
         const numInt = Number(num);
         if(numInt < ultimo - margem || numInt > ultimo + margem) {
-          showDuplicateAlert(`⚠ Pedido ${num} está fora da margem permitida! Último pedido: ${ultimo} (margem: ±${margem.toLocaleString('pt-BR')})`, 'warn');
+          showDuplicateAlert(`⚠ Pedido ${num} fora da margem! Referência: ${ultimo} (margem: ±${margem.toLocaleString('pt-BR')})`, 'warn');
           return;
         }
       }
