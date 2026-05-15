@@ -1247,6 +1247,15 @@ function renderDashboard(){
 }
 
 
+function showAlert(type, msg) {
+  var el = document.getElementById('top-alert');
+  if(!el) return;
+  el.className = 'top-alert ' + type + ' visible';
+  el.textContent = msg;
+  setTimeout(function(){ el.classList.remove('visible'); }, 4000);
+}
+
+
 </script>
 </body>
 </html>
