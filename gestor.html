@@ -1314,18 +1314,50 @@ initDarkMode();
 // ============================================================
 function buildColFilterOptions(filterId){
   var dd=document.getElementById(filterId);if(!dd)return;
-  var{filiais:fs,ini,fim,colab}=getFilter();
-  var values=new Set(),source=[];
-  if(filterId.startsWith('cf-ped-')){source=lancamentos.filter(function(l){return l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim);});var f=filterId.replace('cf-ped-','');source.forEach(function(l){if(f==='data')values.add(fmt(l.data));else if(f==='filial')values.add(l.filial||'—');else if(f==='colab')values.add(l.colaborador||'—');});}
-  else if(filterId.startsWith('cf-err-')){source=lancamentos.filter(function(l){return l.motivo&&!l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim);});var f=filterId.replace('cf-err-','');source.forEach(function(l){if(f==='filial')values.add(l.filial||'—');else if(f==='colab')values.add(l.colaborador||'—');else if(f==='motivo')values.add(l.motivo||'—');});}
-  else if(filterId.startsWith('cf-errc-')){source=lancamentos.filter(function(l){return l.motivo&&l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim);});var f=filterId.replace('cf-errc-','');source.forEach(function(l){if(f==='filial')values.add(l.filial||'—');else if(f==='colab')values.add(l.colaborador||'—');});}
+  var f2=getFilter(),fs=f2.filiais,ini=f2.ini,fim=f2.fim;
+  var values=new Set();
+  var fld='';
+  if(filterId.startsWith('cf-ped-')){
+    fld=filterId.replace('cf-ped-','');
+    lancamentos.filter(function(l){return l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim);})
+      .forEach(function(l){if(fld==='data')values.add(fmt(l.data));else if(fld==='filial')values.add(l.filial||'\u2014');else if(fld==='colab')values.add(l.colaborador||'\u2014');});
+  } else if(filterId.startsWith('cf-err-')){
+    fld=filterId.replace('cf-err-','');
+    lancamentos.filter(function(l){return l.motivo&&!l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim);})
+      .forEach(function(l){if(fld==='filial')values.add(l.filial||'\u2014');else if(fld==='colab')values.add(l.colaborador||'\u2014');else if(fld==='motivo')values.add(l.motivo||'\u2014');});
+  } else if(filterId.startsWith('cf-errc-')){
+    fld=filterId.replace('cf-errc-','');
+    lancamentos.filter(function(l){return l.motivo&&l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim);})
+      .forEach(function(l){if(fld==='filial')values.add(l.filial||'\u2014');else if(fld==='colab')values.add(l.colaborador||'\u2014');});
+  }
   var sorted=[...values].sort();
-  var selected=colFilters[filterId]||new Set(sorted);
-  colFilters[filterId]=selected;
-  var rows='';
-  sorted.forEach(function(v){rows+='<label class="col-filter-item"><input type="checkbox" value="'+v+'" '+(selected.has(v)?'checked':'')+' onchange="toggleColValue(''+filterId+'',''+v+'',this.checked)"><span>'+v+'</span></label>';});
-  dd.innerHTML='<input class="col-filter-search" placeholder="Buscar..." oninput="filterColOptions(this,''+filterId+'')"><div class="col-filter-list" id="cfl-'+filterId+'">'+rows+'</div><div class="col-filter-footer"><button onclick="selectAllCol(''+filterId+'')">Todos</button><button onclick="clearAllCol(''+filterId+'')">Nenhum</button><button onclick="applyColFilter(''+filterId+'')">OK</button></div>';
+  if(!colFilters[filterId])colFilters[filterId]=new Set(sorted);
+  var sel=colFilters[filterId];
+  // Build HTML using DOM to avoid any quote issues
+  var wrap=document.createElement('div');
+  var search=document.createElement('input');
+  search.className='col-filter-search';search.placeholder='Buscar...';
+  search.addEventListener('input',function(){filterColOptions(this,filterId);});
+  wrap.appendChild(search);
+  var listDiv=document.createElement('div');
+  listDiv.className='col-filter-list';listDiv.id='cfl-'+filterId;
+  sorted.forEach(function(v){
+    var lbl=document.createElement('label');lbl.className='col-filter-item';
+    var cb=document.createElement('input');cb.type='checkbox';cb.value=v;cb.checked=sel.has(v);
+    cb.addEventListener('change',function(){toggleColValue(this,filterId);});
+    var sp=document.createElement('span');sp.textContent=v;
+    lbl.appendChild(cb);lbl.appendChild(sp);listDiv.appendChild(lbl);
+  });
+  wrap.appendChild(listDiv);
+  var footer=document.createElement('div');footer.className='col-filter-footer';
+  var btAll=document.createElement('button');btAll.textContent='Todos';btAll.onclick=function(){selectAllCol(filterId);};
+  var btNone=document.createElement('button');btNone.textContent='Nenhum';btNone.onclick=function(){clearAllCol(filterId);};
+  var btOk=document.createElement('button');btOk.textContent='OK';btOk.onclick=function(){applyColFilter(filterId);};
+  footer.appendChild(btAll);footer.appendChild(btNone);footer.appendChild(btOk);
+  wrap.appendChild(footer);
+  dd.innerHTML='';dd.appendChild(wrap);
 }
+
 function toggleColFilter(e,filterId){
   e.stopPropagation();
   document.querySelectorAll('.col-filter-dd.open').forEach(d=>{if(d.id!==filterId)d.classList.remove('open');});
@@ -1335,7 +1367,7 @@ function toggleColFilter(e,filterId){
 }
 
 function filterColOptions(inp,filterId){const q=inp.value.toLowerCase();document.querySelectorAll('#cfl-'+filterId+' .col-filter-item').forEach(item=>{item.style.display=item.querySelector('span').textContent.toLowerCase().includes(q)?'':'none';});}
-function toggleColValue(filterId,value,checked){if(!colFilters[filterId])colFilters[filterId]=new Set();if(checked)colFilters[filterId].add(value);else colFilters[filterId].delete(value);}
+function toggleColValue(el,filterId){if(!filterId)filterId=el.closest(".col-filter-dd").id;var value=el.value,checked=el.checked;if(!colFilters[filterId])colFilters[filterId]=new Set();if(checked)colFilters[filterId].add(value);else colFilters[filterId].delete(value);}
 function selectAllCol(filterId){document.querySelectorAll('#cfl-'+filterId+' input[type=checkbox]').forEach(cb=>{cb.checked=true;colFilters[filterId]?.add(cb.value);});}
 function clearAllCol(filterId){document.querySelectorAll('#cfl-'+filterId+' input[type=checkbox]').forEach(cb=>{cb.checked=false;});colFilters[filterId]=new Set();}
 function applyColFilter(filterId){document.getElementById(filterId)?.classList.remove('open');const btn=document.querySelector('.col-filter-btn[onclick*="\''+filterId+'\'"]');if(btn)btn.classList.toggle('active',colFilters[filterId]&&colFilters[filterId].size>0);renderPedidos();renderErros();}
@@ -1491,5 +1523,6 @@ function renderGestorRadioList(){renderDropGestor();}
 function xlSearch(){}
 function xlSort(){}
 
-// Column filters for tables
-const colFilters={};
+</script>
+</body>
+</html>
