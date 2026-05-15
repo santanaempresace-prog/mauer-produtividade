@@ -824,6 +824,168 @@ function updateColabFilterSelect() {
 }
 
 
+
+// ---- GESTORES ----
+let gestores = [];
+
+async function carregarGestores() {
+  try {
+    const data = await fbGet('gestores');
+    gestores = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
+    buildXlGestorList();
+    if(currentView==='gestores') renderGestoresList();
+  } catch(e){ console.error(e); }
+}
+
+// ---- CONFERENTES ----
+let conferentes = {};
+let confTabAtivo = '';
+
+async function carregarConferentes() {
+  try {
+    const data = await fbGet('conferentes');
+    conferentes = {};
+    if(data){
+      Object.entries(data).forEach(([k,v])=>{
+        if(!conferentes[v.filial]) conferentes[v.filial]=[];
+        conferentes[v.filial].push({...v,_key:k});
+      });
+    }
+    if(currentView==='conferentes') renderConferentesTabs();
+  } catch(e){ console.error(e); }
+}
+
+function renderConferentesTabs() {
+  const el=document.getElementById('conf-tabs');
+  const nomes=filiais.map(f=>f.nome);
+  if(!nomes.length){if(el)el.innerHTML='';const cl=document.getElementById('conf-list');if(cl)cl.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:12px">Cadastre filiais primeiro</div>';return;}
+  if(!confTabAtivo||!nomes.includes(confTabAtivo))confTabAtivo=nomes[0];
+  if(el)el.innerHTML=nomes.map(f=>'<div class="tab'+(f===confTabAtivo?' active':'')+'" onclick="setConfTab(''+f.replace(/'/g,"\'").replace(/"/g,'&quot;')+'',this)">'+f+'</div>').join('');
+  const total=Object.values(conferentes).reduce((a,c)=>a+c.length,0);
+  const cnt=document.getElementById('conf-count');
+  if(cnt)cnt.textContent=total+' conferente'+(total!==1?'s':'');
+  renderConferentesList();
+  const cs=document.getElementById('conf-filial-sel');
+  if(cs){const cc=cs.value;cs.innerHTML='<option value="">Selecione a filial</option>'+nomes.map(f=>'<option'+(f===cc?' selected':'')+'>'+f+'</option>').join('');}
+}
+
+function setConfTab(f,el){confTabAtivo=f;document.querySelectorAll('#conf-tabs .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderConferentesList();}
+
+function renderConferentesList(){
+  const el=document.getElementById('conf-list');
+  if(!el)return;
+  const list=conferentes[confTabAtivo]||[];
+  if(!list.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum conferente nesta filial</div>';return;}
+  el.innerHTML=list.map((c,i)=>'<div class="list-item"><div class="list-item-name">'+c.nome+'</div><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeConferente(''+confTabAtivo.replace(/'/g,"\'")+'','+i+')">Remover</button></div>').join('');
+}
+
+async function addConferente(){
+  const filial=document.getElementById('conf-filial-sel').value;
+  const nome=document.getElementById('new-conf').value.trim().toUpperCase();
+  if(!filial){showAlert('err','Selecione a filial.');return;}
+  if(!nome)return;
+  if(!conferentes[filial])conferentes[filial]=[];
+  if(conferentes[filial].find(c=>c.nome===nome)){showAlert('err','Conferente já cadastrado.');return;}
+  try{
+    const r=await fbPost('conferentes',{filial,nome});
+    conferentes[filial].push({filial,nome,_key:r.name});
+    confTabAtivo=filial;
+    document.getElementById('new-conf').value='';
+    renderConferentesTabs();
+    showAlert('ok','Conferente adicionado!');
+  }catch(e){showAlert('err','Erro ao adicionar.');}
+}
+
+async function removeConferente(filial,i){
+  const item=conferentes[filial][i];
+  if(!confirm('Remover "'+item.nome+'"?'))return;
+  try{
+    await fbDelete('conferentes/'+item._key);
+    conferentes[filial].splice(i,1);
+    renderConferentesTabs();
+    showAlert('ok','Conferente removido.');
+  }catch(e){showAlert('err','Erro ao remover.');}
+}
+
+// ---- GESTORES CRUD ----
+async function carregarMargem() {
+  try {
+    const data = await fbGet('configuracoes/margemPedidos');
+    if(data) {
+      const inp=document.getElementById('margem-input');
+      const lbl=document.getElementById('margem-atual');
+      if(inp)inp.value=Number(data);
+      if(lbl)lbl.textContent='Margem atual: '+Number(data).toLocaleString('pt-BR');
+    }
+  } catch(e){ console.error(e); }
+}
+
+async function salvarMargem() {
+  const val=parseInt(document.getElementById('margem-input').value);
+  if(!val||val<1){showAlert('err','Valor inválido.');return;}
+  try{
+    await fbPut('configuracoes/margemPedidos',val);
+    document.getElementById('margem-atual').textContent='Margem atual: '+val.toLocaleString('pt-BR');
+    showAlert('ok','Margem salva!');
+  }catch(e){showAlert('err','Erro ao salvar margem.');}
+}
+
+function renderGestoresList() {
+  const el=document.getElementById('gestores-list');
+  const cnt=document.getElementById('gestores-count');
+  if(cnt)cnt.textContent=gestores.length+' gestor'+(gestores.length!==1?'es':'');
+  if(!el)return;
+  if(!gestores.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum gestor cadastrado</div>';return;}
+  el.innerHTML=gestores.map(g=>'<div style="padding:14px 6px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div><div style="font-weight:500;font-size:13px">'+g.nome+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Usuário: '+(g.usuario||'não definido')+'</div></div><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeGestor(''+g._key+'')">Remover</button></div><div style="font-size:11px;font-weight:500;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Filiais vinculadas</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+filiais.map(f=>'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:3px 8px"><input type="checkbox" '+(((g.filiais||[]).includes(f.nome))?'checked':'')+' onchange="vincularFilial(''+g._key+'',''+f.nome.replace(/'/g,"\'").replace(/"/g,'&quot;')+'',this.checked)"> '+f.nome+'</label>').join('')+'</div></div>').join('');
+}
+
+async function addGestor() {
+  const nome=document.getElementById('new-gestor-nome').value.trim();
+  const usuario=document.getElementById('new-gestor-usuario').value.trim();
+  if(!nome){showAlert('err','Digite o nome do gestor.');return;}
+  try{
+    const r=await fbPost('gestores',{nome,usuario,filiais:[]});
+    gestores.push({nome,usuario,filiais:[],_key:r.name});
+    document.getElementById('new-gestor-nome').value='';
+    document.getElementById('new-gestor-usuario').value='';
+    renderGestoresList();
+    showAlert('ok','Gestor adicionado!');
+  }catch(e){showAlert('err','Erro ao adicionar.');}
+}
+
+async function vincularFilial(gestorKey,filialNome,checked){
+  const g=gestores.find(g=>g._key===gestorKey);
+  if(!g)return;
+  if(!g.filiais)g.filiais=[];
+  if(checked&&!g.filiais.includes(filialNome))g.filiais.push(filialNome);
+  else if(!checked)g.filiais=g.filiais.filter(f=>f!==filialNome);
+  try{await fbPatch('gestores/'+gestorKey,{filiais:g.filiais});showAlert('ok','Vínculo atualizado!');}
+  catch(e){showAlert('err','Erro ao salvar.');}
+}
+
+async function removeGestor(key){
+  if(!confirm('Remover este gestor?'))return;
+  try{
+    await fbDelete('gestores/'+key);
+    gestores=gestores.filter(g=>g._key!==key);
+    renderGestoresList();
+    showAlert('ok','Gestor removido.');
+  }catch(e){showAlert('err','Erro ao remover.');}
+}
+
+function filtrarPorGestor(key){
+  if(!key){
+    filiaisSelecionadas=new Set(filiais.map(f=>f.nome));
+  } else {
+    const g=gestores.find(g=>g._key===key);
+    if(g&&g.filiais&&g.filiais.length)filiaisSelecionadas=new Set(g.filiais);
+    else filiaisSelecionadas=new Set();
+  }
+  populateFiliaisSelect();
+  render();
+}
+
+
 // ============================================================
 // EXCEL-STYLE FILTER ENGINE
 // ============================================================
@@ -831,29 +993,7 @@ function updateColabFilterSelect() {
 // ---- MARGEM DE PEDIDOS ----
 let margemPedidos = 1000;
 
-async function carregarMargem() {
-  try {
-    const data = await fbGet('configuracoes/margemPedidos');
-    if(data) {
-      margemPedidos = Number(data);
-      const inp = document.getElementById('margem-input');
-      const lbl = document.getElementById('margem-atual');
-      if(inp) inp.value = margemPedidos;
-      if(lbl) lbl.textContent = 'Margem atual: ' + margemPedidos.toLocaleString('pt-BR');
-    }
-  } catch(e){ console.error(e); }
-}
 
-async function salvarMargem() {
-  const val = parseInt(document.getElementById('margem-input').value);
-  if(!val || val < 1) { showAlert('err','Valor inválido.'); return; }
-  try {
-    await fbPut('configuracoes/margemPedidos', val);
-    margemPedidos = val;
-    document.getElementById('margem-atual').textContent = 'Margem atual: ' + val.toLocaleString('pt-BR');
-    showAlert('ok','Margem salva! Colaboradores já estão usando a nova margem.');
-  } catch(e){ showAlert('err','Erro ao salvar margem.'); }
-}
 
 // ---- FLAGS DE COLABORADOR ----
 let flagSelecionada = null; // {colaborador, filial} ou null
@@ -1043,24 +1183,28 @@ document.getElementById('g-date-ini').value = _iniMes;
 document.getElementById('g-date-fim').value = _fimMes;
 carregarTudo();
 
-// ============================================================
-// EXCEL-STYLE FILTER ENGINE
-// ============================================================
 
-function toggleXlFilter(ddId) {
-  const dd = document.getElementById(ddId);
-  if(!dd) return;
-  const isOpen = dd.classList.contains('open');
-  document.querySelectorAll('.xl-dd.open,.col-filter-dd.open').forEach(d=>d.classList.remove('open'));
-  if(!isOpen) {
-    dd.classList.add('open');
-    if(ddId==='xl-filial-dd') buildXlFilialList();
-    if(ddId==='xl-colab-dd') buildXlColabList();
-    if(ddId==='xl-gestor-dd') buildXlGestorList();
-  }
-}
+// ---- GESTORES ----
+let gestores = [];
 
-function closeXlFilter(ddId) { document.getElementById(ddId)?.classList.remove('open'); }
+
+// ---- CONFERENTES ----
+let conferentes = {};
+let confTabAtivo = '';
+
+
+
+
+
+
+
+// ---- GESTORES CRUD ----
+
+
+
+
+
+
 
 document.addEventListener('click', e=>{
   if(!e.target.closest('.xl-filter-wrap')&&!e.target.closest('.col-filter-wrap'))
