@@ -223,12 +223,24 @@ textarea{resize:vertical;min-height:72px}
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;background:var(--blue-bg,#e8f3fd);border:1px solid #a8ccf0;border-radius:var(--rsm);padding:10px 14px;color:#1a4b8c">
         Selecione sua filial para ver os pedidos separados hoje. Confirme cada pedido após a conferência física.
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-        <select id="conf-filial-check" onchange="carregarPedidosParaConferir()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;flex:1">
-          <option value="">Selecione a filial</option>
-        </select>
-        <input type="date" id="conf-data-check" onchange="carregarPedidosParaConferir()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none">
-        <button onclick="carregarPedidosParaConferir()" style="padding:9px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Atualizar</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px">
+          <label style="font-size:11px;font-weight:500;color:var(--muted)">Filial</label>
+          <select id="conf-filial-check" onchange="carregarConferentesParaConfirmar()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none">
+            <option value="">Selecione</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px">
+          <label style="font-size:11px;font-weight:500;color:var(--muted)">Conferente</label>
+          <select id="conf-conferente-check" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none">
+            <option value="">Selecione a filial primeiro</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:120px">
+          <label style="font-size:11px;font-weight:500;color:var(--muted)">Data</label>
+          <input type="date" id="conf-data-check" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none">
+        </div>
+        <button onclick="carregarPedidosParaConferir()" style="padding:9px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;align-self:flex-end">Ver pedidos</button>
       </div>
       <div id="conf-resumo" style="display:none;margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap"></div>
       <div id="conf-pedidos-list">
@@ -395,6 +407,20 @@ function getBrasiliaDateStr() {
 // ABA CONFIRMAR PEDIDOS
 // ============================================================
 
+async function carregarConferentesParaConfirmar() {
+  const filial = document.getElementById('conf-filial-check')?.value;
+  const sel = document.getElementById('conf-conferente-check');
+  if(!sel) return;
+  if(!filial) { sel.innerHTML='<option value="">Selecione a filial primeiro</option>'; return; }
+  const confs = conferentesData[filial] || [];
+  if(!confs.length) {
+    sel.innerHTML='<option value="">Nenhum conferente cadastrado</option>';
+  } else {
+    sel.innerHTML='<option value="">Selecione o conferente</option>'+confs.map(c=>'<option>'+c+'</option>').join('');
+  }
+  carregarPedidosParaConferir();
+}
+
 async function carregarPedidosParaConferir() {
   const filial = document.getElementById('conf-filial-check')?.value;
   const data   = document.getElementById('conf-data-check')?.value;
@@ -471,15 +497,12 @@ async function confirmarPedido(btn) {
   const colaborador = btn.dataset.colab;
   const qtd       = btn.dataset.qtd;
 
-  // Pega nome do conferente
-  const confSel = document.getElementById('cf-nome');
+  // Pega nome do conferente do select cadastrado
+  const confSel = document.getElementById('conf-conferente-check');
   let conferente = confSel?.value || '';
-
   if(!conferente) {
-    // Pede o nome se não estiver selecionado
-    conferente = prompt('Digite seu nome (conferente):');
-    if(!conferente) return;
-    conferente = conferente.trim().toUpperCase();
+    showAlert('err','Selecione o conferente antes de confirmar.');
+    return;
   }
 
   btn.disabled = true;
@@ -576,7 +599,7 @@ function setTab(tab,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
   if(tab==='grafico'){renderRankingCorrida();renderChart();}
-  if(tab==='confirmar'){carregarPedidosParaConferir();}
+  if(tab==='confirmar'){carregarConferentesParaConfirmar();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente')renderErroHistory();
 }
