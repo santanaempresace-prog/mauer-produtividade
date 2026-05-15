@@ -860,7 +860,13 @@ function renderConferentesTabs() {
   const nomes=filiais.map(f=>f.nome);
   if(!nomes.length){if(el)el.innerHTML='';const cl=document.getElementById('conf-list');if(cl)cl.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:12px">Cadastre filiais primeiro</div>';return;}
   if(!confTabAtivo||!nomes.includes(confTabAtivo))confTabAtivo=nomes[0];
-  if(el)el.innerHTML=nomes.map(f=>'<div class="tab'+(f===confTabAtivo?' active':'')+'" onclick="setConfTab(''+f.replace(/'/g,"\'").replace(/"/g,'&quot;')+'',this)">'+f+'</div>').join('');
+  if(el){
+    var tabHtml='';
+    nomes.forEach(function(f){
+      tabHtml+='<div class="tab'+(f===confTabAtivo?' active':'')+'" onclick="setConfTabByEl(this)" data-nome="'+f+'">'+f+'</div>';
+    });
+    el.innerHTML=tabHtml;
+  }
   const total=Object.values(conferentes).reduce((a,c)=>a+c.length,0);
   const cnt=document.getElementById('conf-count');
   if(cnt)cnt.textContent=total+' conferente'+(total!==1?'s':'');
@@ -869,14 +875,20 @@ function renderConferentesTabs() {
   if(cs){const cc=cs.value;cs.innerHTML='<option value="">Selecione a filial</option>'+nomes.map(f=>'<option'+(f===cc?' selected':'')+'>'+f+'</option>').join('');}
 }
 
-function setConfTab(f,el){confTabAtivo=f;document.querySelectorAll('#conf-tabs .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderConferentesList();}
+function setConfTab(f,el){confTabAtivo=f;document.querySelectorAll('#conf-tabs .tab').forEach(t=>t.classList.remove('active'));if(el)el.classList.add('active');renderConferentesList();}
+function setConfTabByEl(el){if(el&&el.dataset)setConfTab(el.dataset.nome,el);}
 
 function renderConferentesList(){
   const el=document.getElementById('conf-list');
   if(!el)return;
   const list=conferentes[confTabAtivo]||[];
   if(!list.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum conferente nesta filial</div>';return;}
-  el.innerHTML=list.map((c,i)=>'<div class="list-item"><div class="list-item-name">'+c.nome+'</div><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeConferente(''+confTabAtivo.replace(/'/g,"\'")+'','+i+')">Remover</button></div>').join('');
+  var cHtml='';
+  list.forEach(function(c,i){
+    cHtml+='<div class="list-item"><div class="list-item-name">'+c.nome+'</div>';
+    cHtml+='<button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeConferente(this)" data-filial="'+confTabAtivo+'" data-idx="'+i+'">Remover</button></div>';
+  });
+  el.innerHTML=cHtml;
 }
 
 async function addConferente(){
@@ -896,8 +908,10 @@ async function addConferente(){
   }catch(e){showAlert('err','Erro ao adicionar.');}
 }
 
-async function removeConferente(filial,i){
-  const item=conferentes[filial][i];
+async function removeConferente(el){
+  var filial=el.dataset.filial, i=parseInt(el.dataset.idx);
+  var item=conferentes[filial]&&conferentes[filial][i];
+  if(!item)return;
   if(!confirm('Remover "'+item.nome+'"?'))return;
   try{
     await fbDelete('conferentes/'+item._key);
@@ -936,7 +950,23 @@ function renderGestoresList() {
   if(cnt)cnt.textContent=gestores.length+' gestor'+(gestores.length!==1?'es':'');
   if(!el)return;
   if(!gestores.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:16px">Nenhum gestor cadastrado</div>';return;}
-  el.innerHTML=gestores.map(g=>'<div style="padding:14px 6px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div><div style="font-weight:500;font-size:13px">'+g.nome+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Usuário: '+(g.usuario||'não definido')+'</div></div><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeGestor(''+g._key+'')">Remover</button></div><div style="font-size:11px;font-weight:500;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Filiais vinculadas</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+filiais.map(f=>'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:3px 8px"><input type="checkbox" '+(((g.filiais||[]).includes(f.nome))?'checked':'')+' onchange="vincularFilial(''+g._key+'',''+f.nome.replace(/'/g,"\'").replace(/"/g,'&quot;')+'',this.checked)"> '+f.nome+'</label>').join('')+'</div></div>').join('');
+  var gHtml='';
+  gestores.forEach(function(g){
+    gHtml+='<div style="padding:14px 6px;border-bottom:1px solid var(--border)">';
+    gHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+    gHtml+='<div><div style="font-weight:500;font-size:13px">'+g.nome+'</div>';
+    gHtml+='<div style="font-size:11px;color:var(--muted);margin-top:2px">Usuário: '+(g.usuario||'não definido')+'</div></div>';
+    gHtml+='<button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeGestor(this)" data-key="'+g._key+'">Remover</button></div>';
+    gHtml+='<div style="font-size:11px;font-weight:500;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Filiais vinculadas</div>';
+    gHtml+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    filiais.forEach(function(f){
+      var checked=(g.filiais||[]).includes(f.nome)?'checked':'';
+      gHtml+='<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:3px 8px">';
+      gHtml+='<input type="checkbox" '+checked+' onclick="vincularFilialEl(this)" data-key="'+g._key+'" data-filial="'+f.nome+'"> '+f.nome+'</label>';
+    });
+    gHtml+='</div></div>';
+  });
+  el.innerHTML=gHtml;
 }
 
 async function addGestor() {
@@ -953,6 +983,9 @@ async function addGestor() {
   }catch(e){showAlert('err','Erro ao adicionar.');}
 }
 
+function vincularFilialEl(el){
+  vincularFilial(el.dataset.key,el.dataset.filial,el.checked);
+}
 async function vincularFilial(gestorKey,filialNome,checked){
   const g=gestores.find(g=>g._key===gestorKey);
   if(!g)return;
@@ -963,7 +996,8 @@ async function vincularFilial(gestorKey,filialNome,checked){
   catch(e){showAlert('err','Erro ao salvar.');}
 }
 
-async function removeGestor(key){
+async function removeGestor(el){
+  var key=el&&el.dataset?el.dataset.key:el;
   if(!confirm('Remover este gestor?'))return;
   try{
     await fbDelete('gestores/'+key);
@@ -1185,12 +1219,12 @@ carregarTudo();
 
 
 // ---- GESTORES ----
-let gestores = [];
+// gestores already declared
 
 
 // ---- CONFERENTES ----
-let conferentes = {};
-let confTabAtivo = '';
+// conferentes already declared
+// confTabAtivo already declared
 
 
 
