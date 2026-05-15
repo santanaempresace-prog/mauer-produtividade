@@ -311,68 +311,41 @@ tbody tr:hover td{background:var(--bg)}
   </div>
 
   <div class="main">
-    <div class="filters" style="flex-wrap:wrap;gap:8px;margin-bottom:10px">
-      <div class="xl-filter-wrap" id="xl-filial-wrap">
-        <button class="xl-filter-btn" id="filial-btn" onclick="toggleXlFilter('xl-filial-dd')">
-          <span id="filial-btn-label">Todas as filiais</span><span class="xl-arr">▾</span>
+    <div class="filters" style="flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
+      <!-- FILIAL DROPDOWN -->
+      <div style="position:relative" id="wrap-filial">
+        <button id="filial-btn" onclick="abrirDropFiltro('drop-filial')" style="display:flex;align-items:center;gap:8px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;min-width:160px;justify-content:space-between;transition:all .15s">
+          <span id="filial-btn-label">Todas as filiais</span><span style="font-size:10px;color:var(--hint)">▾</span>
         </button>
-        <div class="xl-dd" id="xl-filial-dd">
-          <div class="xl-dd-head">
-            <input class="xl-dd-search" placeholder="🔍 Buscar filial..." oninput="xlSearch(this,'xl-filial-list')">
+        <div id="drop-filial" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:220px;max-height:320px;overflow:hidden;flex-direction:column">
+          <div style="padding:8px 10px;border-bottom:1px solid var(--border)">
+            <input id="search-filial" placeholder="🔍 Buscar..." oninput="filtrarDropItems(this,'lista-filial')" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;box-sizing:border-box">
           </div>
-          <div class="xl-sort-row">
-            <button class="xl-sort-btn" onclick="xlSort('xl-filial-list','asc')">↑ A-Z</button>
-            <button class="xl-sort-btn" onclick="xlSort('xl-filial-list','desc')">↓ Z-A</button>
-            <button class="xl-sort-btn" onclick="xlSelectAll('xl-filial-list',true)">✓ Todos</button>
-            <button class="xl-sort-btn" onclick="xlSelectAll('xl-filial-list',false)">✗ Nenhum</button>
-          </div>
-          <div class="xl-list" id="xl-filial-list"></div>
-          <div class="xl-footer">
-            <button onclick="closeXlFilter('xl-filial-dd')">Cancelar</button>
-            <button class="xl-ok" onclick="applyXlFilial()">OK</button>
-          </div>
+          <div id="lista-filial" style="overflow-y:auto;max-height:240px;padding:4px 0"></div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:12px;color:var(--muted)">De</span>
-        <input type="date" id="g-date-ini" onchange="render()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;cursor:pointer">
-        <span style="font-size:12px;color:var(--muted)">até</span>
-        <input type="date" id="g-date-fim" onchange="render()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;cursor:pointer">
-      </div>
-      <div class="xl-filter-wrap">
-        <button class="xl-filter-btn" id="gestor-btn" onclick="toggleXlFilter('xl-gestor-dd')">
-          <span id="gestor-btn-label">Por gestor</span><span class="xl-arr">▾</span>
+      <!-- DATAS -->
+      <input type="date" id="g-date-ini" onchange="render()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;cursor:pointer">
+      <input type="date" id="g-date-fim" onchange="render()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;cursor:pointer">
+      <!-- GESTOR DROPDOWN -->
+      <div style="position:relative" id="wrap-gestor">
+        <button id="gestor-btn" onclick="abrirDropFiltro('drop-gestor')" style="display:flex;align-items:center;gap:8px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;min-width:140px;justify-content:space-between;transition:all .15s">
+          <span id="gestor-btn-label">Por gestor</span><span style="font-size:10px;color:var(--hint)">▾</span>
         </button>
-        <div class="xl-dd" id="xl-gestor-dd">
-          <div class="xl-dd-head">
-            <input class="xl-dd-search" placeholder="🔍 Buscar gestor..." oninput="xlSearch(this,'xl-gestor-list')">
-          </div>
-          <div class="xl-list" id="xl-gestor-list">
-            <label class="xl-item"><input type="radio" name="gestor-radio" value="" checked onchange="filtrarPorGestor('');closeXlFilter('xl-gestor-dd');document.getElementById('gestor-btn-label').textContent='Por gestor';document.getElementById('gestor-btn').classList.remove('has-filter')"> Todos os gestores</label>
-          </div>
-          <div class="xl-footer">
-            <button onclick="closeXlFilter('xl-gestor-dd')">Fechar</button>
-          </div>
+        <div id="drop-gestor" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:200px;max-height:280px;overflow:hidden;flex-direction:column">
+          <div id="lista-gestor" style="overflow-y:auto;max-height:240px;padding:4px 0"></div>
         </div>
       </div>
-      <div class="xl-filter-wrap">
-        <button class="xl-filter-btn" id="colab-filter-btn" onclick="toggleXlFilter('xl-colab-dd')">
-          <span id="colab-filter-label">Todos colaboradores</span><span class="xl-arr">▾</span>
+      <!-- COLABORADOR DROPDOWN -->
+      <div style="position:relative" id="wrap-colab">
+        <button id="colab-filter-btn" onclick="abrirDropFiltro('drop-colab')" style="display:flex;align-items:center;gap:8px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;min-width:160px;justify-content:space-between;transition:all .15s">
+          <span id="colab-filter-label">Todos colaboradores</span><span style="font-size:10px;color:var(--hint)">▾</span>
         </button>
-        <div class="xl-dd" id="xl-colab-dd">
-          <div class="xl-dd-head">
-            <input class="xl-dd-search" placeholder="🔍 Buscar colaborador..." oninput="xlSearch(this,'xl-colab-list')">
+        <div id="drop-colab" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:220px;max-height:320px;overflow:hidden;flex-direction:column">
+          <div style="padding:8px 10px;border-bottom:1px solid var(--border)">
+            <input id="search-colab" placeholder="🔍 Buscar..." oninput="filtrarDropItems(this,'lista-colab')" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;box-sizing:border-box">
           </div>
-          <div class="xl-sort-row">
-            <button class="xl-sort-btn" onclick="xlSort('xl-colab-list','asc')">↑ A-Z</button>
-            <button class="xl-sort-btn" onclick="xlSort('xl-colab-list','desc')">↓ Z-A</button>
-          </div>
-          <div class="xl-list" id="xl-colab-list">
-            <label class="xl-item"><input type="radio" name="colab-radio" value="" checked onchange="applyXlColab('','Todos colaboradores')"> Todos colaboradores</label>
-          </div>
-          <div class="xl-footer">
-            <button onclick="closeXlFilter('xl-colab-dd')">Fechar</button>
-          </div>
+          <div id="lista-colab" style="overflow-y:auto;max-height:240px;padding:4px 0"></div>
         </div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="clearFilters()">Limpar</button>
@@ -716,10 +689,23 @@ function fazerLogout() {
 
 // Verifica sessão ao carregar
 window.addEventListener('load', () => {
+  // Set default dates
+  const _hoje = new Date();
+  const _iniMes = new Date(_hoje.getFullYear(),_hoje.getMonth(),1).toISOString().slice(0,10);
+  const _fimMes = new Date(_hoje.getFullYear(),_hoje.getMonth()+1,0).toISOString().slice(0,10);
+  const iniEl = document.getElementById('g-date-ini');
+  const fimEl = document.getElementById('g-date-fim');
+  if(iniEl && !iniEl.value) iniEl.value = _iniMes;
+  if(fimEl && !fimEl.value) fimEl.value = _fimMes;
+  // Check session
   const sess = sessionStorage.getItem('mauerGestor');
   if(sess) {
-    gestorLogado = JSON.parse(sess);
-    mostrarApp();
+    try {
+      gestorLogado = JSON.parse(sess);
+      mostrarApp();
+    } catch(e) {
+      sessionStorage.removeItem('mauerGestor');
+    }
   }
 });
 
@@ -783,7 +769,7 @@ let lancamentos=[], filiais=[], colaboradores={}, confirmacoes=[], currentView='
 let xlColabSelecionado='', gestores=[], conferentes={}, confTabAtivo='';
 let filiaisSelecionadas=new Set();
 let erroTabAtual='separadores';
-const colFilters={};
+// colFilters declared above
 
 // ============================================================
 // FIREBASE HELPERS
@@ -864,7 +850,8 @@ function updateColabFilterSelect(){
 function clearFilters(){
   filiaisSelecionadas=new Set(filiais.map(f=>f.nome));
   const ini=document.getElementById('g-date-ini'),fim=document.getElementById('g-date-fim');
-  if(ini)ini.value=_iniMes;if(fim)fim.value=_fimMes;
+  const _h=new Date(),_im=new Date(_h.getFullYear(),_h.getMonth(),1).toISOString().slice(0,10),_fm=new Date(_h.getFullYear(),_h.getMonth()+1,0).toISOString().slice(0,10);
+  if(ini)ini.value=_im;if(fim)fim.value=_fm;
   xlColabSelecionado='';
   const lbl2=document.getElementById('colab-filter-label');if(lbl2)lbl2.textContent='Todos colaboradores';
   const cbtn=document.getElementById('colab-filter-btn');if(cbtn)cbtn.classList.remove('has-filter');
@@ -1301,7 +1288,8 @@ async function fecharMes(){
   try{await fbDelete('lancamentos');lancamentos=[];render();showAlert('ok','Mês fechado!');}
   catch(e){showAlert('err','Erro ao fechar.');}
 }
-document.getElementById('modal-fechar').addEventListener('click',function(e){if(e.target===this)closeModal();});
+// Modal click outside - attached safely
+window.addEventListener('load',function(){var m=document.getElementById('modal-fechar');if(m)m.addEventListener('click',function(e){if(e.target===this)closeModal();});});
 
 // ============================================================
 // MODO ESCURO
@@ -1324,6 +1312,20 @@ initDarkMode();
 // ============================================================
 // COLUMN FILTERS (EXCEL STYLE FOR TABLES)
 // ============================================================
+function buildColFilterOptions(filterId){
+  var dd=document.getElementById(filterId);if(!dd)return;
+  var{filiais:fs,ini,fim,colab}=getFilter();
+  var values=new Set(),source=[];
+  if(filterId.startsWith('cf-ped-')){source=lancamentos.filter(function(l){return l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim);});var f=filterId.replace('cf-ped-','');source.forEach(function(l){if(f==='data')values.add(fmt(l.data));else if(f==='filial')values.add(l.filial||'—');else if(f==='colab')values.add(l.colaborador||'—');});}
+  else if(filterId.startsWith('cf-err-')){source=lancamentos.filter(function(l){return l.motivo&&!l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim);});var f=filterId.replace('cf-err-','');source.forEach(function(l){if(f==='filial')values.add(l.filial||'—');else if(f==='colab')values.add(l.colaborador||'—');else if(f==='motivo')values.add(l.motivo||'—');});}
+  else if(filterId.startsWith('cf-errc-')){source=lancamentos.filter(function(l){return l.motivo&&l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim);});var f=filterId.replace('cf-errc-','');source.forEach(function(l){if(f==='filial')values.add(l.filial||'—');else if(f==='colab')values.add(l.colaborador||'—');});}
+  var sorted=[...values].sort();
+  var selected=colFilters[filterId]||new Set(sorted);
+  colFilters[filterId]=selected;
+  var rows='';
+  sorted.forEach(function(v){rows+='<label class="col-filter-item"><input type="checkbox" value="'+v+'" '+(selected.has(v)?'checked':'')+' onchange="toggleColValue(''+filterId+'',''+v+'',this.checked)"><span>'+v+'</span></label>';});
+  dd.innerHTML='<input class="col-filter-search" placeholder="Buscar..." oninput="filterColOptions(this,''+filterId+'')"><div class="col-filter-list" id="cfl-'+filterId+'">'+rows+'</div><div class="col-filter-footer"><button onclick="selectAllCol(''+filterId+'')">Todos</button><button onclick="clearAllCol(''+filterId+'')">Nenhum</button><button onclick="applyColFilter(''+filterId+'')">OK</button></div>';
+}
 function toggleColFilter(e,filterId){
   e.stopPropagation();
   document.querySelectorAll('.col-filter-dd.open').forEach(d=>{if(d.id!==filterId)d.classList.remove('open');});
@@ -1331,31 +1333,7 @@ function toggleColFilter(e,filterId){
   if(dd.classList.contains('open')){dd.classList.remove('open');return;}
   buildColFilterOptions(filterId);dd.classList.add('open');
 }
-function buildColFilterOptions(filterId){
-  const dd=document.getElementById(filterId);if(!dd)return;
-  const{filiais:fs,ini,fim,colab}=getFilter();
-  let values=new Set(),source=[];
-  if(filterId.startsWith('cf-ped-')){
-    source=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
-    const field=filterId.replace('cf-ped-','');
-    source.forEach(l=>{if(field==='data')values.add(fmt(l.data));else if(field==='filial')values.add(l.filial||'—');else if(field==='colab')values.add(l.colaborador||'—');});
-  }else if(filterId.startsWith('cf-err-')){
-    source=lancamentos.filter(l=>l.motivo&&!l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
-    const field=filterId.replace('cf-err-','');
-    source.forEach(l=>{if(field==='filial')values.add(l.filial||'—');else if(field==='colab')values.add(l.colaborador||'—');else if(field==='motivo')values.add(l.motivo||'—');});
-  }else if(filterId.startsWith('cf-errc-')){
-    source=lancamentos.filter(l=>l.motivo&&l.isErro&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
-    const field=filterId.replace('cf-errc-','');
-    source.forEach(l=>{if(field==='filial')values.add(l.filial||'—');else if(field==='colab')values.add(l.colaborador||'—');});
-  }
-  const sorted=[...values].sort();
-  const selected=colFilters[filterId]||new Set(sorted);
-  colFilters[filterId]=selected;
-  dd.innerHTML='<input class="col-filter-search" placeholder="Buscar..." oninput="filterColOptions(this,\''+filterId+'\')">'
-    +'<div class="col-filter-list" id="cfl-'+filterId+'">'
-    +sorted.map(v=>'<label class="col-filter-item"><input type="checkbox" value="'+v+'" '+(selected.has(v)?'checked':'')+' onchange="toggleColValue(\''+filterId+'\',\''+v+'\',this.checked)"><span>'+v+'</span></label>').join('')
-    +'</div><div class="col-filter-footer"><button onclick="selectAllCol(\''+filterId+'\')">Todos</button><button onclick="clearAllCol(\''+filterId+'\')">Nenhum</button><button onclick="applyColFilter(\''+filterId+'\')">OK</button></div>';
-}
+
 function filterColOptions(inp,filterId){const q=inp.value.toLowerCase();document.querySelectorAll('#cfl-'+filterId+' .col-filter-item').forEach(item=>{item.style.display=item.querySelector('span').textContent.toLowerCase().includes(q)?'':'none';});}
 function toggleColValue(filterId,value,checked){if(!colFilters[filterId])colFilters[filterId]=new Set();if(checked)colFilters[filterId].add(value);else colFilters[filterId].delete(value);}
 function selectAllCol(filterId){document.querySelectorAll('#cfl-'+filterId+' input[type=checkbox]').forEach(cb=>{cb.checked=true;colFilters[filterId]?.add(cb.value);});}
@@ -1366,162 +1344,152 @@ function passesColFilter(filterId,value){if(!colFilters[filterId]||colFilters[fi
 // ============================================================
 // INIT
 // ============================================================
-const _hoje=new Date();
-const _iniMes=new Date(_hoje.getFullYear(),_hoje.getMonth(),1).toISOString().slice(0,10);
-const _fimMes=new Date(_hoje.getFullYear(),_hoje.getMonth()+1,0).toISOString().slice(0,10);
-document.getElementById('g-date-ini').value=_iniMes;
-document.getElementById('g-date-fim').value=_fimMes;
 setInterval(()=>{if(gestorLogado)carregarTudo();},30000);
 
 // ============================================================
-// EXCEL-STYLE FILTER ENGINE
+// FILTER ENGINE — simples e funcional
 // ============================================================
 
-// ---- MARGEM DE PEDIDOS ----
-let margemPedidos = 1000;
-
-
-
-// ---- FLAGS DE COLABORADOR ----
-let flagSelecionada = null; // {colaborador, filial} ou null
-
-function renderFlags() {
-  const{filiais:fs,ini,fim,colab}=getFilter();
-  const dados = lancamentos.filter(l=>!l.isPedido&&!l.isErro&&l.pneus>0&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim));
-  const ag = {};
-  dados.forEach(l=>{
-    const k=l.colaborador+'||'+l.filial;
-    if(!ag[k]) ag[k]={colaborador:l.colaborador,filial:l.filial,pneus:0};
-    ag[k].pneus+=Number(l.pneus||0);
+// Abre/fecha dropdown de filtro
+function abrirDropFiltro(dropId) {
+  const drop = document.getElementById(dropId);
+  if(!drop) return;
+  const isOpen = drop.style.display === 'flex';
+  // Fecha todos
+  ['drop-filial','drop-gestor','drop-colab'].forEach(id=>{
+    const d = document.getElementById(id);
+    if(d) d.style.display = 'none';
   });
-  const list = Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
-  const wrap = document.getElementById('flags-wrap');
-  const el = document.getElementById('flags-list');
-  if(!list.length){if(wrap)wrap.style.display='none';return;}
-  if(wrap) wrap.style.display='flex';
-  el.innerHTML = list.map(item=>{
-    const key=item.colaborador+'||'+item.filial;
-    const isActive = flagSelecionada && flagSelecionada.key===key;
-    return `<div onclick="toggleFlag('${item.colaborador.replace(/'/g,"\'")}','${item.filial.replace(/'/g,"\'")}','${key}')" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid ${isActive?'var(--text)':'var(--border)'};background:${isActive?'var(--text)':'rgba(255,255,255,.9)'};color:${isActive?'#fff':'var(--text)'}">
-      <span>${item.colaborador}</span>
-      <span style="opacity:.6;font-size:11px">${item.filial}</span>
-      <span style="font-family:'DM Mono',monospace;font-size:11px;${isActive?'color:#fff':'color:var(--muted)'}">${item.pneus} 🛞</span>
-    </div>`;
-  }).join('');
+  if(!isOpen) {
+    drop.style.display = 'flex';
+    if(dropId === 'drop-filial') renderDropFilial();
+    if(dropId === 'drop-gestor') renderDropGestor();
+    if(dropId === 'drop-colab') renderDropColab();
+    // Focus search if exists
+    const search = drop.querySelector('input[type=text],input:not([type])');
+    if(search) setTimeout(()=>search.focus(), 50);
+  }
 }
 
-function toggleFlag(colaborador, filial, key) {
-  if(flagSelecionada && flagSelecionada.key===key) {
-    flagSelecionada = null;
+// Fechar ao clicar fora
+document.addEventListener('click', function(e) {
+  if(!e.target.closest('#wrap-filial') && !e.target.closest('#wrap-gestor') && !e.target.closest('#wrap-colab')) {
+    ['drop-filial','drop-gestor','drop-colab'].forEach(id=>{
+      const d = document.getElementById(id);
+      if(d) d.style.display = 'none';
+    });
+  }
+});
+
+function filtrarDropItems(inp, listId) {
+  const q = inp.value.toLowerCase();
+  const list = document.getElementById(listId);
+  if(!list) return;
+  list.querySelectorAll('.drop-item').forEach(item=>{
+    item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// ---- FILIAL ----
+function renderDropFilial() {
+  const list = document.getElementById('lista-filial');
+  if(!list) return;
+  const isTodas = filiaisSelecionadas.size === filiais.length;
+  const sel1 = filiaisSelecionadas.size === 1 ? [...filiaisSelecionadas][0] : null;
+  let html = '<div class="drop-item" style="'+(isTodas?'font-weight:600;color:var(--text)':'')+';padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onclick="selecionarFilial(null)">'
+    + '<span style="font-size:11px;color:'+(isTodas?'var(--text)':'var(--hint)');+'">'+(isTodas?'●':'○')+'</span> Todas as filiais</div>';
+  filiais.forEach(function(f){
+    const ativo = sel1 === f.nome;
+    html += '<div class="drop-item" style="'+(ativo?'font-weight:600;background:var(--bg)':'')+';padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" data-nome="'+f.nome+'" onclick="selecionarFilial(this.dataset.nome)">'
+      + '<span style="font-size:11px;color:'+(ativo?'var(--text)':'var(--hint)');+'">'+(ativo?'●':'○')+'</span> '+f.nome+'</div>';
+  });
+  list.innerHTML = html;
+}
+
+function selecionarFilial(nome) {
+  filiaisSelecionadas = nome ? new Set([nome]) : new Set(filiais.map(f=>f.nome));
+  atualizarBotaoFilial();
+  // Fechar dropdown
+  const d = document.getElementById('drop-filial');
+  if(d) d.style.display = 'none';
+  // Reset colab
+  xlColabSelecionado = '';
+  const lbl = document.getElementById('colab-filter-label');
+  if(lbl) lbl.textContent = 'Todos colaboradores';
+  const cbtn = document.getElementById('colab-filter-btn');
+  if(cbtn) cbtn.style.background = '';
+  render();
+}
+
+// ---- COLABORADOR ----
+function renderDropColab() {
+  const list = document.getElementById('lista-colab');
+  if(!list) return;
+  const colabs = new Set();
+  if(!filiaisSelecionadas.size || filiaisSelecionadas.size === filiais.length) {
+    Object.values(colaboradores).forEach(arr=>arr.forEach(c=>colabs.add(c.nome)));
   } else {
-    flagSelecionada = {colaborador, filial, key};
+    filiaisSelecionadas.forEach(f=>{(colaboradores[f]||[]).forEach(c=>colabs.add(c.nome));});
   }
-  renderFlags();
+  const sorted = [...colabs].sort();
+  let html = '<div class="drop-item" style="'+(xlColabSelecionado===''?'font-weight:600;background:var(--bg)':'')+';padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onclick="selecionarColab(null)">'
+    + '<span style="font-size:11px;color:'+(xlColabSelecionado===''?'var(--text)':'var(--hint)')+'">'+(xlColabSelecionado===''?'●':'○')+'</span> Todos colaboradores</div>';
+  sorted.forEach(function(c){
+    const ativo = xlColabSelecionado === c;
+    html += '<div class="drop-item" style="'+(ativo?'font-weight:600;background:var(--bg)':'')+';padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" data-nome="'+c+'" onclick="selecionarColab(this.dataset.nome)">'
+      + '<span style="font-size:11px;color:'+(ativo?'var(--text)':'var(--hint)')+'">'+(ativo?'●':'○')+'</span> '+c+'</div>';
+  });
+  list.innerHTML = html;
+}
+
+function selecionarColab(nome) {
+  xlColabSelecionado = nome || '';
+  const lbl = document.getElementById('colab-filter-label');
+  if(lbl) lbl.textContent = nome || 'Todos colaboradores';
+  const cbtn = document.getElementById('colab-filter-btn');
+  if(cbtn) cbtn.style.background = nome ? 'var(--text)' : '';
+  if(cbtn) cbtn.style.color = nome ? '#fff' : '';
+  const d = document.getElementById('drop-colab');
+  if(d) d.style.display = 'none';
   render();
 }
 
-function limparFlags() {
-  flagSelecionada = null;
-  renderFlags();
-  render();
+// ---- GESTOR ----
+function renderDropGestor() {
+  const list = document.getElementById('lista-gestor');
+  if(!list) return;
+  let html = '<div class="drop-item" style="padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onclick="selecionarGestor(null,null)">'
+    + '<span style="font-size:11px">●</span> Todos os gestores</div>';
+  gestores.forEach(function(g){
+    html += '<div class="drop-item" style="padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" data-key="'+g._key+'" data-nome="'+g.nome+'" onclick="selecionarGestor(this.dataset.key,this.dataset.nome)">'
+      + '<span style="font-size:11px;color:var(--hint)">○</span> '+g.nome+'</div>';
+  });
+  list.innerHTML = html;
 }
 
+function selecionarGestor(key, nome) {
+  filtrarPorGestor(key || '');
+  const lbl = document.getElementById('gestor-btn-label');
+  if(lbl) lbl.textContent = nome || 'Por gestor';
+  const btn = document.getElementById('gestor-btn');
+  if(btn) { btn.style.background = key ? 'var(--text)' : ''; btn.style.color = key ? '#fff' : ''; }
+  const d = document.getElementById('drop-gestor');
+  if(d) d.style.display = 'none';
+}
 
+// Backward compat stubs
+function toggleXlFilter(){}
+function closeXlFilter(){}
+function buildXlFilialList(){}
+function buildXlColabList(){}
+function buildXlGestorList(){}
+function selecionarUmaFilial(nome){selecionarFilial(nome);}
+function selecionarUmColab(val){selecionarColab(val);}
+function selecionarUmGestor(key,nome){selecionarGestor(key,nome);}
+function renderGestorRadioList(){renderDropGestor();}
 
-// ---- EXCEL COLUMN FILTERS ----
-// colFilters declared above // { filterId: Set of selected values }
+function xlSearch(){}
+function xlSort(){}
 
-
-// ============================================================
-// DASHBOARD
-// ============================================================
-const dashCharts={};
-function destroyChart(id){if(dashCharts[id]){try{dashCharts[id].destroy();}catch(e){}delete dashCharts[id];}}
-
-function setDashPeriodo(tipo){
-  const hoje=new Date(),f=d=>d.toISOString().slice(0,10);
-  const ini=document.getElementById('dash-ini'),fim=document.getElementById('dash-fim');
-  if(tipo==='hoje'){ini.value=f(hoje);fim.value=f(hoje);}
-  else if(tipo==='semana'){const s=new Date(hoje);s.setDate(hoje.getDate()-6);ini.value=f(s);fim.value=f(hoje);}
-  else if(tipo==='mes'){ini.value=f(new Date(hoje.getFullYear(),hoje.getMonth(),1));fim.value=f(new Date(hoje.getFullYear(),hoje.getMonth()+1,0));}
-  renderDashboard();
-}
-function getDashFilter(){return{ini:document.getElementById('dash-ini')?.value||'',fim:document.getElementById('dash-fim')?.value||'',filial:document.getElementById('dash-filial')?.value||''};}
-function getDashData(){
-  const{ini,fim,filial}=getDashFilter();
-  const base=lancamentos.filter(l=>(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!filial||l.filial===filial));
-  const confBase=confirmacoes.filter(c=>(!ini||c.data>=ini)&&(!fim||c.data<=fim)&&(!filial||c.filial===filial));
-  return{pneus:base.filter(l=>!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0),pedidos:base.filter(l=>l.isPedido),erros:base.filter(l=>l.motivo),conf:confBase};
-}
-function initDashboard(){
-  const ini=document.getElementById('dash-ini'),fim=document.getElementById('dash-fim');
-  if(ini&&!ini.value){const hoje=new Date();ini.value=new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().slice(0,10);fim.value=new Date(hoje.getFullYear(),hoje.getMonth()+1,0).toISOString().slice(0,10);}
-  const ds=document.getElementById('dash-filial');
-  if(ds){const cur=ds.value;ds.innerHTML='<option value="">Todas as filiais</option>'+filiais.map(f=>'<option'+(f.nome===cur?' selected':'')+'>'+f.nome+'</option>').join('');}
-  Object.keys(dashCharts).forEach(k=>destroyChart(k));
-  setTimeout(renderDashboard,150);
-}
-function renderDashboard(){
-  const ds=document.getElementById('dash-filial');
-  if(ds){const cur=ds.value;ds.innerHTML='<option value="">Todas as filiais</option>'+filiais.map(f=>'<option'+(f.nome===cur?' selected':'')+'>'+f.nome+'</option>').join('');}
-  const{pneus,pedidos,erros,conf}=getDashData();
-  const tPn=pneus.reduce((a,l)=>a+Number(l.pneus||0),0);
-  const colabsAtivos=new Set(pneus.map(l=>l.colaborador+'|'+l.filial)).size;
-  const txErr=pneus.length>0?((erros.length/pneus.length)*100).toFixed(1):'0.0';
-  const txConf=pedidos.length>0?Math.round((conf.length/pedidos.length)*100):0;
-  const el=id=>document.getElementById(id);
-  if(el('kpi-pneus'))el('kpi-pneus').textContent=tPn.toLocaleString('pt-BR');
-  if(el('kpi-pedidos'))el('kpi-pedidos').textContent=pedidos.length.toLocaleString('pt-BR');
-  if(el('kpi-colabs'))el('kpi-colabs').textContent=colabsAtivos;
-  if(el('kpi-erros'))el('kpi-erros').textContent=erros.length;
-  if(el('kpi-erros-tx'))el('kpi-erros-tx').textContent=txErr+'% dos lançamentos';
-  if(el('kpi-conf'))el('kpi-conf').textContent=txConf+'%';
-  if(el('kpi-conf-sub'))el('kpi-conf-sub').textContent=conf.length+'/'+pedidos.length+' pedidos';
-  const CORES=['#1a1917','#3266ad','#1D9E75','#BA7517','#639922','#D85A30','#534AB7','#993556','#1a7a8a','#8a3d1a','#2d6b28','#6b1a2d'];
-  function agF(data,campo){const ag={};data.forEach(l=>{if(!ag[l.filial])ag[l.filial]=0;ag[l.filial]+=(campo?Number(l[campo]||0):1);});return Object.entries(ag).sort((a,b)=>b[1]-a[1]);}
-  function agC(data,campo){const ag={};data.forEach(l=>{const k=l[campo]||'Outro';ag[k]=(ag[k]||0)+1;});return Object.entries(ag).sort((a,b)=>b[1]-a[1]);}
-  function barH(canvasId,chartId,data,label,bgColors){
-    destroyChart(chartId);const ctx=document.getElementById(canvasId);if(!ctx)return;
-    if(!data.length){ctx.closest('.dash-chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:12px">Sem dados</div>';return;}
-    dashCharts[chartId]=new Chart(ctx,{type:'bar',data:{labels:data.map(([f])=>f.length>18?f.slice(0,16)+'…':f),datasets:[{label,data:data.map(([,v])=>v),backgroundColor:bgColors||CORES,borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.x.toLocaleString('pt-BR')}}},scales:{x:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#a09d96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:10,weight:'500'}}}}}});
-  }
-  barH('chart-pneus-filial','pneus-filial',agF(pneus,'pneus'),'Pneus',CORES);
-  barH('chart-pedidos-filial','pedidos-filial',agF(pedidos,null),'Pedidos',CORES.map(c=>c+'cc'));
-  barH('chart-erros-filial','erros-filial',agF(erros,null),'Erros',Array(20).fill('#e0525280'));
-  // Erros motivo donut
-  (function(){destroyChart('erros-motivo');const ctx=document.getElementById('chart-erros-motivo');if(!ctx)return;const data=agC(erros,'motivo');if(!data.length){ctx.closest('.dash-chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:12px">Sem erros</div>';return;}dashCharts['erros-motivo']=new Chart(ctx,{type:'doughnut',data:{labels:data.map(([k])=>k),datasets:[{data:data.map(([,v])=>v),backgroundColor:CORES,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'DM Sans',size:10},color:'#1a1917',boxWidth:12,padding:6}}}}});})();
-  // Conferidos por filial
-  (function(){destroyChart('conf-filial');const ctx=document.getElementById('chart-conf-filial');if(!ctx)return;const pedByF={},confByF={};pedidos.forEach(l=>{pedByF[l.filial]=(pedByF[l.filial]||0)+1;});conf.forEach(c=>{confByF[c.filial]=(confByF[c.filial]||0)+1;});const fls=[...new Set(Object.keys(pedByF))].sort();if(!fls.length){ctx.closest('.dash-chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:12px">Sem dados</div>';return;}const pcts=fls.map(f=>pedByF[f]>0?Math.round(((confByF[f]||0)/pedByF[f])*100):0);dashCharts['conf-filial']=new Chart(ctx,{type:'bar',data:{labels:fls.map(f=>f.length>14?f.slice(0,12)+'…':f),datasets:[{label:'% Conferido',data:pcts,backgroundColor:pcts.map(p=>p===100?'#2d6b28':p>=50?'#BA7517':'#e05252'),borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.x+'%'}}},scales:{x:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#a09d96',font:{size:10}},max:100},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:10}}}}}});})();
-  // Top colaboradores
-  (function(){destroyChart('top-colabs');const ctx=document.getElementById('chart-top-colabs');if(!ctx)return;const ag={};pneus.forEach(l=>{const k=l.colaborador+' ('+l.filial+')';if(!ag[k])ag[k]=0;ag[k]+=Number(l.pneus||0);});const data=Object.entries(ag).sort((a,b)=>b[1]-a[1]).slice(0,10);if(!data.length){ctx.closest('.dash-chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:12px">Sem dados</div>';return;}dashCharts['top-colabs']=new Chart(ctx,{type:'bar',data:{labels:data.map(([n])=>n.length>20?n.slice(0,18)+'…':n),datasets:[{label:'Pneus',data:data.map(([,v])=>v),backgroundColor:data.map((_,i)=>CORES[i%CORES.length]),borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#a09d96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:10}}}}}});})();
-  // Erros por colaborador
-  (function(){destroyChart('erros-colab');const ctx=document.getElementById('chart-erros-colab');if(!ctx)return;const ag={};erros.forEach(l=>{const k=l.colaborador+' ('+l.filial+')';ag[k]=(ag[k]||0)+1;});const data=Object.entries(ag).sort((a,b)=>b[1]-a[1]).slice(0,10);if(!data.length){ctx.closest('.dash-chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--hint);font-size:12px">Sem erros</div>';return;}dashCharts['erros-colab']=new Chart(ctx,{type:'bar',data:{labels:data.map(([n])=>n.length>20?n.slice(0,18)+'…':n),datasets:[{label:'Erros',data:data.map(([,v])=>v),backgroundColor:'#e0525280',borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#a09d96',font:{size:10}}},y:{grid:{display:false},ticks:{color:'#1a1917',font:{size:10}}}}}});})();
-  renderChartComparativo();renderChartEvolucao(pneus);
-}
-function renderChartComparativo(){
-  destroyChart('comparativo');
-  const{pneus,pedidos,erros,conf}=getDashData();
-  const tipo=document.getElementById('dash-comp-tipo')?.value||'pneus_pedidos';
-  const CORES=['#1a1917','#3266ad','#1D9E75','#BA7517','#639922','#D85A30','#534AB7','#993556','#1a7a8a','#8a3d1a'];
-  const todasF=[...new Set([...pneus,...pedidos,...erros].map(l=>l.filial))].sort();
-  const ctx=document.getElementById('chart-comparativo');if(!ctx||!todasF.length)return;
-  let ds1,ds2;
-  if(tipo==='pneus_pedidos'){const pm={},pdm={};pneus.forEach(l=>{pm[l.filial]=(pm[l.filial]||0)+Number(l.pneus||0);});pedidos.forEach(l=>{pdm[l.filial]=(pdm[l.filial]||0)+1;});ds1={label:'🛞 Pneus',data:todasF.map(f=>pm[f]||0),backgroundColor:'#1a1917',borderRadius:3};ds2={label:'📦 Pedidos',data:todasF.map(f=>pdm[f]||0),backgroundColor:'#3266ad',borderRadius:3};}
-  else if(tipo==='pneus_erros'){const pm={},em={};pneus.forEach(l=>{pm[l.filial]=(pm[l.filial]||0)+Number(l.pneus||0);});erros.forEach(l=>{em[l.filial]=(em[l.filial]||0)+1;});ds1={label:'🛞 Pneus',data:todasF.map(f=>pm[f]||0),backgroundColor:'#1D9E75',borderRadius:3};ds2={label:'⚠ Erros',data:todasF.map(f=>em[f]||0),backgroundColor:'#e05252',borderRadius:3};}
-  else{const pm={},cm={};pneus.forEach(l=>{pm[l.filial]=(pm[l.filial]||0)+Number(l.pneus||0);});conf.forEach(c=>{cm[c.filial]=(cm[c.filial]||0)+1;});ds1={label:'🛞 Pneus',data:todasF.map(f=>pm[f]||0),backgroundColor:'#1a1917',borderRadius:3};ds2={label:'✅ Conferidos',data:todasF.map(f=>cm[f]||0),backgroundColor:'#1D9E75',borderRadius:3};}
-  dashCharts['comparativo']=new Chart(ctx,{type:'bar',data:{labels:todasF.map(f=>f.length>14?f.slice(0,12)+'…':f),datasets:[ds1,ds2]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{family:'DM Sans',size:11},color:'#1a1917'}}},scales:{x:{grid:{display:false},ticks:{color:'#1a1917',font:{size:10},maxRotation:30}},y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#a09d96',font:{size:10}},beginAtZero:true}}}});
-}
-function renderChartEvolucao(pneus){
-  destroyChart('evolucao');
-  const{filial}=getDashFilter();
-  const CORES=['#1a1917','#3266ad','#1D9E75','#BA7517','#639922','#D85A30','#534AB7','#993556'];
-  const byDate={};pneus.forEach(l=>{byDate[l.data]=(byDate[l.data]||0)+Number(l.pneus||0);});
-  const dates=Object.keys(byDate).sort();
-  const ctx=document.getElementById('chart-evolucao');if(!ctx||!dates.length)return;
-  const labels=dates.map(d=>d.split('-').slice(1).reverse().join('/'));
-  if(filial){dashCharts['evolucao']=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:filial,data:dates.map(d=>byDate[d]||0),borderColor:'#1a1917',backgroundColor:'rgba(26,25,23,.08)',fill:true,tension:.35,pointRadius:4,pointBackgroundColor:'#1a1917',pointBorderColor:'#fff',pointBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#a09d96',font:{size:10}},beginAtZero:true}}}});}
-  else{const fD=[...new Set(pneus.map(l=>l.filial))].sort();const bFD={};pneus.forEach(l=>{if(!bFD[l.filial])bFD[l.filial]={};bFD[l.filial][l.data]=(bFD[l.filial][l.data]||0)+Number(l.pneus||0);});dashCharts['evolucao']=new Chart(ctx,{type:'line',data:{labels,datasets:fD.map((f,i)=>({label:f.length>14?f.slice(0,12)+'…':f,data:dates.map(d=>bFD[f]?.[d]||0),backgroundColor:CORES[i%CORES.length]+'22',borderColor:CORES[i%CORES.length],fill:false,tension:.35,pointRadius:3,borderWidth:2}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'DM Sans',size:10},color:'#1a1917',boxWidth:10,padding:8}}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{color:'#a09d96',font:{size:10}},beginAtZero:true}}}});}
-}
-</script>
-</body>
-</html>
+// Column filters for tables
+const colFilters={};
