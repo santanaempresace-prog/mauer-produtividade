@@ -27,7 +27,7 @@ body::before{content:'';position:fixed;inset:0;background:url('https://raw.githu
 .alert.show{display:flex}
 .alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
 .alert-err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
-.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
 .tab-btn{padding:9px 6px;border:none;border-radius:var(--rsm);background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;line-height:1.3}
 .tab-btn.active{background:var(--text);color:#fff}
 .tab-btn span{display:block;font-size:10px;font-weight:400;opacity:.75;margin-top:1px}
@@ -141,6 +141,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="tab-btn" onclick="setTab('confirmar',this)">✅ Confirmar<span>Conferência</span></button>
     <button class="tab-btn" onclick="setTab('conferente',this)">Conferente<span>Lançar erros</span></button>
     <button class="tab-btn" onclick="setTab('grafico',this)">🏁 Corrida<span>Ranking ao vivo</span></button>
+    <button class="tab-btn" onclick="setTab('rank-conf',this)">🎖️ Conferentes<span>Ranking conferentes</span></button>
   </div>
 
   <!-- TAB 1: PEDIDOS -->
@@ -295,7 +296,44 @@ textarea{resize:vertical;min-height:72px}
       <div class="chart-wrap" id="chart-wrap" style="display:none"><canvas id="myChart"></canvas></div>
       <div id="chart-empty" style="text-align:center;padding:24px;color:var(--hint);font-size:13px">Selecione um colaborador</div>
     </div>
+  
+  <!-- TAB: RANKING CONFERENTES -->
+  <div class="tab-content" id="tab-rank-conf">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:10px">🎖️ Ranking conferentes — hoje</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <select id="rc-filial" onchange="renderRankingConferentes()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer;flex:1">
+          <option value="">Selecione a filial</option>
+        </select>
+        <button onclick="renderRankingConferentes()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Atualizar</button>
+      </div>
+      <div id="rc-today-wrap">
+        <div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">🌎 Ranking geral conferentes</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">De</label>
+          <input type="date" id="rc-date-ini" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;width:100%">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">Até</label>
+          <input type="date" id="rc-date-fim" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;width:100%">
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="setRcPeriodo('hoje')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer">Hoje</button>
+          <button onclick="setRcPeriodo('mes')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer">Mês</button>
+          <button onclick="renderRankingConferentesGeral()" style="padding:6px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer">Buscar</button>
+        </div>
+      </div>
+      <div id="rc-geral-wrap"></div>
+    </div>
   </div>
+
+</div>
 </div>
 
 <script>
@@ -540,6 +578,126 @@ async function confirmarPedido(btn) {
 }
 
 
+
+// ============================================================
+// RANKING CONFERENTES
+// ============================================================
+
+function setRcPeriodo(tipo) {
+  const hoje = new Date();
+  const f = d => d.toISOString().slice(0,10);
+  const ini = document.getElementById('rc-date-ini');
+  const fim = document.getElementById('rc-date-fim');
+  if(!ini||!fim) return;
+  if(tipo==='hoje') { ini.value=f(hoje); fim.value=f(hoje); }
+  else if(tipo==='mes') { ini.value=f(new Date(hoje.getFullYear(),hoje.getMonth(),1)); fim.value=f(new Date(hoje.getFullYear(),hoje.getMonth()+1,0)); }
+  renderRankingConferentesGeral();
+}
+
+function buildRaceConf(list, wrap, subtitulo) {
+  if(!list.length) {
+    wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Nenhuma conferência registrada</div>';
+    return;
+  }
+  const max = list[0]?.conferidos || 1;
+  const total = list.reduce((a,c)=>a+c.conferidos, 0);
+  const cores = ['#FFD700','#3266ad','#1D9E75','#D85A30','#742774','#639922','#534AB7','#993556'];
+  const medalhas = ['🥇','🥈','🥉'];
+  const hora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  wrap.innerHTML = `<div class="race-track">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;color:#fff">🎖️ ${subtitulo}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.4)">Atualizado ${hora}</div>
+    </div>
+    ${list.map((c,i) => {
+      const pct = Math.round((c.conferidos/max)*100);
+      const cor = cores[i%cores.length];
+      const medal = medalhas[i] || (i+1)+'º';
+      return `<div class="race-lane">
+        <div class="race-pos${i===0?' first':i===1?' second':i===2?' third':''}">${medal}</div>
+        <div class="race-name">${c.nome}</div>
+        <div class="race-bar-wrap">
+          <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}">
+            <span class="race-val">${c.conferidos}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:80px">
+          <span style="font-size:12px;font-weight:600;color:#fff">${c.conferidos} ✅</span>
+          <span style="font-size:10px;color:${c.erros>0?'#e05252':'#1D9E75'}">${c.erros>0?c.erros+' ⚠ erros':'sem erros'}</span>
+        </div>
+      </div>`;
+    }).join('')}
+    <div class="race-meta">
+      <span class="race-meta-txt">${list.length} conferentes em pista</span>
+      <span class="race-meta-txt">${total} pedidos conferidos</span>
+    </div>
+  </div>`;
+}
+
+async function renderRankingConferentes() {
+  const filial = document.getElementById('rc-filial').value;
+  const wrap = document.getElementById('rc-today-wrap');
+  if(!filial) { wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>'; return; }
+  wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Carregando ranking... 🎖️</div>';
+  try {
+    const today = getBrasiliaDateStr();
+    const [confData, lancData] = await Promise.all([fbGet('confirmacoes'), fbGet('lancamentos')]);
+    const confs = confData ? Object.values(confData) : [];
+    const lancs = lancData ? Object.values(lancData) : [];
+
+    // Conferências de hoje nesta filial
+    const confHoje = confs.filter(c => c.filial===filial && c.data===today && c.conferente);
+    // Erros de hoje nesta filial (sem identificar autor)
+    const errosHoje = lancs.filter(l => l.filial===filial && l.data===today && l.motivo && l.isErro);
+
+    // Agrupa por conferente
+    const ag = {};
+    confHoje.forEach(c => {
+      if(!ag[c.conferente]) ag[c.conferente] = {nome:c.conferente, conferidos:0, erros:0};
+      ag[c.conferente].conferidos++;
+    });
+    // Conta erros por conferente (quem registrou o erro)
+    errosHoje.forEach(e => {
+      if(e.conferente && ag[e.conferente]) ag[e.conferente].erros++;
+      else if(e.conferente) ag[e.conferente] = {nome:e.conferente, conferidos:0, erros:1};
+    });
+
+    const list = Object.values(ag).sort((a,b)=>b.conferidos-a.conferidos);
+    buildRaceConf(list, wrap, filial+' — hoje');
+  } catch(e) { wrap.innerHTML='<div style="text-align:center;padding:20px;color:#e05252;font-size:13px">Erro ao carregar</div>'; console.error(e); }
+}
+
+async function renderRankingConferentesGeral() {
+  const ini = document.getElementById('rc-date-ini')?.value;
+  const fim = document.getElementById('rc-date-fim')?.value;
+  const wrap = document.getElementById('rc-geral-wrap');
+  if(!wrap) return;
+  wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Carregando... 🎖️</div>';
+  try {
+    const [confData, lancData] = await Promise.all([fbGet('confirmacoes'), fbGet('lancamentos')]);
+    const confs = confData ? Object.values(confData) : [];
+    const lancs = lancData ? Object.values(lancData) : [];
+
+    const confFilt = confs.filter(c => c.conferente && (!ini||c.data>=ini) && (!fim||c.data<=fim));
+    const errosFilt = lancs.filter(l => l.motivo && l.isErro && l.conferente && (!ini||l.data>=ini) && (!fim||l.data<=fim));
+
+    const ag = {};
+    confFilt.forEach(c => {
+      if(!ag[c.conferente]) ag[c.conferente] = {nome:c.conferente, conferidos:0, erros:0};
+      ag[c.conferente].conferidos++;
+    });
+    errosFilt.forEach(e => {
+      if(ag[e.conferente]) ag[e.conferente].erros++;
+      else ag[e.conferente] = {nome:e.conferente, conferidos:0, erros:1};
+    });
+
+    const list = Object.values(ag).sort((a,b)=>b.conferidos-a.conferidos);
+    const periodo = ini&&fim ? ini.split('-').reverse().join('/')+' a '+fim.split('-').reverse().join('/') : 'período selecionado';
+    buildRaceConf(list, wrap, 'Geral — '+periodo);
+  } catch(e) { wrap.innerHTML='<div style="text-align:center;padding:20px;color:#e05252;font-size:13px">Erro ao carregar</div>'; console.error(e); }
+}
+
+
 async function init() {
   setStatus('loading','Conectando...');
   const today=new Date().toISOString().slice(0,10);
@@ -555,6 +713,9 @@ async function init() {
     colaboradores = {};
     if(colData){Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});}
     populateFilialSelects();
+  // Populate rc-filial select
+  const rcf=document.getElementById('rc-filial');
+  if(rcf){rcf.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option>'+f.nome+'</option>').join('');}
   // Populate confirmar filial select
   const cfc=document.getElementById('conf-filial-check');
   if(cfc){const cc=cfc.value;cfc.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option'+(f.nome===cc?' selected':'')+'>'+f.nome+'</option>').join('');}
@@ -600,6 +761,7 @@ function setTab(tab,btn){
   document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
   if(tab==='grafico'){renderRankingCorrida();renderChart();}
   if(tab==='confirmar'){carregarConferentesParaConfirmar();}
+  if(tab==='rank-conf'){renderRankingConferentes();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente')renderErroHistory();
 }
