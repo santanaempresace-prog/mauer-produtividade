@@ -987,13 +987,47 @@ async function excluirPedido(key){
   const pedido=lancamentos.find(l=>l._key===key);if(!pedido)return;
   if(!confirm('Excluir pedido '+(pedido.numPedido||'')+'?\n\nErros relacionados também serão excluídos.'))return;
   try{
+    // 1. Apaga o registro isPedido
     await fbDelete('lancamentos/'+key);
+
+    // 2. Apaga erros de conferência relacionados ao número do pedido
     const errosRel=lancamentos.filter(l=>l.isErro&&l.pedidoErro===pedido.numPedido);
     for(const e of errosRel)await fbDelete('lancamentos/'+e._key);
-    lancamentos=lancamentos.filter(l=>l._key!==key&&!(l.isErro&&l.pedidoErro===pedido.numPedido));
-    renderPedidos();renderErros();
-    showAlert('ok','Pedido excluído.');
-  }catch(e){showAlert('err','Erro ao excluir.');}
+
+    // 3. Atualiza o lançamento de pneus do separador:
+    //    subtrai os pneus/pedidos deste pedido do lançamento do dia
+    const lancSep=lancamentos.find(l=>
+      !l.isPedido && !l.isErro &&
+      l.colaborador===pedido.colaborador &&
+      l.filial===pedido.filial &&
+      l.data===pedido.data
+    );
+    if(lancSep && lancSep._key){
+      const novosPneus=Math.max(0, Number(lancSep.pneus||0) - Number(pedido.qtdPedido||0));
+      const novosPedidos=Math.max(0, Number(lancSep.pedidos||0) - 1);
+      if(novosPneus===0 && novosPedidos===0){
+        // Remove o lançamento inteiro se ficou zerado
+        await fbDelete('lancamentos/'+lancSep._key);
+        lancamentos=lancamentos.filter(l=>l._key!==lancSep._key);
+      } else {
+        await fbPatch('lancamentos/'+lancSep._key,{pneus:novosPneus,pedidos:novosPedidos});
+        lancSep.pneus=novosPneus;
+        lancSep.pedidos=novosPedidos;
+      }
+    }
+
+    // 4. Remove do array local
+    lancamentos=lancamentos.filter(l=>
+      l._key!==key &&
+      !(l.isErro&&l.pedidoErro===pedido.numPedido)
+    );
+
+    // 5. Re-renderiza tudo incluindo ranking
+    render();
+    renderPedidos();
+    renderErros();
+    showAlert('ok','Pedido '+( pedido.numPedido||'')+' excluído. Ranking atualizado.');
+  }catch(e){showAlert('err','Erro ao excluir. Tente novamente.');console.error(e);}
 }
 
 // ============================================================
