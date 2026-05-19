@@ -296,19 +296,17 @@ textarea{resize:vertical;min-height:72px}
       <div class="chart-wrap" id="chart-wrap" style="display:none"><canvas id="myChart"></canvas></div>
       <div id="chart-empty" style="text-align:center;padding:24px;color:var(--hint);font-size:13px">Selecione um colaborador</div>
     </div>
-  
-  <!-- TAB: RANKING CONFERENTES -->
+  </div>
+
+  <!-- TAB 5: RANKING CONFERENTES -->
   <div class="tab-content" id="tab-rank-conf">
     <div class="card" style="margin-bottom:12px">
-      <div class="card-title" style="margin-bottom:10px">🎖️ Ranking conferentes — hoje</div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-        <select id="rc-filial" onchange="renderRankingConferentes()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer;flex:1">
-          <option value="">Selecione a filial</option>
-        </select>
-        <button onclick="renderRankingConferentes()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Atualizar</button>
+      <div class="card-title" style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+        <span>🎖️ Ranking conferentes — hoje</span>
+        <button onclick="renderRankingConferentes()" style="padding:5px 12px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer">↻ Atualizar</button>
       </div>
       <div id="rc-today-wrap">
-        <div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>
+        <div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Carregando... 🎖️</div>
       </div>
     </div>
 
@@ -626,7 +624,7 @@ function buildRaceConf(list, wrap, subtitulo) {
       const erroTxt = c.erros>0? c.erros+' ⚠':'0 ⚠';
       return '<div class="race-lane">'
         +'<div class="race-pos'+(i===0?' first':i===1?' second':i===2?' third':'')+'">'+medal+'</div>'
-        +'<div class="race-name">'+c.nome+'</div>'
+        +'<div style="min-width:80px"><div class="race-name">'+c.nome+'</div>'+(c.filial?'<div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:1px">'+c.filial+'</div>':'')+'</div>'
         +'<div class="race-bar-wrap">'
           +'<div class="race-bar" style="width:'+Math.max(pct,8)+'%;background:'+cor+'">'
             +'<span class="race-val">'+c.conferidos+' ✅</span>'
@@ -646,9 +644,7 @@ function buildRaceConf(list, wrap, subtitulo) {
 }
 
 async function renderRankingConferentes() {
-  const filial = document.getElementById('rc-filial').value;
   const wrap = document.getElementById('rc-today-wrap');
-  if(!filial) { wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>'; return; }
   wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Carregando ranking... 🎖️</div>';
   try {
     const today = getBrasiliaDateStr();
@@ -656,25 +652,29 @@ async function renderRankingConferentes() {
     const confs = confData ? Object.values(confData) : [];
     const lancs = lancData ? Object.values(lancData) : [];
 
-    // Conferências de hoje nesta filial
-    const confHoje = confs.filter(c => c.filial===filial && c.data===today && c.conferente);
-    // Erros de hoje nesta filial (sem identificar autor)
-    const errosHoje = lancs.filter(l => l.filial===filial && l.data===today && l.motivo && l.isErro);
-
-    // Agrupa por conferente
+    // Agrupa por conferente (todas as filiais)
     const ag = {};
+    const confHoje = confs.filter(c => c.data===today && c.conferente);
+    const errosHoje = lancs.filter(l => l.data===today && l.motivo && l.isErro);
+
     confHoje.forEach(c => {
-      if(!ag[c.conferente]) ag[c.conferente] = {nome:c.conferente, conferidos:0, erros:0};
-      ag[c.conferente].conferidos++;
+      const key = c.conferente;
+      if(!ag[key]) ag[key] = {nome:c.conferente, filial:c.filial, conferidos:0, erros:0};
+      ag[key].conferidos++;
     });
-    // Conta erros por conferente (quem registrou o erro)
     errosHoje.forEach(e => {
-      if(e.conferente && ag[e.conferente]) ag[e.conferente].erros++;
-      else if(e.conferente) ag[e.conferente] = {nome:e.conferente, conferidos:0, erros:1};
+      if(!e.conferente) return;
+      if(ag[e.conferente]) ag[e.conferente].erros++;
+      else ag[e.conferente] = {nome:e.conferente, filial:e.filial||'', conferidos:0, erros:1};
     });
 
     const list = Object.values(ag).sort((a,b)=>b.conferidos-a.conferidos);
-    buildRaceConf(list, wrap, filial+' — hoje');
+
+    if(!list.length) {
+      wrap.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:var(--hint);background:#1a1a2e;border-radius:var(--radius)">Nenhuma conferência registrada hoje</div>';
+      return;
+    }
+    buildRaceConf(list, wrap, 'Todas as filiais — hoje');
   } catch(e) { wrap.innerHTML='<div style="text-align:center;padding:20px;color:#e05252;font-size:13px">Erro ao carregar</div>'; console.error(e); }
 }
 
@@ -724,9 +724,6 @@ async function init() {
     colaboradores = {};
     if(colData){Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});}
     populateFilialSelects();
-  // Populate rc-filial select
-  const rcf=document.getElementById('rc-filial');
-  if(rcf){rcf.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option>'+f.nome+'</option>').join('');}
   // Populate confirmar filial select
   const cfc=document.getElementById('conf-filial-check');
   if(cfc){const cc=cfc.value;cfc.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option'+(f.nome===cc?' selected':'')+'>'+f.nome+'</option>').join('');}
