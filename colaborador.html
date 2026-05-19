@@ -160,7 +160,7 @@ textarea{resize:vertical;min-height:72px}
       <div class="pedido-add-row">
         <div class="form-group" style="margin:0"><label>Nº do pedido</label><input type="text" id="p-num" placeholder="Ex: 299226" autocomplete="off" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter'){event.preventDefault();addPedido()}"></div>
         <div class="form-group" style="margin:0"><label>Qtd pneus</label><input type="number" id="p-qt" min="1" placeholder="0" onkeydown="if(event.key==='Enter'){event.preventDefault();addPedido()}"></div>
-        <button class="btn-add" onclick="addPedido()">+ Add</button>
+        <button class="btn-add" id="add-pedido-btn" onclick="addPedido()">+ Add</button>
       </div>
       <div id="dup-alert" style="display:none;padding:10px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500;margin-bottom:8px"></div>
       <div class="pedido-list" id="pedido-list"></div>
@@ -504,21 +504,32 @@ async function carregarPedidosParaConferir() {
         '<div class="conf-resumo-card" style="background:var(--amber-bg);border-color:var(--amber-b)"><div class="conf-resumo-val" style="color:var(--amber-t)">'+pendentes+'</div><div class="conf-resumo-lbl" style="color:var(--amber-t)">Pendentes</div></div>';
     }
 
-    // Lista de pedidos
-    listEl.innerHTML = pedidos.map(p=>{
-      const isConf = confirmadosSet.has(String(p.numPedido));
-      const conf = isConf ? confirmacoesHoje.find(c=>String(c.numPedido)===String(p.numPedido)) : null;
-      return '<div class="ped-conf-item '+(isConf?'confirmado':'pendente')+'" id="pci-'+p.numPedido+'">'
-        +'<div class="ped-conf-num">#'+p.numPedido+'</div>'
+    // Mostra só pedidos PENDENTES
+    const pedidosPendentes = pedidos.filter(p=>!confirmadosSet.has(String(p.numPedido)));
+
+    if(!pedidosPendentes.length && pendentes===0) {
+      listEl.innerHTML='<div style="text-align:center;padding:32px;font-size:24px">✅</div>'
+        +'<div style="text-align:center;padding:0 0 24px;color:var(--green-t);font-size:14px;font-weight:600">Todos os pedidos conferidos!</div>';
+      return;
+    }
+
+    // Cabeçalho de pendentes
+    listEl.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">⏳ Pendentes de conferência ('+pedidosPendentes.length+')</div>'
+    + pedidosPendentes.map(p=>{
+      const dataFmt = p.data ? p.data.split('-').reverse().join('/') : hoje.split('-').reverse().join('/');
+      const hora = p.timestamp ? new Date(p.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}) : '';
+      return '<div class="ped-conf-item pendente" id="pci-'+p.numPedido+'">'
+        +'<div style="display:flex;flex-direction:column;align-items:center;min-width:70px">'
+          +'<div class="ped-conf-num">#'+p.numPedido+'</div>'
+          +'<div style="font-size:10px;color:var(--amber-t);font-weight:500;margin-top:3px;background:var(--amber-bg);padding:2px 6px;border-radius:10px">'+dataFmt+'</div>'
+        +'</div>'
         +'<div class="ped-conf-info">'
           +'<div class="ped-conf-colab">'+p.colaborador+'</div>'
-          +'<div class="ped-conf-sub">'+(p.qtdPedido||'?')+' pneu'+(p.qtdPedido!==1?'s':'')+' · '+(p.data?p.data.split('-').reverse().join('/'):hoje)+'</div>'
-          +(isConf?'<div style="font-size:11px;color:var(--green-t);margin-top:3px">✓ Conferido por '+(conf?.conferente||'conferente')+'</div>':'')
+          +'<div class="ped-conf-sub">'+(p.qtdPedido||'?')+' pneu'+(Number(p.qtdPedido)!==1?'s':'')+(hora?' · '+hora:'')+'</div>'
         +'</div>'
-        +(isConf
-          ? '<span class="ped-conf-status ok">✓ Conferido</span>'
-          : '<button class="btn-confirmar" onclick="confirmarPedido(this)" data-pedido="'+p.numPedido+'" data-filial="'+filial+'" data-data="'+hoje+'" data-colab="'+p.colaborador+'" data-qtd="'+(p.qtdPedido||0)+'">Confirmar</button>'
-        )
+        +'<button class="btn-confirmar" onclick="confirmarPedido(this)" '
+          +'data-pedido="'+p.numPedido+'" data-filial="'+filial+'" data-data="'+hoje+'" '
+          +'data-colab="'+p.colaborador+'" data-qtd="'+(p.qtdPedido||0)+'">Confirmar</button>'
         +'</div>';
     }).join('');
 
@@ -557,18 +568,16 @@ async function confirmarPedido(btn) {
       timestamp: Date.now()
     });
 
-    // Update UI
+    // Remove item da tela imediatamente
     const item = document.getElementById('pci-'+numPedido);
     if(item) {
-      item.classList.remove('pendente');
-      item.classList.add('confirmado');
-      item.querySelector('.ped-conf-info').innerHTML +=
-        '<div style="font-size:11px;color:var(--green-t);margin-top:3px">✓ Conferido por '+conferente+'</div>';
-      btn.outerHTML = '<span class="ped-conf-status ok">✓ Conferido</span>';
+      item.style.transition='all .3s';
+      item.style.opacity='0';
+      item.style.transform='translateX(20px)';
+      setTimeout(()=>item.remove(), 300);
     }
-
-    // Reload to update resumo
-    setTimeout(carregarPedidosParaConferir, 500);
+    // Reload resumo após animação
+    setTimeout(carregarPedidosParaConferir, 600);
   } catch(e) {
     btn.disabled = false;
     btn.textContent = 'Confirmar';
@@ -604,34 +613,36 @@ function buildRaceConf(list, wrap, subtitulo) {
   const cores = ['#FFD700','#3266ad','#1D9E75','#D85A30','#742774','#639922','#534AB7','#993556'];
   const medalhas = ['🥇','🥈','🥉'];
   const hora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  wrap.innerHTML = `<div class="race-track">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="font-size:13px;font-weight:600;color:#fff">🎖️ ${subtitulo}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.4)">Atualizado ${hora}</div>
-    </div>
-    ${list.map((c,i) => {
+  wrap.innerHTML = '<div class="race-track">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+      +'<div style="font-size:13px;font-weight:600;color:#fff">🎖️ '+subtitulo+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,.4)">'+hora+'</div>'
+    +'</div>'
+    + list.map((c,i)=>{
       const pct = Math.round((c.conferidos/max)*100);
       const cor = cores[i%cores.length];
       const medal = medalhas[i] || (i+1)+'º';
-      return `<div class="race-lane">
-        <div class="race-pos${i===0?' first':i===1?' second':i===2?' third':''}">${medal}</div>
-        <div class="race-name">${c.nome}</div>
-        <div class="race-bar-wrap">
-          <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}">
-            <span class="race-val">${c.conferidos}</span>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:80px">
-          <span style="font-size:12px;font-weight:600;color:#fff">${c.conferidos} ✅</span>
-          <span style="font-size:10px;color:${c.erros>0?'#e05252':'#1D9E75'}">${c.erros>0?c.erros+' ⚠ erros':'sem erros'}</span>
-        </div>
-      </div>`;
-    }).join('')}
-    <div class="race-meta">
-      <span class="race-meta-txt">${list.length} conferentes em pista</span>
-      <span class="race-meta-txt">${total} pedidos conferidos</span>
-    </div>
-  </div>`;
+      const erroColor = c.erros>0?'#e05252':'#1D9E75';
+      const erroTxt = c.erros>0? c.erros+' ⚠':'0 ⚠';
+      return '<div class="race-lane">'
+        +'<div class="race-pos'+(i===0?' first':i===1?' second':i===2?' third':'')+'">'+medal+'</div>'
+        +'<div class="race-name">'+c.nome+'</div>'
+        +'<div class="race-bar-wrap">'
+          +'<div class="race-bar" style="width:'+Math.max(pct,8)+'%;background:'+cor+'">'
+            +'<span class="race-val">'+c.conferidos+' ✅</span>'
+          +'</div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:90px">'
+          +'<span style="font-size:13px;font-weight:700;color:#fff">'+c.conferidos+' conf.</span>'
+          +'<span style="font-size:11px;color:'+erroColor+'">'+erroTxt+' erros</span>'
+        +'</div>'
+        +'</div>';
+    }).join('')
+    +'<div class="race-meta">'
+      +'<span class="race-meta-txt">'+list.length+' conferentes</span>'
+      +'<span class="race-meta-txt">'+total+' pedidos conferidos no período</span>'
+    +'</div>'
+    +'</div>';
 }
 
 async function renderRankingConferentes() {
@@ -780,9 +791,12 @@ async function addPedido(){
 
   // Verifica duplicata na lista temporária
   if(pedidosTemp.find(p=>p.num===num)){
-    showDuplicateAlert(`⚠ Pedido ${num} já está na lista atual!`,'warn');
+    showDuplicateAlert('⚠ Pedido '+num+' já está na lista atual!','warn');
     return;
   }
+  // Bloqueia duplo clique
+  const addBtn = document.getElementById('add-pedido-btn');
+  if(addBtn) { if(addBtn.dataset.processing==='1') return; addBtn.dataset.processing='1'; }
 
   // Verifica margem e duplicata no Firebase
   try {
@@ -794,11 +808,20 @@ async function addPedido(){
     const margem = margemData ? Number(margemData) : 1000;
     const todos = lancData ? Object.values(lancData) : [];
 
-    // Verifica duplicata exata hoje
-    const jaExiste = todos.find(l=>l.isPedido && l.numPedido===num && l.data===hoje);
-    if(jaExiste){
-      showDuplicateAlert(`🚫 Pedido ${num} já foi registrado hoje por ${jaExiste.colaborador} (${jaExiste.filial})!`,'err');
+    // Verifica duplicata — mesmo número em qualquer data/filial
+    const jaExisteHoje = todos.find(l=>l.isPedido && l.numPedido===num && l.data===hoje);
+    if(jaExisteHoje){
+      showDuplicateAlert('🚫 Pedido '+num+' já foi registrado hoje por '+jaExisteHoje.colaborador+' ('+jaExisteHoje.filial+')!','err');
+      const _b1=document.getElementById('add-pedido-btn');if(_b1)_b1.dataset.processing='0';
       return;
+    }
+    // Verifica duplicata em outras datas (últimos 7 dias)
+    const seteDiasAtras = new Date(); seteDiasAtras.setDate(seteDiasAtras.getDate()-7);
+    const limiteData = seteDiasAtras.toISOString().slice(0,10);
+    const jaExisteRecente = todos.find(l=>l.isPedido && l.numPedido===num && l.data>=limiteData && l.data!==hoje);
+    if(jaExisteRecente){
+      showDuplicateAlert('⚠ Pedido '+num+' já foi registrado em '+jaExisteRecente.data.split("-").reverse().join("/")+" por "+jaExisteRecente.colaborador+' ('+jaExisteRecente.filial+'). Tem certeza que é um pedido novo?','warn');
+      // Não bloqueia — só avisa para pedidos de outros dias
     }
 
     // Verifica margem — pega o último pedido registrado em qualquer dia (globalmente)
