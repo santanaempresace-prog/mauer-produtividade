@@ -182,10 +182,46 @@ textarea{resize:vertical;min-height:72px}
   <!-- TAB 2: CONFERENTE -->
   <div class="tab-content" id="tab-conferente">
     <div class="conf-info"><strong>Aba do conferente</strong> — Registre os erros encontrados durante a conferência. Aparecem em tempo real no painel do gestor.</div>
+
+    <!-- PAINEL DE STATUS DE PENDENTES -->
+    <div id="cf-status-panel" style="display:none;margin-bottom:14px">
+      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius:var(--radius);padding:16px 18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.08em">📋 Status da conferência — hoje</div>
+          <div id="cf-status-filial-lbl" style="font-size:11px;color:rgba(255,255,255,.4)"></div>
+        </div>
+        <!-- Barra de progresso -->
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px">
+            <span style="font-size:11px;color:rgba(255,255,255,.5)">Progresso conferência</span>
+            <span id="cf-pct-txt" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#fff">0%</span>
+          </div>
+          <div style="height:10px;background:rgba(255,255,255,.1);border-radius:10px;overflow:hidden">
+            <div id="cf-progress-bar" style="height:100%;width:0%;border-radius:10px;background:linear-gradient(90deg,#1D9E75,#2d6b28);transition:width .6s ease"></div>
+          </div>
+        </div>
+        <!-- Cards de stats -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:10px 12px;text-align:center">
+            <div id="cf-stat-total" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:#fff">—</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Total</div>
+          </div>
+          <div style="background:rgba(29,158,117,.15);border:1px solid rgba(29,158,117,.3);border-radius:8px;padding:10px 12px;text-align:center">
+            <div id="cf-stat-conf" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:#1D9E75">—</div>
+            <div style="font-size:10px;color:rgba(29,158,117,.7);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Conferidos</div>
+          </div>
+          <div style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);border-radius:8px;padding:10px 12px;text-align:center">
+            <div id="cf-stat-pend" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:#e05252">—</div>
+            <div style="font-size:10px;color:rgba(224,82,82,.7);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Pendentes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Identificação</div>
       <div class="form-grid">
-        <div class="form-group"><label>Filial <span class="req">*</span></label><select id="cf-filial" onchange="loadColabs('cf-filial','cf-colab');loadConferentes('cf-filial','cf-nome')"><option value="">Selecione</option></select></div>
+        <div class="form-group"><label>Filial <span class="req">*</span></label><select id="cf-filial" onchange="loadColabs('cf-filial','cf-colab');loadConferentes('cf-filial','cf-nome');atualizarStatusConferencia()"><option value="">Selecione</option></select></div>
         <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="cf-date"></div>
         <div class="form-group"><label>Conferente <span class="req">*</span></label><select id="cf-nome"><option value="">Selecione o conferente</option></select></div>
         <div class="form-group"><label>Colaborador com erro <span class="req">*</span></label><select id="cf-colab"><option value="">Selecione a filial primeiro</option></select></div>
@@ -771,7 +807,7 @@ function setTab(tab,btn){
   if(tab==='confirmar'){carregarConferentesParaConfirmar();}
   if(tab==='rank-conf'){renderRankingConferentes();}
   if(tab==='pedido')renderPedidoHistory();
-  if(tab==='conferente')renderErroHistory();
+  if(tab==='conferente'){renderErroHistory();atualizarStatusConferencia();}
 }
 
 // ---- PEDIDOS ----
@@ -791,9 +827,12 @@ async function addPedido(){
     showDuplicateAlert('⚠ Pedido '+num+' já está na lista atual!','warn');
     return;
   }
+
   // Bloqueia duplo clique
   const addBtn = document.getElementById('add-pedido-btn');
-  if(addBtn) { if(addBtn.dataset.processing==='1') return; addBtn.dataset.processing='1'; }
+  if(addBtn){ if(addBtn.dataset.processing==='1') return; addBtn.dataset.processing='1'; }
+
+  const liberar = () => { if(addBtn) addBtn.dataset.processing='0'; };
 
   // Verifica margem e duplicata no Firebase
   try {
@@ -805,46 +844,46 @@ async function addPedido(){
     const margem = margemData ? Number(margemData) : 1000;
     const todos = lancData ? Object.values(lancData) : [];
 
-    // Verifica duplicata — mesmo número em qualquer data/filial
+    // Duplicata HOJE → bloqueia
     const jaExisteHoje = todos.find(l=>l.isPedido && l.numPedido===num && l.data===hoje);
     if(jaExisteHoje){
       showDuplicateAlert('🚫 Pedido '+num+' já foi registrado hoje por '+jaExisteHoje.colaborador+' ('+jaExisteHoje.filial+')!','err');
-      const _b1=document.getElementById('add-pedido-btn');if(_b1)_b1.dataset.processing='0';
-      return;
+      liberar(); return;
     }
-    // Verifica duplicata em outras datas (últimos 7 dias)
+
+    // Duplicata últimos 7 dias → só avisa, não bloqueia
     const seteDiasAtras = new Date(); seteDiasAtras.setDate(seteDiasAtras.getDate()-7);
     const limiteData = seteDiasAtras.toISOString().slice(0,10);
     const jaExisteRecente = todos.find(l=>l.isPedido && l.numPedido===num && l.data>=limiteData && l.data!==hoje);
     if(jaExisteRecente){
-      showDuplicateAlert('⚠ Pedido '+num+' já foi registrado em '+jaExisteRecente.data.split("-").reverse().join("/")+" por "+jaExisteRecente.colaborador+' ('+jaExisteRecente.filial+'). Tem certeza que é um pedido novo?','warn');
-      // Não bloqueia — só avisa para pedidos de outros dias
+      showDuplicateAlert('⚠ Pedido '+num+' já foi registrado em '+jaExisteRecente.data.split("-").reverse().join("/")+' por '+jaExisteRecente.colaborador+' ('+jaExisteRecente.filial+'). Verifique se é um pedido novo.','warn');
+      // continua — não bloqueia
     }
 
-    // Verifica margem — pega o último pedido registrado em qualquer dia (globalmente)
+    // Verifica margem — avisa mas NÃO bloqueia
     const todosPedidos = todos.filter(l=>l.isPedido && l.numPedido);
-    if(todosPedidos.length > 0) {
-      // Ordena por timestamp ou data para pegar o mais recente
+    if(todosPedidos.length > 0){
       const sorted = todosPedidos
         .map(l=>({num:Number(l.numPedido), ts:l.timestamp||0, data:l.data||''}))
         .filter(l=>!isNaN(l.num) && l.num > 0)
         .sort((a,b)=>b.ts-a.ts || b.data.localeCompare(a.data));
-      if(sorted.length > 0) {
-        // Pega o maior número entre os últimos 50 pedidos (janela recente)
-        const recentes = sorted.slice(0, 50);
+      if(sorted.length > 0){
+        const recentes = sorted.slice(0,50);
         const ultimo = Math.max(...recentes.map(l=>l.num));
         const numInt = Number(num);
-        if(numInt < ultimo - margem || numInt > ultimo + margem) {
-          showDuplicateAlert(`⚠ Pedido ${num} fora da margem! Referência: ${ultimo} (margem: ±${margem.toLocaleString('pt-BR')})`, 'warn');
-          return;
+        if(numInt < ultimo - margem || numInt > ultimo + margem){
+          showDuplicateAlert(`⚠ Pedido ${num} fora da margem esperada (ref: ${ultimo} ±${margem.toLocaleString('pt-BR')}). Adicionado assim mesmo.`,'warn');
+          // continua — não bloqueia
         }
       }
     }
   } catch(e){ console.error(e); }
 
   pedidosTemp.push({num,qt});
-  document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
+  document.getElementById('p-num').value='';
+  document.getElementById('p-qt').value='';
   document.getElementById('p-num').focus();
+  liberar();
   renderPedidoTemp();
 }
 
@@ -903,6 +942,51 @@ function renderPedidoHistory(){
 }
 
 // ---- CONFERENTE ----
+
+async function atualizarStatusConferencia() {
+  const filial = document.getElementById('cf-filial').value;
+  const panel  = document.getElementById('cf-status-panel');
+  if (!filial) { panel.style.display = 'none'; return; }
+
+  panel.style.display = '';
+  document.getElementById('cf-status-filial-lbl').textContent = filial;
+
+  try {
+    const today = getBrasiliaDateStr();
+    const [lancData, confData] = await Promise.all([
+      fbGet('lancamentos'),
+      fbGet('confirmacoes')
+    ]);
+
+    const todos    = lancData ? Object.values(lancData) : [];
+    const confs    = confData ? Object.values(confData) : [];
+
+    // Pedidos da filial de HOJE
+    const pedidosHoje = todos.filter(l => l.isPedido && l.filial === filial && l.data === today && l.numPedido);
+    const totalHoje   = pedidosHoje.length;
+
+    // Confirmaçoes da filial de HOJE
+    const confHoje = confs.filter(c => c.filial === filial && c.data === today);
+    const numSet   = new Set(confHoje.map(c => String(c.numPedido)));
+    const confQtd  = pedidosHoje.filter(p => numSet.has(String(p.numPedido))).length;
+    const pendQtd  = totalHoje - confQtd;
+    const pct      = totalHoje > 0 ? Math.round((confQtd / totalHoje) * 100) : 0;
+
+    document.getElementById('cf-stat-total').textContent = totalHoje;
+    document.getElementById('cf-stat-conf').textContent  = confQtd;
+    document.getElementById('cf-stat-pend').textContent  = pendQtd;
+    document.getElementById('cf-pct-txt').textContent    = pct + '%';
+    document.getElementById('cf-progress-bar').style.width = pct + '%';
+
+    // Cor da barra conforme progresso
+    const bar = document.getElementById('cf-progress-bar');
+    if (pct === 100)      bar.style.background = 'linear-gradient(90deg,#1D9E75,#2d6b28)';
+    else if (pct >= 60)   bar.style.background = 'linear-gradient(90deg,#BA7517,#7a4f0d)';
+    else                  bar.style.background = 'linear-gradient(90deg,#e05252,#8b2424)';
+
+  } catch(e) { console.error(e); }
+}
+
 async function salvarErro(){
   const filial=document.getElementById('cf-filial').value;
   const date=document.getElementById('cf-date').value;
@@ -923,6 +1007,7 @@ async function salvarErro(){
     document.getElementById('separador-nao-found').style.display='none';
     showAlert('ok','Erro registrado no painel do gestor!');
     await carregarHoje();
+    atualizarStatusConferencia();
   }catch(e){showAlert('err','Erro ao registrar.');console.error(e);}
   btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Registrar erro';
 }
