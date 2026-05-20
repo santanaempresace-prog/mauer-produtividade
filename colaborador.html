@@ -27,7 +27,7 @@ body::before{content:'';position:fixed;inset:0;background:url('https://raw.githu
 .alert.show{display:flex}
 .alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
 .alert-err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
-.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
 .tab-btn{padding:9px 6px;border:none;border-radius:var(--rsm);background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;line-height:1.3}
 .tab-btn.active{background:var(--text);color:#fff}
 .tab-btn span{display:block;font-size:10px;font-weight:400;opacity:.75;margin-top:1px}
@@ -142,6 +142,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="tab-btn" onclick="setTab('conferente',this)">Conferente<span>Lançar erros</span></button>
     <button class="tab-btn" onclick="setTab('grafico',this)">🏁 Corrida<span>Ranking ao vivo</span></button>
     <button class="tab-btn" onclick="setTab('rank-conf',this)">🎖️ Conferentes<span>Ranking conferentes</span></button>
+    <button class="tab-btn" onclick="setTab('descarga',this)">🚛 Descarga<span>Descarregamento</span></button>
   </div>
 
   <!-- TAB 1: PEDIDOS -->
@@ -365,6 +366,122 @@ textarea{resize:vertical;min-height:72px}
       </div>
       <div id="rc-geral-wrap"></div>
     </div>
+  </div>
+
+  <!-- TAB 6: DESCARREGAMENTO -->
+  <div class="tab-content" id="tab-descarga">
+
+    <div id="desc-status-panel" style="margin-bottom:14px;display:none">
+      <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:var(--radius);padding:16px 18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.08em">🚛 Descargas hoje</span>
+          <span id="desc-status-filial" style="font-size:11px;color:rgba(255,255,255,.4)"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:10px;text-align:center">
+            <div id="desc-stat-total" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#fff">0</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:2px;text-transform:uppercase">Total</div>
+          </div>
+          <div style="background:rgba(29,158,117,.15);border:1px solid rgba(29,158,117,.3);border-radius:8px;padding:10px;text-align:center">
+            <div id="desc-stat-ok" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#1D9E75">0</div>
+            <div style="font-size:10px;color:rgba(29,158,117,.7);margin-top:2px;text-transform:uppercase">No prazo</div>
+          </div>
+          <div style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);border-radius:8px;padding:10px;text-align:center">
+            <div id="desc-stat-fora" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#e05252">0</div>
+            <div style="font-size:10px;color:rgba(224,82,82,.7);margin-top:2px;text-transform:uppercase">Fora do prazo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:6px"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Registrar descarregamento</div>
+
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>Filial <span class="req">*</span></label>
+          <select id="desc-filial" onchange="descFilialChange()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%">
+            <option value="">Selecione</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Data <span class="req">*</span></label>
+          <input type="date" id="desc-date" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>N&#186; da nota <span class="req">*</span></label>
+          <input type="text" id="desc-nota" placeholder="Ex: 22389" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Cubagem (m&#179;) <span class="req">*</span></label>
+          <input type="number" id="desc-cubagem" placeholder="Ex: 110.5" step="0.01" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>Quem descarregou <span class="req">*</span></label>
+          <input type="text" id="desc-nome" placeholder="Nome(s) dos respons&#225;veis" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Qtd de pessoas <span class="req">*</span></label>
+          <input type="number" id="desc-pessoas" placeholder="Ex: 4" min="1" max="20" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>In&#237;cio <span class="req">*</span></label>
+          <input type="time" id="desc-inicio" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Fim <span class="req">*</span></label>
+          <input type="time" id="desc-fim" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+
+      <div id="desc-duracao-wrap" style="display:none;margin-bottom:12px">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Dura&#231;&#227;o</div>
+            <div id="desc-duracao-txt" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--text)">--</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Estimado</div>
+            <div id="desc-estimado-txt" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--text)">--</div>
+          </div>
+          <div id="desc-status-badge" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#eee;color:#666">--</div>
+        </div>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>Pneus errados</label>
+          <input type="number" id="desc-pneus-err" placeholder="0" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Reclama&#231;&#227;o?</label>
+          <select id="desc-reclamacao" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%">
+            <option value="">N&#227;o</option>
+            <option value="sim">Sim</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:16px"><label>Observa&#231;&#227;o</label>
+        <textarea id="desc-obs" placeholder="Descreva intercorr&#234;ncias, atrasos, problemas..." rows="3" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%;resize:vertical"></textarea>
+      </div>
+
+      <div id="desc-alert" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500"></div>
+
+      <button onclick="salvarDescarga()" style="width:100%;padding:13px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">
+        🚛 Registrar descarga
+      </button>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">&#128203; Descargas de hoje</div>
+        <button onclick="carregarDescargasHoje()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);cursor:pointer">&#8635; Atualizar</button>
+      </div>
+      <div id="desc-historico">
+        <div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial para ver as descargas de hoje</div>
+      </div>
+    </div>
+
   </div>
 
 </div>
@@ -753,7 +870,7 @@ async function init() {
   const _gFimStr=new Date(_gIni.getFullYear(),_gIni.getMonth()+1,0).toISOString().slice(0,10);
   const elIni=document.getElementById('geral-date-ini');if(elIni){elIni.value=_gIniStr;}
   const elFim=document.getElementById('geral-date-fim');if(elFim){elFim.value=_gFimStr;}
-  ['p-date','cf-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
+  ['p-date','cf-date','desc-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
   try {
     const [filData,colData] = await Promise.all([fbGet('filiais'),fbGet('colaboradores')]);
     filiais = filData ? Object.entries(filData).map(([k,v])=>({...v,_key:k})) : [];
@@ -787,7 +904,7 @@ function setStatus(type,msg){const el=document.getElementById('status-badge');el
 
 function populateFilialSelects(){
   const opts='<option value="">Selecione</option>'+filiais.map(f=>`<option>${f.nome}</option>`).join('');
-  ['p-filial','cf-filial','g-filial'].forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=opts;if(v)el.value=v;}});
+  ['p-filial','cf-filial','g-filial','desc-filial'].forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=opts;if(v)el.value=v;}});
 }
 
 function loadColabs(filialId,colabId){
@@ -808,6 +925,7 @@ function setTab(tab,btn){
   if(tab==='rank-conf'){renderRankingConferentes();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente'){renderErroHistory();atualizarStatusConferencia();}
+  if(tab==='descarga'){descFilialChange();}
 }
 
 // ---- PEDIDOS ----
@@ -1204,6 +1322,189 @@ document.addEventListener('change',e=>{if(e.target.matches('input,select,textare
 document.addEventListener('input',e=>{if(e.target.matches('input,textarea'))e.target.classList.remove('err');});
 
 init();
+
+// ============================================================
+// DESCARREGAMENTO
+// ============================================================
+
+const DESC_BASE = [
+  { cub: 30,  p3: 40,  p6: 30,  p7: 20  },
+  { cub: 60,  p3: 80,  p6: 60,  p7: 50  },
+  { cub: 80,  p3: 105, p6: 80,  p7: 70  },
+  { cub: 90,  p3: 120, p6: 90,  p7: 80  },
+  { cub: 100, p3: 135, p6: 100, p7: 90  },
+  { cub: 110, p3: 165, p6: 140, p7: 130 },
+];
+
+function getEstimadoMin(cubagem, pessoas) {
+  const cub = parseFloat(String(cubagem).replace(',','.')) || 0;
+  const pes = parseInt(pessoas) || 0;
+  let linha = DESC_BASE[DESC_BASE.length - 1];
+  for (let i = 0; i < DESC_BASE.length; i++) {
+    if (cub <= DESC_BASE[i].cub) { linha = DESC_BASE[i]; break; }
+  }
+  if (pes <= 3) return linha.p3;
+  else if (pes <= 6) return linha.p6;
+  else return linha.p7;
+}
+
+function minToHHMM(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return (h > 0 ? h + 'h ' : '') + m.toString().padStart(2,'0') + 'min';
+}
+
+function calcDescDuracao() {
+  const ini  = document.getElementById('desc-inicio').value;
+  const fim  = document.getElementById('desc-fim').value;
+  const cub  = document.getElementById('desc-cubagem').value;
+  const pes  = document.getElementById('desc-pessoas').value;
+  const wrap = document.getElementById('desc-duracao-wrap');
+  if (!ini || !fim) { wrap.style.display = 'none'; return; }
+  const [ih, im] = ini.split(':').map(Number);
+  const [fh, fm] = fim.split(':').map(Number);
+  let durMin = (fh * 60 + fm) - (ih * 60 + im);
+  if (durMin < 0) durMin += 24 * 60;
+  const estMin = (cub && pes) ? getEstimadoMin(cub, pes) : null;
+  const realStatus = estMin ? (durMin <= estMin ? 'OK' : 'FORA') : null;
+  document.getElementById('desc-duracao-txt').textContent = minToHHMM(durMin);
+  document.getElementById('desc-estimado-txt').textContent = estMin ? minToHHMM(estMin) : '--';
+  const badge = document.getElementById('desc-status-badge');
+  if (realStatus === 'OK') {
+    badge.textContent = '✅ No prazo';
+    badge.style.cssText = 'padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--green-bg);color:var(--green-t)';
+  } else if (realStatus === 'FORA') {
+    badge.textContent = '⚠️ Fora do prazo';
+    badge.style.cssText = 'padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--red-bg);color:var(--red-t)';
+  } else {
+    badge.textContent = '--';
+    badge.style.cssText = 'padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--bg);color:var(--muted)';
+  }
+  wrap.style.display = '';
+}
+
+function descFilialChange() {
+  const filial = document.getElementById('desc-filial').value;
+  const panel  = document.getElementById('desc-status-panel');
+  if (!filial) { panel.style.display = 'none'; document.getElementById('desc-historico').innerHTML = '<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div>'; return; }
+  panel.style.display = '';
+  document.getElementById('desc-status-filial').textContent = filial;
+  carregarDescargasHoje();
+  atualizarStatusDescarga();
+}
+
+async function atualizarStatusDescarga() {
+  const filial = document.getElementById('desc-filial').value;
+  if (!filial) return;
+  try {
+    const today = getBrasiliaDateStr();
+    const data  = await fbGet('descarregamentos');
+    const todos = data ? Object.values(data) : [];
+    const hoje  = todos.filter(d => d.filial === filial && d.data === today);
+    document.getElementById('desc-stat-total').textContent = hoje.length;
+    document.getElementById('desc-stat-ok').textContent    = hoje.filter(d => d.realizado === 'OK').length;
+    document.getElementById('desc-stat-fora').textContent  = hoje.filter(d => d.realizado === 'FORA').length;
+  } catch(e) { console.error(e); }
+}
+
+async function carregarDescargasHoje() {
+  const filial = document.getElementById('desc-filial').value;
+  const wrap   = document.getElementById('desc-historico');
+  if (!filial) { wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div>'; return; }
+  wrap.innerHTML = '<div style="text-align:center;padding:16px;color:var(--hint);font-size:13px">Carregando...</div>';
+  try {
+    const today = getBrasiliaDateStr();
+    const data  = await fbGet('descarregamentos');
+    const todos = data ? Object.values(data) : [];
+    const hoje  = todos.filter(d => d.filial === filial && d.data === today)
+                       .sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+    if (!hoje.length) {
+      wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Nenhuma descarga registrada hoje nesta filial</div>';
+      return;
+    }
+    wrap.innerHTML = hoje.map(d => {
+      const isOk = d.realizado === 'OK';
+      const corS = isOk ? 'var(--green-t)' : '#e05252';
+      const bgS  = isOk ? 'var(--green-bg)' : 'var(--red-bg)';
+      return '<div style="border:1px solid var(--border);border-radius:var(--rsm);padding:12px 14px;margin-bottom:8px">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">'
+        +   '<div><div style="font-size:13px;font-weight:600;color:var(--text)">Nota ' + (d.nota||'—') + '</div>'
+        +   '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (d.nome||'—') + ' · ' + (d.pessoas||'?') + ' pessoas</div></div>'
+        +   '<div style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:' + bgS + ';color:' + corS + '">' + (d.realizado||'—') + '</div>'
+        + '</div>'
+        + '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)">'
+        +   '<span>📦 ' + (d.cubagem||'—') + ' m³</span>'
+        +   '<span>⏱ ' + (d.inicio||'--') + '→' + (d.fim||'--') + ' (' + (d.duracao||'?') + ')</span>'
+        +   (d.pneusErrados > 0 ? '<span style="color:#e05252">⚠ ' + d.pneusErrados + ' pneus errados</span>' : '')
+        +   (d.reclamacao === 'sim' ? '<span style="color:#e05252">🔴 Reclamação</span>' : '')
+        + '</div>'
+        + (d.obs ? '<div style="margin-top:6px;font-size:11px;color:var(--muted);font-style:italic">' + d.obs + '</div>' : '')
+        + '</div>';
+    }).join('');
+  } catch(e) { console.error(e); wrap.innerHTML = '<div style="color:#e05252;padding:16px;font-size:13px">Erro ao carregar</div>'; }
+}
+
+function showDescAlert(msg, tipo) {
+  const el = document.getElementById('desc-alert');
+  el.textContent = msg;
+  el.style.display = '';
+  const styles = {
+    ok:   'background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)',
+    err:  'background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)',
+    warn: 'background:var(--amber-bg);color:var(--amber-t);border:1px solid var(--amber-b)'
+  };
+  el.style.cssText += ';' + (styles[tipo] || styles.warn);
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+async function salvarDescarga() {
+  const filial  = document.getElementById('desc-filial').value.trim();
+  const data_d  = document.getElementById('desc-date').value;
+  const nota    = document.getElementById('desc-nota').value.trim();
+  const cubagem = document.getElementById('desc-cubagem').value;
+  const nome    = document.getElementById('desc-nome').value.trim();
+  const pessoas = document.getElementById('desc-pessoas').value;
+  const inicio  = document.getElementById('desc-inicio').value;
+  const fim     = document.getElementById('desc-fim').value;
+
+  if (!filial || !data_d || !nota || !cubagem || !nome || !pessoas || !inicio || !fim) {
+    showDescAlert('⚠ Preencha todos os campos obrigatórios!', 'warn'); return;
+  }
+  const [ih, im] = inicio.split(':').map(Number);
+  const [fh, fm] = fim.split(':').map(Number);
+  let durMin = (fh * 60 + fm) - (ih * 60 + im);
+  if (durMin < 0) durMin += 24 * 60;
+  const estMin    = getEstimadoMin(cubagem, pessoas);
+  const realizado = durMin <= estMin ? 'OK' : 'FORA';
+
+  const registro = {
+    filial, data: data_d, nota,
+    cubagem: parseFloat(String(cubagem).replace(',','.')),
+    nome, pessoas: parseInt(pessoas), inicio, fim,
+    duracao: minToHHMM(durMin), duracaoMin: durMin,
+    estimadoMin: estMin, realizado,
+    pneusErrados: parseInt(document.getElementById('desc-pneus-err').value) || 0,
+    reclamacao:   document.getElementById('desc-reclamacao').value || '',
+    obs:          document.getElementById('desc-obs').value.trim(),
+    timestamp:    Date.now()
+  };
+
+  try {
+    await fbPost('descarregamentos', registro);
+    showDescAlert('✅ Descarga registrada!', 'ok');
+    ['desc-nota','desc-cubagem','desc-nome','desc-pessoas','desc-inicio','desc-fim','desc-pneus-err','desc-obs'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('desc-reclamacao').value = '';
+    document.getElementById('desc-duracao-wrap').style.display = 'none';
+    carregarDescargasHoje();
+    atualizarStatusDescarga();
+  } catch(e) {
+    showDescAlert('❌ Erro ao salvar. Verifique a conexão.', 'err');
+    console.error(e);
+  }
+}
+
 </script>
 </body>
 </html>
