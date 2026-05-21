@@ -1624,7 +1624,7 @@ var descCharts = {};
 async function renderDashDescarga() {
   try {
     var f = getDashFilter();
-    var data = await fetch(FB_URL + '/descarregamentos.json').then(function(r){return r.json();});
+    var data = await fbGet('descarregamentos');
     var todos = data ? Object.values(data) : [];
 
     // Aplica filtros de data e filial
