@@ -482,6 +482,86 @@ textarea{resize:vertical;min-height:72px}
       </div>
     </div>
 
+    <!-- CARD: MINHAS MÉDIAS -->
+    <div class="card" style="margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0">📊 Minhas médias de descarga</div>
+        <button onclick="carregarMinhasMedias()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);cursor:pointer">↻ Atualizar</button>
+      </div>
+
+      <!-- Busca por nome -->
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Seu nome (como digitou nas descargas)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="media-nome" placeholder="Ex: João Silva" autocomplete="off"
+            style="flex:1;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none"
+            onkeydown="if(event.key==='Enter') carregarMinhasMedias()">
+          <button onclick="carregarMinhasMedias()" style="padding:9px 16px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Buscar</button>
+        </div>
+      </div>
+
+      <!-- KPIs pessoais -->
+      <div id="media-kpis" style="display:none;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;text-align:center">
+            <div id="mk-total" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:var(--text)">0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.04em">Descargas no mês</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;text-align:center">
+            <div id="mk-media-tempo" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:var(--text)">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.04em">Tempo médio</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:var(--green-bg);border:1px solid var(--green-b);border-radius:var(--rsm);padding:12px;text-align:center">
+            <div id="mk-ok" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--green-t)">0</div>
+            <div style="font-size:10px;color:var(--green-t);margin-top:3px;text-transform:uppercase;letter-spacing:.04em">No prazo</div>
+          </div>
+          <div style="background:var(--red-bg);border:1px solid var(--red-b);border-radius:var(--rsm);padding:12px;text-align:center">
+            <div id="mk-fora" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--red-t)">0</div>
+            <div style="font-size:10px;color:var(--red-t);margin-top:3px;text-transform:uppercase;letter-spacing:.04em">Fora prazo</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;text-align:center">
+            <div id="mk-pct" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--text)">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.04em">% no prazo</div>
+          </div>
+        </div>
+
+        <!-- Barra de desempenho -->
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px">
+            <span>Desempenho geral</span>
+            <span id="mk-pct-label">0%</span>
+          </div>
+          <div style="height:8px;background:var(--border);border-radius:8px;overflow:hidden">
+            <div id="mk-barra" style="height:100%;width:0%;border-radius:8px;transition:width .6s ease;background:var(--green-t)"></div>
+          </div>
+        </div>
+
+        <!-- Cubagem e pessoas médias -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Cubagem média</div>
+            <div id="mk-cub" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--text)">—</div>
+            <div style="font-size:10px;color:var(--hint);margin-top:1px">m³ por descarga</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Melhor tempo</div>
+            <div id="mk-melhor" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--green-t)">—</div>
+            <div style="font-size:10px;color:var(--hint);margin-top:1px">duração mais rápida</div>
+          </div>
+        </div>
+
+        <!-- Histórico dos últimos lançamentos -->
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Últimas descargas</div>
+          <div id="mk-historico"></div>
+        </div>
+      </div>
+
+      <div id="media-empty" style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Digite seu nome para ver suas estatísticas</div>
+    </div>
+
   </div>
 
 </div>
@@ -1322,6 +1402,98 @@ document.addEventListener('change',e=>{if(e.target.matches('input,select,textare
 document.addEventListener('input',e=>{if(e.target.matches('input,textarea'))e.target.classList.remove('err');});
 
 init();
+
+// ============================================================
+// MÉDIAS DO COLABORADOR
+// ============================================================
+async function carregarMinhasMedias() {
+  const nome  = (document.getElementById('media-nome').value || '').trim().toLowerCase();
+  const kpis  = document.getElementById('media-kpis');
+  const empty = document.getElementById('media-empty');
+
+  if (!nome) { empty.textContent = 'Digite seu nome para ver suas estatísticas'; empty.style.display=''; kpis.style.display='none'; return; }
+
+  empty.textContent = 'Buscando...'; empty.style.display=''; kpis.style.display='none';
+
+  try {
+    const data = await fbGet('descarregamentos');
+    const todos = data ? Object.values(data) : [];
+
+    // Filtra por nome (busca parcial, case-insensitive)
+    const meus = todos.filter(d => d.nome && d.nome.toLowerCase().includes(nome));
+
+    if (!meus.length) {
+      empty.textContent = 'Nenhuma descarga encontrada para "' + nome + '"';
+      empty.style.display = '';
+      kpis.style.display = 'none';
+      return;
+    }
+
+    // Mês atual
+    const mesAtual = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const doMes    = meus.filter(d => d.data && d.data.startsWith(mesAtual));
+
+    const total = doMes.length;
+    const ok    = doMes.filter(d => d.realizado === 'OK').length;
+    const fora  = doMes.filter(d => d.realizado === 'FORA').length;
+    const pct   = total > 0 ? Math.round(ok / total * 100) : 0;
+
+    // Tempos
+    const tempos   = meus.filter(d => d.duracaoMin > 0).map(d => d.duracaoMin);
+    const mediaTmp = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : 0;
+    const melhorTmp= tempos.length ? Math.min(...tempos) : 0;
+
+    // Cubagem média
+    const cubagens = meus.filter(d => d.cubagem > 0).map(d => d.cubagem);
+    const mediaCub = cubagens.length ? (cubagens.reduce((a,b)=>a+b,0)/cubagens.length).toFixed(1) : '—';
+
+    // Preenche KPIs
+    const el = id => document.getElementById(id);
+    el('mk-total').textContent      = total;
+    el('mk-ok').textContent         = ok;
+    el('mk-fora').textContent       = fora;
+    el('mk-pct').textContent        = pct + '%';
+    el('mk-pct-label').textContent  = pct + '%';
+    el('mk-media-tempo').textContent= mediaTmp ? minToHHMM(mediaTmp) : '—';
+    el('mk-melhor').textContent     = melhorTmp ? minToHHMM(melhorTmp) : '—';
+    el('mk-cub').textContent        = mediaCub;
+
+    // Barra de desempenho
+    const barra = el('mk-barra');
+    barra.style.width = pct + '%';
+    barra.style.background = pct >= 80 ? 'var(--green-t)' : pct >= 50 ? '#BA7517' : '#e05252';
+
+    // Histórico — últimas 8 descargas (todas datas)
+    const recentes = meus.slice().sort((a,b) => (b.timestamp||0)-(a.timestamp||0)).slice(0,8);
+    el('mk-historico').innerHTML = recentes.map(d => {
+      const isOk = d.realizado === 'OK';
+      const dt   = d.data ? d.data.split('-').reverse().join('/') : '—';
+      const excesso = (d.duracaoMin && d.estimadoMin && d.duracaoMin > d.estimadoMin)
+        ? '+' + minToHHMM(d.duracaoMin - d.estimadoMin) + ' acima'
+        : null;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:8px">'
+        + '<div style="flex:1">'
+        +   '<div style="font-size:12px;font-weight:500;color:var(--text)">Nota ' + (d.nota||'—') + ' · ' + (d.filial||'—') + '</div>'
+        +   '<div style="font-size:11px;color:var(--muted);margin-top:1px">'
+        +     dt + ' · ' + (d.duracao||'—')
+        +     (excesso ? ' <span style="color:#e05252">(' + excesso + ')</span>' : '')
+        +   '</div>'
+        + '</div>'
+        + '<span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;background:'
+        +   (isOk?'var(--green-bg)':'var(--red-bg)') + ';color:' + (isOk?'var(--green-t)':'var(--red-t)') + '">'
+        +   d.realizado + '</span>'
+        + '</div>';
+    }).join('');
+
+    empty.style.display = 'none';
+    kpis.style.display  = '';
+  } catch(e) {
+    empty.textContent = 'Erro ao carregar. Verifique a conexão.';
+    empty.style.display = '';
+    kpis.style.display = 'none';
+    console.error(e);
+  }
+}
 
 // ============================================================
 // DESCARREGAMENTO
