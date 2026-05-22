@@ -10,11 +10,10 @@
 :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;--blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-body::before{content:'';position:fixed;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.60;z-index:0;pointer-events:none}
+body::before{content:'';position:fixed;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.60;z-index:-1;pointer-events:none}
 .container{position:relative;z-index:1}
 .topbar{position:sticky;top:0;z-index:10;backdrop-filter:blur(8px);background:rgba(255,255,255,.92)}
 .tabs{backdrop-filter:blur(6px);background:rgba(255,255,255,.88)}
-.card{backdrop-filter:blur(6px);background:rgba(255,255,255,.92)}
 .alert{position:relative;z-index:2}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:13px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
 .tb-icon{width:32px;height:32px;background:var(--text);border-radius:8px;display:flex;align-items:center;justify-content:center}
@@ -22,7 +21,7 @@ body::before{content:'';position:fixed;inset:0;background:url('https://raw.githu
 .tb-title{font-size:15px;font-weight:600}.tb-sub{font-size:12px;color:var(--muted);margin-top:1px}
 .tb-status{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:20px;font-weight:500}
 .tb-status.ok{background:var(--green-bg);color:var(--green-t)}.tb-status.err{background:var(--red-bg);color:var(--red-t)}.tb-status.loading{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
-.container{max-width:580px;margin:0 auto;padding:20px 16px 56px}.container.wide{max-width:900px}
+.container{max-width:860px;margin:0 auto;padding:20px 16px 56px}
 .alert{border-radius:var(--radius);padding:11px 15px;font-size:13px;margin-bottom:14px;display:none;align-items:center;gap:8px;font-weight:500}
 .alert.show{display:flex}
 .alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
@@ -123,9 +122,8 @@ textarea{resize:vertical;min-height:72px}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:480px){.form-grid{grid-template-columns:1fr}.pedido-add-row{grid-template-columns:1fr 90px auto}.chart-metrics{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:860px){#desc-layout-grid{grid-template-columns:1fr!important}}
+@media(max-width:700px){#desc-layout-grid{grid-template-columns:1fr!important}}
 #desc-layout-grid>div{min-width:0}
-.container.wide{max-width:900px!important}
 </style>
 </head>
 <body>
@@ -1008,13 +1006,17 @@ function loadChartColabs(){loadColabs('g-filial','g-colab');renderRankingCorrida
 function setTab(tab,btn){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
+  const el=document.getElementById('tab-'+tab);
+  if(!el){console.error('TAB NOT FOUND: tab-'+tab); return;}
+  el.classList.add('active');
+  btn.classList.add('active');
+  console.log('setTab:',tab,'el:',el,'display:',getComputedStyle(el).display,'children:',el.children.length);
   if(tab==='grafico'){renderRankingCorrida();renderChart();}
   if(tab==='confirmar'){carregarConferentesParaConfirmar();}
   if(tab==='rank-conf'){renderRankingConferentes();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente'){renderErroHistory();atualizarStatusConferencia();}
-  if(tab==='descarga'){document.querySelector('.container').classList.add('wide');descFilialChange();carregarStatsDescarga();}else{document.querySelector('.container').classList.remove('wide');}
+  if(tab==='descarga'){descFilialChange();carregarStatsDescarga();}
 }
 
 // ---- PEDIDOS ----
