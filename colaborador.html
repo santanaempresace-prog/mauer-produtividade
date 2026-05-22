@@ -1454,7 +1454,7 @@ async function carregarStatsDescarga() {
           return '<div style="margin-bottom:12px">'
             + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">'
             +   '<span style="font-size:11px;font-weight:600;color:var(--text)">' + nomeCurto + '</span>'
-            +   '<span style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:'+cor+'">' + p + '%</span>'
+            +   '<span style="font-family:DM Mono,monospace;font-size:11px;font-weight:600;color:'+cor+'">' + p + '%</span>'
             + '</div>'
             + '<div style="height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:4px">'
             +   '<div style="height:100%;width:'+barW+'%;background:'+cor+';border-radius:5px;transition:width .5s"></div>'
@@ -1498,7 +1498,7 @@ async function carregarStatsDescarga() {
             +   '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nomeCurto + '</div>'
             +   '<div style="font-size:10px;color:var(--hint);margin-top:1px">' + v.total + ' descargas · ⏱ ' + (mt ? minToHHMM(mt) : '—') + '</div>'
             + '</div>'
-            + '<div style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:'+cor+'">' + p + '%</div>'
+            + '<div style="font-family:DM Mono,monospace;font-size:11px;font-weight:700;color:'+cor+'">' + p + '%</div>'
             + '</div>';
         }).join('');
       }
