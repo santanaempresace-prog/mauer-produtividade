@@ -944,10 +944,13 @@ async function renderRankingConferentesGeral() {
 
 async function init() {
   setStatus('loading','Conectando...');
-  const today=new Date().toISOString().slice(0,10);
-  const _gIni=new Date();_gIni.setDate(1);
-  const _gIniStr=_gIni.toISOString().slice(0,10);
-  const _gFimStr=new Date(_gIni.getFullYear(),_gIni.getMonth()+1,0).toISOString().slice(0,10);
+  const _now=new Date();
+  const _pad=n=>String(n).padStart(2,'0');
+  const today=_now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
+  const _gIni=new Date(_now.getFullYear(),_now.getMonth(),1);
+  const _gIniStr=_gIni.getFullYear()+'-'+_pad(_gIni.getMonth()+1)+'-'+_pad(_gIni.getDate());
+  const _gFim=new Date(_now.getFullYear(),_now.getMonth()+1,0);
+  const _gFimStr=_gFim.getFullYear()+'-'+_pad(_gFim.getMonth()+1)+'-'+_pad(_gFim.getDate());
   const elIni=document.getElementById('geral-date-ini');if(elIni){elIni.value=_gIniStr;}
   const elFim=document.getElementById('geral-date-fim');if(elFim){elFim.value=_gFimStr;}
   ['p-date','cf-date','desc-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
@@ -1042,20 +1045,12 @@ async function addPedido(){
     const margem = margemData ? Number(margemData) : 1000;
     const todos = lancData ? Object.values(lancData) : [];
 
-    // Duplicata HOJE → bloqueia
-    const jaExisteHoje = todos.find(l=>l.isPedido && l.numPedido===num && l.data===hoje);
-    if(jaExisteHoje){
-      showDuplicateAlert('🚫 Pedido '+num+' já foi registrado hoje por '+jaExisteHoje.colaborador+' ('+jaExisteHoje.filial+')!','err');
+    // Duplicata em QUALQUER data → bloqueia sempre
+    const jaExiste = todos.find(l=>l.isPedido && l.numPedido===num);
+    if(jaExiste){
+      const dtFmt = jaExiste.data ? jaExiste.data.split('-').reverse().join('/') : '?';
+      showDuplicateAlert('🚫 Pedido '+num+' já foi registrado em '+dtFmt+' por '+jaExiste.colaborador+' ('+jaExiste.filial+'). Não é possível adicionar duplicado.','err');
       liberar(); return;
-    }
-
-    // Duplicata últimos 7 dias → só avisa, não bloqueia
-    const seteDiasAtras = new Date(); seteDiasAtras.setDate(seteDiasAtras.getDate()-7);
-    const limiteData = seteDiasAtras.toISOString().slice(0,10);
-    const jaExisteRecente = todos.find(l=>l.isPedido && l.numPedido===num && l.data>=limiteData && l.data!==hoje);
-    if(jaExisteRecente){
-      showDuplicateAlert('⚠ Pedido '+num+' já foi registrado em '+jaExisteRecente.data.split("-").reverse().join("/")+' por '+jaExisteRecente.colaborador+' ('+jaExisteRecente.filial+'). Verifique se é um pedido novo.','warn');
-      // continua — não bloqueia
     }
 
     // Verifica margem — avisa mas NÃO bloqueia
