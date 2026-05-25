@@ -1501,12 +1501,12 @@ function calcDescDuracao() {
 
 function descFilialChange() {
   const filial = document.getElementById('desc-filial').value;
-  const panel  = document.getElementById('desc-status-panel');
-  if (!filial) { panel.style.display = 'none'; document.getElementById('desc-historico').innerHTML = '<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div>'; return; }
-  panel.style.display = '';
-  document.getElementById('desc-status-filial').textContent = filial;
+  const hist = document.getElementById('desc-historico');
+  if (!filial) {
+    if(hist) hist.innerHTML = '<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div>';
+    return;
+  }
   carregarDescargasHoje();
-  atualizarStatusDescarga();
 }
 
 async function atualizarStatusDescarga() {
