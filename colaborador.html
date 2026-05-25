@@ -9,26 +9,29 @@
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;--blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:#1a1a2e;color:var(--text);min-height:100vh}
-
-
-.alert{position:relative}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.60;z-index:0;pointer-events:none}
+.container{position:relative;z-index:1}
+.topbar{position:sticky;top:0;z-index:10;backdrop-filter:blur(8px);background:rgba(255,255,255,.92)}
+.tabs{backdrop-filter:blur(6px);background:rgba(255,255,255,.88)}
+.card{backdrop-filter:blur(6px);background:rgba(255,255,255,.92)}
+.alert{position:relative;z-index:2}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:13px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
 .tb-icon{width:32px;height:32px;background:var(--text);border-radius:8px;display:flex;align-items:center;justify-content:center}
 .tb-icon svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tb-title{font-size:15px;font-weight:600}.tb-sub{font-size:12px;color:var(--muted);margin-top:1px}
 .tb-status{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:20px;font-weight:500}
 .tb-status.ok{background:var(--green-bg);color:var(--green-t)}.tb-status.err{background:var(--red-bg);color:var(--red-t)}.tb-status.loading{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
-.container{max-width:580px;margin:0 auto;padding:20px 16px 56px;background:var(--bg)}
+.container{max-width:580px;margin:0 auto;padding:20px 16px 56px}
 .alert{border-radius:var(--radius);padding:11px 15px;font-size:13px;margin-bottom:14px;display:none;align-items:center;gap:8px;font-weight:500}
 .alert.show{display:flex}
 .alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
 .alert-err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
-.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
 .tab-btn{padding:9px 6px;border:none;border-radius:var(--rsm);background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;line-height:1.3}
 .tab-btn.active{background:var(--text);color:#fff}
 .tab-btn span{display:block;font-size:10px;font-weight:400;opacity:.75;margin-top:1px}
-.tab-content{display:none!important}.tab-content.active{display:block!important;min-height:100px;visibility:visible!important;opacity:1!important}
+.tab-content{display:none}.tab-content.active{display:block}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:12px}
 .card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;gap:6px}
 .card-title svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
@@ -123,7 +126,6 @@ textarea{resize:vertical;min-height:72px}
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <div class="tb-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
   <div><div class="tb-title">Preenchimento diário</div><div class="tb-sub">Mauer Logística</div></div>
@@ -139,6 +141,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="tab-btn" onclick="setTab('confirmar',this)">✅ Confirmar<span>Conferência</span></button>
     <button class="tab-btn" onclick="setTab('conferente',this)">Conferente<span>Lançar erros</span></button>
     <button class="tab-btn" onclick="setTab('grafico',this)">🏁 Corrida<span>Ranking ao vivo</span></button>
+    <button class="tab-btn" onclick="setTab('rank-conf',this)">🎖️ Conferentes<span>Ranking conferentes</span></button>
     <button class="tab-btn" onclick="setTab('descarga',this)">🚛 Descarga<span>Descarregamento</span></button>
   </div>
 
@@ -180,46 +183,10 @@ textarea{resize:vertical;min-height:72px}
   <!-- TAB 2: CONFERENTE -->
   <div class="tab-content" id="tab-conferente">
     <div class="conf-info"><strong>Aba do conferente</strong> — Registre os erros encontrados durante a conferência. Aparecem em tempo real no painel do gestor.</div>
-
-    <!-- PAINEL DE STATUS DE PENDENTES -->
-    <div id="cf-status-panel" style="display:none;margin-bottom:14px">
-      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius:var(--radius);padding:16px 18px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.08em">📋 Status da conferência — hoje</div>
-          <div id="cf-status-filial-lbl" style="font-size:11px;color:rgba(255,255,255,.4)"></div>
-        </div>
-        <!-- Barra de progresso -->
-        <div style="margin-bottom:14px">
-          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px">
-            <span style="font-size:11px;color:rgba(255,255,255,.5)">Progresso conferência</span>
-            <span id="cf-pct-txt" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#fff">0%</span>
-          </div>
-          <div style="height:10px;background:rgba(255,255,255,.1);border-radius:10px;overflow:hidden">
-            <div id="cf-progress-bar" style="height:100%;width:0%;border-radius:10px;background:linear-gradient(90deg,#1D9E75,#2d6b28);transition:width .6s ease"></div>
-          </div>
-        </div>
-        <!-- Cards de stats -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-          <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:10px 12px;text-align:center">
-            <div id="cf-stat-total" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:#fff">—</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Total</div>
-          </div>
-          <div style="background:rgba(29,158,117,.15);border:1px solid rgba(29,158,117,.3);border-radius:8px;padding:10px 12px;text-align:center">
-            <div id="cf-stat-conf" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:#1D9E75">—</div>
-            <div style="font-size:10px;color:rgba(29,158,117,.7);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Conferidos</div>
-          </div>
-          <div style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);border-radius:8px;padding:10px 12px;text-align:center">
-            <div id="cf-stat-pend" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:#e05252">—</div>
-            <div style="font-size:10px;color:rgba(224,82,82,.7);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Pendentes</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="card">
       <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Identificação</div>
       <div class="form-grid">
-        <div class="form-group"><label>Filial <span class="req">*</span></label><select id="cf-filial" onchange="loadColabs('cf-filial','cf-colab');loadConferentes('cf-filial','cf-nome');atualizarStatusConferencia()"><option value="">Selecione</option></select></div>
+        <div class="form-group"><label>Filial <span class="req">*</span></label><select id="cf-filial" onchange="loadColabs('cf-filial','cf-colab');loadConferentes('cf-filial','cf-nome')"><option value="">Selecione</option></select></div>
         <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="cf-date"></div>
         <div class="form-group"><label>Conferente <span class="req">*</span></label><select id="cf-nome"><option value="">Selecione o conferente</option></select></div>
         <div class="form-group"><label>Colaborador com erro <span class="req">*</span></label><select id="cf-colab"><option value="">Selecione a filial primeiro</option></select></div>
@@ -273,7 +240,7 @@ textarea{resize:vertical;min-height:72px}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;min-width:120px">
           <label style="font-size:11px;font-weight:500;color:var(--muted)">Data</label>
-          <input type="date" id="conf-date-check" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none">
+          <input type="date" id="conf-data-check" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none">
         </div>
         <button onclick="carregarPedidosParaConferir()" style="padding:9px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;align-self:flex-end">Ver pedidos</button>
       </div>
@@ -331,109 +298,113 @@ textarea{resize:vertical;min-height:72px}
       <div id="chart-empty" style="text-align:center;padding:24px;color:var(--hint);font-size:13px">Selecione um colaborador</div>
     </div>
   
-  <!-- TAB: DESCARGA -->
-  <div class="tab-content" id="tab-descarga">
-    <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:18px 20px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:#6b6860;text-transform:uppercase;letter-spacing:.06em;margin-bottom:16px;display:flex;align-items:center;gap:6px">
-        🚛 REGISTRAR DESCARREGAMENTO
+  <!-- TAB: RANKING CONFERENTES -->
+  <div class="tab-content" id="tab-rank-conf">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:10px">🎖️ Ranking conferentes — hoje</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <select id="rc-filial" onchange="renderRankingConferentes()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer;flex:1">
+          <option value="">Selecione a filial</option>
+        </select>
+        <button onclick="renderRankingConferentes()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Atualizar</button>
       </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">Filial <span style="color:#e05252">*</span></label>
-          <select id="desc-filial" onchange="descFilialChange()" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;-webkit-appearance:none">
-            <option value="">Selecione</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">Data <span style="color:#e05252">*</span></label>
-          <input type="date" id="desc-date" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;box-sizing:border-box">
-        </div>
+      <div id="rc-today-wrap">
+        <div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>
       </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">N&#186; da nota <span style="color:#e05252">*</span></label>
-          <input type="text" id="desc-nota" placeholder="Ex: 22389" autocomplete="off" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">Cubagem (m&#179;) <span style="color:#e05252">*</span></label>
-          <input type="number" id="desc-cubagem" placeholder="Ex: 110.5" step="0.01" min="0" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;box-sizing:border-box">
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">Quem descarregou <span style="color:#e05252">*</span></label>
-          <input type="text" id="desc-nome" placeholder="Nome(s) dos respons&#225;veis" autocomplete="off" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">Qtd de pessoas <span style="color:#e05252">*</span></label>
-          <input type="number" id="desc-pessoas" placeholder="Ex: 4" min="1" max="20" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;box-sizing:border-box">
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">In&#237;cio <span style="color:#e05252">*</span></label>
-          <input type="time" id="desc-inicio" onchange="calcDescDuracao()" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">Fim <span style="color:#e05252">*</span></label>
-          <input type="time" id="desc-fim" onchange="calcDescDuracao()" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;box-sizing:border-box">
-        </div>
-      </div>
-
-      <div id="desc-duracao-wrap" style="display:none;margin-bottom:12px">
-        <div style="background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <div><div style="font-size:10px;color:#6b6860;text-transform:uppercase;margin-bottom:2px">Dura&#231;&#227;o</div><div id="desc-duracao-txt" style="font-size:18px;font-weight:600;color:#1a1917">--</div></div>
-          <div><div style="font-size:10px;color:#6b6860;text-transform:uppercase;margin-bottom:2px">Estimado</div><div id="desc-estimado-txt" style="font-size:18px;font-weight:600;color:#1a1917">--</div></div>
-          <div id="desc-status-badge" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#eee;color:#666">--</div>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">Pneus errados</label>
-          <input type="number" id="desc-pneus-err" placeholder="0" min="0" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">Reclama&#231;&#227;o?</label>
-          <select id="desc-reclamacao" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;-webkit-appearance:none;box-sizing:border-box">
-            <option value="">N&#227;o</option><option value="sim">Sim</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="margin-bottom:16px">
-        <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">Observa&#231;&#227;o</label>
-        <textarea id="desc-obs" placeholder="Descreva intercorr&#234;ncias, atrasos, problemas..." rows="3" style="width:100%;font-family:inherit;font-size:13px;color:#1a1917;background:#f5f4f0;border:1px solid #e2e0d8;border-radius:6px;padding:9px 12px;outline:none;resize:vertical;box-sizing:border-box"></textarea>
-      </div>
-
-      <div id="desc-alert" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:6px;font-size:13px;font-weight:500"></div>
-
-      <button onclick="salvarDescarga()" style="width:100%;padding:13px;background:#1a1917;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">
-        🚛 Registrar descarga
-      </button>
     </div>
 
-    <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:18px 20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:11px;font-weight:700;color:#6b6860;text-transform:uppercase;letter-spacing:.06em">📋 Descargas de hoje</div>
-        <button onclick="carregarDescargasHoje()" style="padding:5px 10px;background:transparent;border:1px solid #e2e0d8;border-radius:6px;font-size:11px;color:#6b6860;cursor:pointer;font-family:inherit">&#8635; Atualizar</button>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">🌎 Ranking geral conferentes</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">De</label>
+          <input type="date" id="rc-date-ini" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;width:100%">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">Até</label>
+          <input type="date" id="rc-date-fim" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;width:100%">
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="setRcPeriodo('hoje')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer">Hoje</button>
+          <button onclick="setRcPeriodo('mes')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer">Mês</button>
+          <button onclick="renderRankingConferentesGeral()" style="padding:6px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer">Buscar</button>
+        </div>
       </div>
-      <div id="desc-historico"><div style="text-align:center;padding:20px;color:#a09d96;font-size:13px">Selecione uma filial</div></div>
+      <div id="rc-geral-wrap"></div>
     </div>
   </div>
 
-
+  <!-- TAB DESCARGA -->
+  <div class="tab-content" id="tab-descarga">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        Registrar descarregamento
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Filial <span class="req">*</span></label>
+          <select id="desc-filial" onchange="descFilialChange()"><option value="">Selecione</option></select>
+        </div>
+        <div class="form-group"><label>Data <span class="req">*</span></label>
+          <input type="date" id="desc-date">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="form-group"><label>N&#186; da nota <span class="req">*</span></label>
+          <input type="text" id="desc-nota" placeholder="Ex: 22389" autocomplete="off">
+        </div>
+        <div class="form-group"><label>Cubagem (m&#179;) <span class="req">*</span></label>
+          <input type="number" id="desc-cubagem" placeholder="Ex: 110.5" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="form-group"><label>Quem descarregou <span class="req">*</span></label>
+          <input type="text" id="desc-nome" placeholder="Nome(s) dos respons&#225;veis" autocomplete="off">
+        </div>
+        <div class="form-group"><label>Qtd de pessoas <span class="req">*</span></label>
+          <input type="number" id="desc-pessoas" placeholder="Ex: 4" min="1" max="20">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="form-group"><label>In&#237;cio <span class="req">*</span></label>
+          <input type="time" id="desc-inicio" onchange="calcDescDuracao()">
+        </div>
+        <div class="form-group"><label>Fim <span class="req">*</span></label>
+          <input type="time" id="desc-fim" onchange="calcDescDuracao()">
+        </div>
+      </div>
+      <div id="desc-duracao-wrap" style="display:none;margin-top:10px">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Dura&#231;&#227;o</div><div id="desc-duracao-txt" style="font-size:18px;font-weight:600;color:var(--text)">--</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Estimado</div><div id="desc-estimado-txt" style="font-size:18px;font-weight:600;color:var(--text)">--</div></div>
+          <div id="desc-status-badge" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#eee;color:#666">--</div>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="form-group"><label>Pneus errados</label>
+          <input type="number" id="desc-pneus-err" placeholder="0" min="0">
+        </div>
+        <div class="form-group"><label>Reclama&#231;&#227;o?</label>
+          <select id="desc-reclamacao"><option value="">N&#227;o</option><option value="sim">Sim</option></select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:10px"><label>Observa&#231;&#227;o</label>
+        <textarea id="desc-obs" placeholder="Descreva intercorr&#234;ncias, atrasos, problemas..." rows="3" style="resize:vertical"></textarea>
+      </div>
+      <div id="desc-alert" style="display:none;margin-top:10px;padding:10px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500"></div>
+      <button class="btn-submit" onclick="salvarDescarga()" style="margin-top:14px">🚛 Registrar descarga</button>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">📋 Descargas de hoje</div>
+        <button onclick="carregarDescargasHoje()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-size:11px;color:var(--muted);cursor:pointer">&#8635;</button>
+      </div>
+      <div id="desc-historico"><div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div></div>
+    </div>
+  </div>
 
 </div>
 </div>
-
-<img src="https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg"
-  style="position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:0.3;pointer-events:none;z-index:-999"
-  aria-hidden="true">
 
 <script>
 const FB_URL = 'https://mauer-produtividade-default-rtdb.firebaseio.com';
@@ -560,7 +531,7 @@ async function carregarConferentesParaConfirmar() {
 
 async function carregarPedidosParaConferir() {
   const filial = document.getElementById('conf-filial-check')?.value;
-  const data   = document.getElementById('conf-date-check')?.value;
+  const data   = document.getElementById('conf-data-check')?.value;
   const listEl = document.getElementById('conf-pedidos-list');
   const resumoEl = document.getElementById('conf-resumo');
   if(!listEl) return;
@@ -725,7 +696,7 @@ function buildRaceConf(list, wrap, subtitulo) {
       const erroTxt = c.erros>0? c.erros+' ⚠':'0 ⚠';
       return '<div class="race-lane">'
         +'<div class="race-pos'+(i===0?' first':i===1?' second':i===2?' third':'')+'">'+medal+'</div>'
-        +'<div style="min-width:80px"><div class="race-name">'+c.nome+'</div>'+(c.filial?'<div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:1px">'+c.filial+'</div>':'')+'</div>'
+        +'<div class="race-name">'+c.nome+'</div>'
         +'<div class="race-bar-wrap">'
           +'<div class="race-bar" style="width:'+Math.max(pct,8)+'%;background:'+cor+'">'
             +'<span class="race-val">'+c.conferidos+' ✅</span>'
@@ -745,7 +716,9 @@ function buildRaceConf(list, wrap, subtitulo) {
 }
 
 async function renderRankingConferentes() {
+  const filial = document.getElementById('rc-filial').value;
   const wrap = document.getElementById('rc-today-wrap');
+  if(!filial) { wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>'; return; }
   wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#1a1a2e;border-radius:var(--radius)">Carregando ranking... 🎖️</div>';
   try {
     const today = getBrasiliaDateStr();
@@ -753,29 +726,25 @@ async function renderRankingConferentes() {
     const confs = confData ? Object.values(confData) : [];
     const lancs = lancData ? Object.values(lancData) : [];
 
-    // Agrupa por conferente (todas as filiais)
-    const ag = {};
-    const confHoje = confs.filter(c => c.data===today && c.conferente);
-    const errosHoje = lancs.filter(l => l.data===today && l.motivo && l.isErro);
+    // Conferências de hoje nesta filial
+    const confHoje = confs.filter(c => c.filial===filial && c.data===today && c.conferente);
+    // Erros de hoje nesta filial (sem identificar autor)
+    const errosHoje = lancs.filter(l => l.filial===filial && l.data===today && l.motivo && l.isErro);
 
+    // Agrupa por conferente
+    const ag = {};
     confHoje.forEach(c => {
-      const key = c.conferente;
-      if(!ag[key]) ag[key] = {nome:c.conferente, filial:c.filial, conferidos:0, erros:0};
-      ag[key].conferidos++;
+      if(!ag[c.conferente]) ag[c.conferente] = {nome:c.conferente, conferidos:0, erros:0};
+      ag[c.conferente].conferidos++;
     });
+    // Conta erros por conferente (quem registrou o erro)
     errosHoje.forEach(e => {
-      if(!e.conferente) return;
-      if(ag[e.conferente]) ag[e.conferente].erros++;
-      else ag[e.conferente] = {nome:e.conferente, filial:e.filial||'', conferidos:0, erros:1};
+      if(e.conferente && ag[e.conferente]) ag[e.conferente].erros++;
+      else if(e.conferente) ag[e.conferente] = {nome:e.conferente, conferidos:0, erros:1};
     });
 
     const list = Object.values(ag).sort((a,b)=>b.conferidos-a.conferidos);
-
-    if(!list.length) {
-      wrap.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:var(--muted)">Nenhuma conferência registrada hoje</div>';
-      return;
-    }
-    buildRaceConf(list, wrap, 'Todas as filiais — hoje');
+    buildRaceConf(list, wrap, filial+' — hoje');
   } catch(e) { wrap.innerHTML='<div style="text-align:center;padding:20px;color:#e05252;font-size:13px">Erro ao carregar</div>'; console.error(e); }
 }
 
@@ -812,13 +781,10 @@ async function renderRankingConferentesGeral() {
 
 async function init() {
   setStatus('loading','Conectando...');
-  const _now=new Date();
-  const _pad=n=>String(n).padStart(2,'0');
-  const today=_now.getFullYear()+'-'+_pad(_now.getMonth()+1)+'-'+_pad(_now.getDate());
-  const _gIni=new Date(_now.getFullYear(),_now.getMonth(),1);
-  const _gIniStr=_gIni.getFullYear()+'-'+_pad(_gIni.getMonth()+1)+'-'+_pad(_gIni.getDate());
-  const _gFim=new Date(_now.getFullYear(),_now.getMonth()+1,0);
-  const _gFimStr=_gFim.getFullYear()+'-'+_pad(_gFim.getMonth()+1)+'-'+_pad(_gFim.getDate());
+  const today=new Date().toISOString().slice(0,10);
+  const _gIni=new Date();_gIni.setDate(1);
+  const _gIniStr=_gIni.toISOString().slice(0,10);
+  const _gFimStr=new Date(_gIni.getFullYear(),_gIni.getMonth()+1,0).toISOString().slice(0,10);
   const elIni=document.getElementById('geral-date-ini');if(elIni){elIni.value=_gIniStr;}
   const elFim=document.getElementById('geral-date-fim');if(elFim){elFim.value=_gFimStr;}
   ['p-date','cf-date','desc-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
@@ -828,6 +794,9 @@ async function init() {
     colaboradores = {};
     if(colData){Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});}
     populateFilialSelects();
+  // Populate rc-filial select
+  const rcf=document.getElementById('rc-filial');
+  if(rcf){rcf.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option>'+f.nome+'</option>').join('');}
   // Populate confirmar filial select
   const cfc=document.getElementById('conf-filial-check');
   if(cfc){const cc=cfc.value;cfc.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option'+(f.nome===cc?' selected':'')+'>'+f.nome+'</option>').join('');}
@@ -844,7 +813,7 @@ async function init() {
 async function carregarHoje() {
   try {
     const data = await fbGet('lancamentos');
-    const today=getBrasiliaDateStr();
+    const today=new Date().toISOString().slice(0,10);
     allLancamentos = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
     lancamentosHoje = allLancamentos.filter(l=>l.data===today);
     renderPedidoHistory();renderErroHistory();
@@ -870,15 +839,13 @@ function loadChartColabs(){loadColabs('g-filial','g-colab');renderRankingCorrida
 function setTab(tab,btn){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  const el = document.getElementById('tab-'+tab);
-  if(!el) return;
-  el.classList.add('active');
-  btn.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
   if(tab==='grafico'){renderRankingCorrida();renderChart();}
   if(tab==='confirmar'){carregarConferentesParaConfirmar();}
-  if(tab==='pedido'){renderPedidoHistory();}
+  if(tab==='rank-conf'){renderRankingConferentes();}
   if(tab==='descarga'){descFilialChange();}
-  if(tab==='conferente'){renderErroHistory();atualizarStatusConferencia();}
+  if(tab==='pedido')renderPedidoHistory();
+  if(tab==='conferente')renderErroHistory();
 }
 
 // ---- PEDIDOS ----
@@ -898,12 +865,9 @@ async function addPedido(){
     showDuplicateAlert('⚠ Pedido '+num+' já está na lista atual!','warn');
     return;
   }
-
   // Bloqueia duplo clique
   const addBtn = document.getElementById('add-pedido-btn');
-  if(addBtn){ if(addBtn.dataset.processing==='1') return; addBtn.dataset.processing='1'; }
-
-  const liberar = () => { if(addBtn) addBtn.dataset.processing='0'; };
+  if(addBtn) { if(addBtn.dataset.processing==='1') return; addBtn.dataset.processing='1'; }
 
   // Verifica margem e duplicata no Firebase
   try {
@@ -915,38 +879,46 @@ async function addPedido(){
     const margem = margemData ? Number(margemData) : 1000;
     const todos = lancData ? Object.values(lancData) : [];
 
-    // Duplicata em QUALQUER data → bloqueia sempre
-    const jaExiste = todos.find(l=>l.isPedido && l.numPedido===num);
-    if(jaExiste){
-      const dtFmt = jaExiste.data ? jaExiste.data.split('-').reverse().join('/') : '?';
-      showDuplicateAlert('🚫 Pedido '+num+' já foi registrado em '+dtFmt+' por '+jaExiste.colaborador+' ('+jaExiste.filial+'). Não é possível adicionar duplicado.','err');
-      liberar(); return;
+    // Verifica duplicata — mesmo número em qualquer data/filial
+    const jaExisteHoje = todos.find(l=>l.isPedido && l.numPedido===num && l.data===hoje);
+    if(jaExisteHoje){
+      showDuplicateAlert('🚫 Pedido '+num+' já foi registrado hoje por '+jaExisteHoje.colaborador+' ('+jaExisteHoje.filial+')!','err');
+      const _b1=document.getElementById('add-pedido-btn');if(_b1)_b1.dataset.processing='0';
+      return;
+    }
+    // Verifica duplicata em outras datas (últimos 7 dias)
+    const seteDiasAtras = new Date(); seteDiasAtras.setDate(seteDiasAtras.getDate()-7);
+    const limiteData = seteDiasAtras.toISOString().slice(0,10);
+    const jaExisteRecente = todos.find(l=>l.isPedido && l.numPedido===num && l.data>=limiteData && l.data!==hoje);
+    if(jaExisteRecente){
+      showDuplicateAlert('⚠ Pedido '+num+' já foi registrado em '+jaExisteRecente.data.split("-").reverse().join("/")+" por "+jaExisteRecente.colaborador+' ('+jaExisteRecente.filial+'). Tem certeza que é um pedido novo?','warn');
+      // Não bloqueia — só avisa para pedidos de outros dias
     }
 
-    // Verifica margem — avisa mas NÃO bloqueia
+    // Verifica margem — pega o último pedido registrado em qualquer dia (globalmente)
     const todosPedidos = todos.filter(l=>l.isPedido && l.numPedido);
-    if(todosPedidos.length > 0){
+    if(todosPedidos.length > 0) {
+      // Ordena por timestamp ou data para pegar o mais recente
       const sorted = todosPedidos
         .map(l=>({num:Number(l.numPedido), ts:l.timestamp||0, data:l.data||''}))
         .filter(l=>!isNaN(l.num) && l.num > 0)
         .sort((a,b)=>b.ts-a.ts || b.data.localeCompare(a.data));
-      if(sorted.length > 0){
-        const recentes = sorted.slice(0,50);
+      if(sorted.length > 0) {
+        // Pega o maior número entre os últimos 50 pedidos (janela recente)
+        const recentes = sorted.slice(0, 50);
         const ultimo = Math.max(...recentes.map(l=>l.num));
         const numInt = Number(num);
-        if(numInt < ultimo - margem || numInt > ultimo + margem){
-          showDuplicateAlert(`⚠ Pedido ${num} fora da margem esperada (ref: ${ultimo} ±${margem.toLocaleString('pt-BR')}). Adicionado assim mesmo.`,'warn');
-          // continua — não bloqueia
+        if(numInt < ultimo - margem || numInt > ultimo + margem) {
+          showDuplicateAlert(`⚠ Pedido ${num} fora da margem! Referência: ${ultimo} (margem: ±${margem.toLocaleString('pt-BR')})`, 'warn');
+          return;
         }
       }
     }
   } catch(e){ console.error(e); }
 
   pedidosTemp.push({num,qt});
-  document.getElementById('p-num').value='';
-  document.getElementById('p-qt').value='';
+  document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
   document.getElementById('p-num').focus();
-  liberar();
   renderPedidoTemp();
 }
 
@@ -1005,51 +977,6 @@ function renderPedidoHistory(){
 }
 
 // ---- CONFERENTE ----
-
-async function atualizarStatusConferencia() {
-  const filial = document.getElementById('cf-filial').value;
-  const panel  = document.getElementById('cf-status-panel');
-  if (!filial) { panel.style.display = 'none'; return; }
-
-  panel.style.display = '';
-  document.getElementById('cf-status-filial-lbl').textContent = filial;
-
-  try {
-    const today = getBrasiliaDateStr();
-    const [lancData, confData] = await Promise.all([
-      fbGet('lancamentos'),
-      fbGet('confirmacoes')
-    ]);
-
-    const todos    = lancData ? Object.values(lancData) : [];
-    const confs    = confData ? Object.values(confData) : [];
-
-    // Pedidos da filial de HOJE
-    const pedidosHoje = todos.filter(l => l.isPedido && l.filial === filial && l.data === today && l.numPedido);
-    const totalHoje   = pedidosHoje.length;
-
-    // Confirmaçoes da filial de HOJE
-    const confHoje = confs.filter(c => c.filial === filial && c.data === today);
-    const numSet   = new Set(confHoje.map(c => String(c.numPedido)));
-    const confQtd  = pedidosHoje.filter(p => numSet.has(String(p.numPedido))).length;
-    const pendQtd  = totalHoje - confQtd;
-    const pct      = totalHoje > 0 ? Math.round((confQtd / totalHoje) * 100) : 0;
-
-    document.getElementById('cf-stat-total').textContent = totalHoje;
-    document.getElementById('cf-stat-conf').textContent  = confQtd;
-    document.getElementById('cf-stat-pend').textContent  = pendQtd;
-    document.getElementById('cf-pct-txt').textContent    = pct + '%';
-    document.getElementById('cf-progress-bar').style.width = pct + '%';
-
-    // Cor da barra conforme progresso
-    const bar = document.getElementById('cf-progress-bar');
-    if (pct === 100)      bar.style.background = 'linear-gradient(90deg,#1D9E75,#2d6b28)';
-    else if (pct >= 60)   bar.style.background = 'linear-gradient(90deg,#BA7517,#7a4f0d)';
-    else                  bar.style.background = 'linear-gradient(90deg,#e05252,#8b2424)';
-
-  } catch(e) { console.error(e); }
-}
-
 async function salvarErro(){
   const filial=document.getElementById('cf-filial').value;
   const date=document.getElementById('cf-date').value;
@@ -1070,7 +997,6 @@ async function salvarErro(){
     document.getElementById('separador-nao-found').style.display='none';
     showAlert('ok','Erro registrado no painel do gestor!');
     await carregarHoje();
-    atualizarStatusConferencia();
   }catch(e){showAlert('err','Erro ao registrar.');console.error(e);}
   btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Registrar erro';
 }
@@ -1266,391 +1192,105 @@ function showAlert(type,msg){
 document.addEventListener('change',e=>{if(e.target.matches('input,select,textarea'))e.target.classList.remove('err');});
 document.addEventListener('input',e=>{if(e.target.matches('input,textarea'))e.target.classList.remove('err');});
 
-init();
-
-// ============================================================
-// ESTATÍSTICAS LATERAIS DA DESCARGA
-// ============================================================
-async function carregarStatsDescarga() {
-  // Show loading state immediately
-  const ids = ['stats-por-filial','stats-top-pessoas'];
-  ids.forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML='<div style="text-align:center;padding:12px;color:var(--muted);font-size:13px">Carregando...</div>'; });
-  try {
-    const now = new Date();
-    const mesAtual = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-    const data = await fbGet('descarregamentos');
-    const todos = data ? Object.values(data) : [];
-    const doMes = todos.filter(d => d.data && d.data.startsWith(mesAtual));
-
-    // MÉDIAS GERAIS
-    const total = doMes.length;
-    const ok    = doMes.filter(d => d.realizado === 'OK').length;
-    const pct   = total > 0 ? Math.round(ok/total*100) : 0;
-    const tempos = doMes.filter(d => d.duracaoMin > 0).map(d => d.duracaoMin);
-    const mediaTempo = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : 0;
-
-    const elMT = document.getElementById('stats-media-tempo');
-    if(elMT) elMT.textContent = mediaTempo ? minToHHMM(mediaTempo) : '—';
-    const elPct = document.getElementById('stats-pct-prazo');
-    if(elPct) elPct.textContent = total > 0 ? pct + '%' : '—';
-    const bar = document.getElementById('stats-pct-bar');
-    if(bar) { bar.style.width = pct + '%'; bar.style.background = pct >= 80 ? 'var(--green-t)' : pct >= 50 ? '#BA7517' : '#e05252'; }
-    const elTot = document.getElementById('stats-total-geral');
-    if(elTot) elTot.textContent = total;
-
-    // POR FILIAL
-    const byFilial = {};
-    doMes.forEach(d => {
-      if(!d.filial) return;
-      if(!byFilial[d.filial]) byFilial[d.filial] = {total:0, ok:0, tempos:[]};
-      byFilial[d.filial].total++;
-      if(d.realizado === 'OK') byFilial[d.filial].ok++;
-      if(d.duracaoMin > 0) byFilial[d.filial].tempos.push(d.duracaoMin);
-    });
-
-    const filialEl = document.getElementById('stats-por-filial');
-    if(filialEl) {
-      const fls = Object.entries(byFilial).sort((a,b) => b[1].total - a[1].total);
-      if(!fls.length) {
-        filialEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--hint);font-size:12px">Sem dados este mês</div>';
-      } else {
-        const maxTotal = Math.max(...fls.map(([,v]) => v.total));
-        filialEl.innerHTML = fls.map(([nome, v]) => {
-          const p = v.total > 0 ? Math.round(v.ok/v.total*100) : 0;
-          const mt = v.tempos.length ? Math.round(v.tempos.reduce((a,b)=>a+b,0)/v.tempos.length) : 0;
-          const barW = Math.round((v.total/maxTotal)*100);
-          const cor = p >= 80 ? 'var(--green-t)' : p >= 50 ? '#BA7517' : '#e05252';
-          const nomeCurto = nome.length > 16 ? nome.slice(0,14)+'…' : nome;
-          return '<div style="margin-bottom:12px">'
-            + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">'
-            +   '<span style="font-size:11px;font-weight:600;color:var(--text)">' + nomeCurto + '</span>'
-            +   '<span style="font-family:DM Mono,monospace;font-size:11px;font-weight:600;color:'+cor+'">' + p + '%</span>'
-            + '</div>'
-            + '<div style="height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:4px">'
-            +   '<div style="height:100%;width:'+barW+'%;background:'+cor+';border-radius:5px;transition:width .5s"></div>'
-            + '</div>'
-            + '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--hint)">'
-            +   '<span>' + v.total + ' descargas</span>'
-            +   '<span>⏱ ' + (mt ? minToHHMM(mt) : '—') + '</span>'
-            + '</div>'
-            + '</div>';
-        }).join('');
-      }
-    }
-
-    // TOP DESCARREGADORES
-    const byPessoa = {};
-    doMes.forEach(d => {
-      if(!d.nome) return;
-      // nome pode ter múltiplos, pega primeiro token como chave principal
-      const key = d.nome.trim();
-      if(!byPessoa[key]) byPessoa[key] = {total:0, ok:0, tempos:[]};
-      byPessoa[key].total++;
-      if(d.realizado === 'OK') byPessoa[key].ok++;
-      if(d.duracaoMin > 0) byPessoa[key].tempos.push(d.duracaoMin);
-    });
-
-    const topEl = document.getElementById('stats-top-pessoas');
-    if(topEl) {
-      const top = Object.entries(byPessoa).sort((a,b) => b[1].total - a[1].total).slice(0,5);
-      if(!top.length) {
-        topEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--hint);font-size:12px">Sem dados este mês</div>';
-      } else {
-        const medals = ['🥇','🥈','🥉','4°','5°'];
-        topEl.innerHTML = top.map(([nome, v], i) => {
-          const p = v.total > 0 ? Math.round(v.ok/v.total*100) : 0;
-          const mt = v.tempos.length ? Math.round(v.tempos.reduce((a,b)=>a+b,0)/v.tempos.length) : 0;
-          const nomeCurto = nome.length > 18 ? nome.slice(0,16)+'…' : nome;
-          const cor = p >= 80 ? 'var(--green-t)' : p >= 50 ? '#BA7517' : '#e05252';
-          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
-            + '<div style="font-size:14px;min-width:20px;text-align:center">' + medals[i] + '</div>'
-            + '<div style="flex:1;min-width:0">'
-            +   '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nomeCurto + '</div>'
-            +   '<div style="font-size:10px;color:var(--hint);margin-top:1px">' + v.total + ' descargas · ⏱ ' + (mt ? minToHHMM(mt) : '—') + '</div>'
-            + '</div>'
-            + '<div style="font-family:DM Mono,monospace;font-size:11px;font-weight:700;color:'+cor+'">' + p + '%</div>'
-            + '</div>';
-        }).join('');
-      }
-    }
-  } catch(e) { console.error('carregarStatsDescarga:', e); }
-}
-
-// ============================================================
-// MÉDIAS DO COLABORADOR
-// ============================================================
-async function carregarMinhasMedias() {
-  const nome  = (document.getElementById('media-nome').value || '').trim().toLowerCase();
-  const kpis  = document.getElementById('media-kpis');
-  const empty = document.getElementById('media-empty');
-
-  if (!nome) { empty.textContent = 'Digite seu nome para ver suas estatísticas'; empty.style.display=''; kpis.style.display='none'; return; }
-
-  empty.textContent = 'Buscando...'; empty.style.display=''; kpis.style.display='none';
-
-  try {
-    const data = await fbGet('descarregamentos');
-    const todos = data ? Object.values(data) : [];
-
-    // Filtra por nome (busca parcial, case-insensitive)
-    const meus = todos.filter(d => d.nome && d.nome.toLowerCase().includes(nome));
-
-    if (!meus.length) {
-      empty.textContent = 'Nenhuma descarga encontrada para "' + nome + '"';
-      empty.style.display = '';
-      kpis.style.display = 'none';
-      return;
-    }
-
-    // Mês atual
-    const mesAtual = new Date().toISOString().slice(0, 7); // YYYY-MM
-    const doMes    = meus.filter(d => d.data && d.data.startsWith(mesAtual));
-
-    const total = doMes.length;
-    const ok    = doMes.filter(d => d.realizado === 'OK').length;
-    const fora  = doMes.filter(d => d.realizado === 'FORA').length;
-    const pct   = total > 0 ? Math.round(ok / total * 100) : 0;
-
-    // Tempos
-    const tempos   = meus.filter(d => d.duracaoMin > 0).map(d => d.duracaoMin);
-    const mediaTmp = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : 0;
-    const melhorTmp= tempos.length ? Math.min(...tempos) : 0;
-
-    // Cubagem média
-    const cubagens = meus.filter(d => d.cubagem > 0).map(d => d.cubagem);
-    const mediaCub = cubagens.length ? (cubagens.reduce((a,b)=>a+b,0)/cubagens.length).toFixed(1) : '—';
-
-    // Preenche KPIs
-    const el = id => document.getElementById(id);
-    el('mk-total').textContent      = total;
-    el('mk-ok').textContent         = ok;
-    el('mk-fora').textContent       = fora;
-    el('mk-pct').textContent        = pct + '%';
-    el('mk-pct-label').textContent  = pct + '%';
-    el('mk-media-tempo').textContent= mediaTmp ? minToHHMM(mediaTmp) : '—';
-    el('mk-melhor').textContent     = melhorTmp ? minToHHMM(melhorTmp) : '—';
-    el('mk-cub').textContent        = mediaCub;
-
-    // Barra de desempenho
-    const barra = el('mk-barra');
-    barra.style.width = pct + '%';
-    barra.style.background = pct >= 80 ? 'var(--green-t)' : pct >= 50 ? '#BA7517' : '#e05252';
-
-    // Histórico — últimas 8 descargas (todas datas)
-    const recentes = meus.slice().sort((a,b) => (b.timestamp||0)-(a.timestamp||0)).slice(0,8);
-    el('mk-historico').innerHTML = recentes.map(d => {
-      const isOk = d.realizado === 'OK';
-      const dt   = d.data ? d.data.split('-').reverse().join('/') : '—';
-      const excesso = (d.duracaoMin && d.estimadoMin && d.duracaoMin > d.estimadoMin)
-        ? '+' + minToHHMM(d.duracaoMin - d.estimadoMin) + ' acima'
-        : null;
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:8px">'
-        + '<div style="flex:1">'
-        +   '<div style="font-size:12px;font-weight:500;color:var(--text)">Nota ' + (d.nota||'—') + ' · ' + (d.filial||'—') + '</div>'
-        +   '<div style="font-size:11px;color:var(--muted);margin-top:1px">'
-        +     dt + ' · ' + (d.duracao||'—')
-        +     (excesso ? ' <span style="color:#e05252">(' + excesso + ')</span>' : '')
-        +   '</div>'
-        + '</div>'
-        + '<span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;background:'
-        +   (isOk?'var(--green-bg)':'var(--red-bg)') + ';color:' + (isOk?'var(--green-t)':'var(--red-t)') + '">'
-        +   d.realizado + '</span>'
-        + '</div>';
-    }).join('');
-
-    empty.style.display = 'none';
-    kpis.style.display  = '';
-  } catch(e) {
-    empty.textContent = 'Erro ao carregar. Verifique a conexão.';
-    empty.style.display = '';
-    kpis.style.display = 'none';
-    console.error(e);
-  }
-}
-
-// ============================================================
-// DESCARREGAMENTO
-// ============================================================
-
-const DESC_BASE = [
-  { cub: 30,  p3: 40,  p6: 30,  p7: 20  },
-  { cub: 60,  p3: 80,  p6: 60,  p7: 50  },
-  { cub: 80,  p3: 105, p6: 80,  p7: 70  },
-  { cub: 90,  p3: 120, p6: 90,  p7: 80  },
-  { cub: 100, p3: 135, p6: 100, p7: 90  },
-  { cub: 110, p3: 165, p6: 140, p7: 130 },
+// ── DESCARREGAMENTO ──────────────────────────────────────────
+const DESC_BASE=[
+  {cub:30,p3:40,p6:30,p7:20},{cub:60,p3:80,p6:60,p7:50},
+  {cub:80,p3:105,p6:80,p7:70},{cub:90,p3:120,p6:90,p7:80},
+  {cub:100,p3:135,p6:100,p7:90},{cub:110,p3:165,p6:140,p7:130}
 ];
-
-function getEstimadoMin(cubagem, pessoas) {
-  const cub = parseFloat(String(cubagem).replace(',','.')) || 0;
-  const pes = parseInt(pessoas) || 0;
-  let linha = DESC_BASE[DESC_BASE.length - 1];
-  for (let i = 0; i < DESC_BASE.length; i++) {
-    if (cub <= DESC_BASE[i].cub) { linha = DESC_BASE[i]; break; }
-  }
-  if (pes <= 3) return linha.p3;
-  else if (pes <= 6) return linha.p6;
-  else return linha.p7;
+function getEstimadoMin(cub,pes){
+  cub=parseFloat(String(cub).replace(',','.'))||0;pes=parseInt(pes)||0;
+  let l=DESC_BASE[DESC_BASE.length-1];
+  for(let i=0;i<DESC_BASE.length;i++){if(cub<=DESC_BASE[i].cub){l=DESC_BASE[i];break;}}
+  return pes<=3?l.p3:pes<=6?l.p6:l.p7;
 }
-
-function minToHHMM(min) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return (h > 0 ? h + 'h ' : '') + m.toString().padStart(2,'0') + 'min';
+function minToHHMM(m){const h=Math.floor(m/60);return(h>0?h+'h ':'')+String(m%60).padStart(2,'0')+'min';}
+function calcDescDuracao(){
+  const ini=document.getElementById('desc-inicio').value;
+  const fim=document.getElementById('desc-fim').value;
+  const w=document.getElementById('desc-duracao-wrap');
+  if(!ini||!fim){w.style.display='none';return;}
+  const[ih,im]=ini.split(':').map(Number),[fh,fm]=fim.split(':').map(Number);
+  let dur=(fh*60+fm)-(ih*60+im);if(dur<0)dur+=1440;
+  const cub=document.getElementById('desc-cubagem').value;
+  const pes=document.getElementById('desc-pessoas').value;
+  const est=(cub&&pes)?getEstimadoMin(cub,pes):null;
+  const ok=est?dur<=est:null;
+  document.getElementById('desc-duracao-txt').textContent=minToHHMM(dur);
+  document.getElementById('desc-estimado-txt').textContent=est?minToHHMM(est):'--';
+  const b=document.getElementById('desc-status-badge');
+  if(ok===true){b.textContent='✅ No prazo';b.style.cssText='padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#eaf4e8;color:#2d6b28';}
+  else if(ok===false){b.textContent='⚠️ Fora do prazo';b.style.cssText='padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#faeaea;color:#8b2424';}
+  else{b.textContent='--';b.style.cssText='padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#eee;color:#666';}
+  w.style.display='';
 }
-
-function calcDescDuracao() {
-  const ini  = document.getElementById('desc-inicio').value;
-  const fim  = document.getElementById('desc-fim').value;
-  const cub  = document.getElementById('desc-cubagem').value;
-  const pes  = document.getElementById('desc-pessoas').value;
-  const wrap = document.getElementById('desc-duracao-wrap');
-  if (!ini || !fim) { wrap.style.display = 'none'; return; }
-  const [ih, im] = ini.split(':').map(Number);
-  const [fh, fm] = fim.split(':').map(Number);
-  let durMin = (fh * 60 + fm) - (ih * 60 + im);
-  if (durMin < 0) durMin += 24 * 60;
-  const estMin = (cub && pes) ? getEstimadoMin(cub, pes) : null;
-  const realStatus = estMin ? (durMin <= estMin ? 'OK' : 'FORA') : null;
-  document.getElementById('desc-duracao-txt').textContent = minToHHMM(durMin);
-  document.getElementById('desc-estimado-txt').textContent = estMin ? minToHHMM(estMin) : '--';
-  const badge = document.getElementById('desc-status-badge');
-  if (realStatus === 'OK') {
-    badge.textContent = '✅ No prazo';
-    badge.style.cssText = 'padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--green-bg);color:var(--green-t)';
-  } else if (realStatus === 'FORA') {
-    badge.textContent = '⚠️ Fora do prazo';
-    badge.style.cssText = 'padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--red-bg);color:var(--red-t)';
-  } else {
-    badge.textContent = '--';
-    badge.style.cssText = 'padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--bg);color:var(--muted)';
-  }
-  wrap.style.display = '';
-}
-
-function descFilialChange() {
-  const filial = document.getElementById('desc-filial').value;
-  const hist = document.getElementById('desc-historico');
-  if (!filial) {
-    if(hist) hist.innerHTML = '<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div>';
-    return;
-  }
+function descFilialChange(){
+  const f=document.getElementById('desc-filial').value;
+  const h=document.getElementById('desc-historico');
+  if(!f){if(h)h.innerHTML='<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div>';return;}
   carregarDescargasHoje();
 }
-
-async function atualizarStatusDescarga() {
-  const filial = document.getElementById('desc-filial').value;
-  if (!filial) return;
-  try {
-    const today = getBrasiliaDateStr();
-    const data  = await fbGet('descarregamentos');
-    const todos = data ? Object.values(data) : [];
-    const hoje  = todos.filter(d => d.filial === filial && d.data === today);
-    document.getElementById('desc-stat-total').textContent = hoje.length;
-    document.getElementById('desc-stat-ok').textContent    = hoje.filter(d => d.realizado === 'OK').length;
-    document.getElementById('desc-stat-fora').textContent  = hoje.filter(d => d.realizado === 'FORA').length;
-  } catch(e) { console.error(e); }
+function showDescAlert(msg,tipo){
+  const el=document.getElementById('desc-alert');
+  el.textContent=msg;el.style.display='';
+  const m={ok:'background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)',err:'background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)',warn:'background:var(--amber-bg);color:var(--amber-t);border:1px solid var(--amber-b)'};
+  el.style.cssText+=(';'+m[tipo]);
+  setTimeout(()=>el.style.display='none',5000);
 }
-
-async function carregarDescargasHoje() {
-  const filial = document.getElementById('desc-filial').value;
-  const wrap   = document.getElementById('desc-historico');
-  if (!filial) { wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div>'; return; }
-  wrap.innerHTML = '<div style="text-align:center;padding:16px;color:var(--hint);font-size:13px">Carregando...</div>';
-  try {
-    const today = getBrasiliaDateStr();
-    const data  = await fbGet('descarregamentos');
-    const todos = data ? Object.values(data) : [];
-    const hoje  = todos.filter(d => d.filial === filial && d.data === today)
-                       .sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
-    if (!hoje.length) {
-      wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Nenhuma descarga registrada hoje nesta filial</div>';
-      return;
-    }
-    wrap.innerHTML = hoje.map(d => {
-      const isOk = d.realizado === 'OK';
-      const corS = isOk ? 'var(--green-t)' : '#e05252';
-      const bgS  = isOk ? 'var(--green-bg)' : 'var(--red-bg)';
-      return '<div style="border:1px solid var(--border);border-radius:var(--rsm);padding:12px 14px;margin-bottom:8px">'
-        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">'
-        +   '<div><div style="font-size:13px;font-weight:600;color:var(--text)">Nota ' + (d.nota||'—') + '</div>'
-        +   '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (d.nome||'—') + ' · ' + (d.pessoas||'?') + ' pessoas</div></div>'
-        +   '<div style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:' + bgS + ';color:' + corS + '">' + (d.realizado||'—') + '</div>'
-        + '</div>'
-        + '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)">'
-        +   '<span>📦 ' + (d.cubagem||'—') + ' m³</span>'
-        +   '<span>⏱ ' + (d.inicio||'--') + '→' + (d.fim||'--') + ' (' + (d.duracao||'?') + ')</span>'
-        +   (d.pneusErrados > 0 ? '<span style="color:#e05252">⚠ ' + d.pneusErrados + ' pneus errados</span>' : '')
-        +   (d.reclamacao === 'sim' ? '<span style="color:#e05252">🔴 Reclamação</span>' : '')
-        + '</div>'
-        + (d.obs ? '<div style="margin-top:6px;font-size:11px;color:var(--muted);font-style:italic">' + d.obs + '</div>' : '')
-        + '</div>';
+async function carregarDescargasHoje(){
+  const f=document.getElementById('desc-filial').value;
+  const w=document.getElementById('desc-historico');
+  if(!f){w.innerHTML='<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div>';return;}
+  w.innerHTML='<div style="text-align:center;padding:16px;color:var(--hint);font-size:13px">Carregando...</div>';
+  try{
+    const today=getBrasiliaDateStr();
+    const data=await fbGet('descarregamentos');
+    const todos=data?Object.values(data):[];
+    const hoje=todos.filter(d=>d.filial===f&&d.data===today).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+    if(!hoje.length){w.innerHTML='<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Nenhuma descarga hoje</div>';return;}
+    w.innerHTML=hoje.map(d=>{
+      const ok=d.realizado==='OK';
+      return '<div style="border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
+        +'<span style="font-size:13px;font-weight:600">Nota '+(d.nota||'—')+'</span>'
+        +'<span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:'+(ok?'var(--green-bg)':'var(--red-bg)')+';color:'+(ok?'var(--green-t)':'var(--red-t)')+'">'+d.realizado+'</span>'
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--muted)">'+(d.nome||'—')+' · '+(d.cubagem||'?')+' m³ · '+(d.duracao||'?')+'</div>'
+        +'</div>';
     }).join('');
-  } catch(e) { console.error(e); wrap.innerHTML = '<div style="color:#e05252;padding:16px;font-size:13px">Erro ao carregar</div>'; }
+  }catch(e){w.innerHTML='<div style="color:#e05252;padding:12px;font-size:13px">Erro ao carregar</div>';}
 }
-
-function showDescAlert(msg, tipo) {
-  const el = document.getElementById('desc-alert');
-  el.textContent = msg;
-  el.style.display = '';
-  const styles = {
-    ok:   'background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)',
-    err:  'background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)',
-    warn: 'background:var(--amber-bg);color:var(--amber-t);border:1px solid var(--amber-b)'
-  };
-  el.style.cssText += ';' + (styles[tipo] || styles.warn);
-  setTimeout(() => el.style.display = 'none', 5000);
-}
-
-async function salvarDescarga() {
-  const filial  = document.getElementById('desc-filial').value.trim();
-  const data_d  = document.getElementById('desc-date').value;
-  const nota    = document.getElementById('desc-nota').value.trim();
-  const cubagem = document.getElementById('desc-cubagem').value;
-  const nome    = document.getElementById('desc-nome').value.trim();
-  const pessoas = document.getElementById('desc-pessoas').value;
-  const inicio  = document.getElementById('desc-inicio').value;
-  const fim     = document.getElementById('desc-fim').value;
-
-  if (!filial || !data_d || !nota || !cubagem || !nome || !pessoas || !inicio || !fim) {
-    showDescAlert('⚠ Preencha todos os campos obrigatórios!', 'warn'); return;
-  }
-  const [ih, im] = inicio.split(':').map(Number);
-  const [fh, fm] = fim.split(':').map(Number);
-  let durMin = (fh * 60 + fm) - (ih * 60 + im);
-  if (durMin < 0) durMin += 24 * 60;
-  const estMin    = getEstimadoMin(cubagem, pessoas);
-  const realizado = durMin <= estMin ? 'OK' : 'FORA';
-
-  const registro = {
-    filial, data: data_d, nota,
-    cubagem: parseFloat(String(cubagem).replace(',','.')),
-    nome, pessoas: parseInt(pessoas), inicio, fim,
-    duracao: minToHHMM(durMin), duracaoMin: durMin,
-    estimadoMin: estMin, realizado,
-    pneusErrados: parseInt(document.getElementById('desc-pneus-err').value) || 0,
-    reclamacao:   document.getElementById('desc-reclamacao').value || '',
-    obs:          document.getElementById('desc-obs').value.trim(),
-    timestamp:    Date.now()
-  };
-
-  try {
-    await fbPost('descarregamentos', registro);
-    showDescAlert('✅ Descarga registrada!', 'ok');
-    ['desc-nota','desc-cubagem','desc-nome','desc-pessoas','desc-inicio','desc-fim','desc-pneus-err','desc-obs'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
-    document.getElementById('desc-reclamacao').value = '';
-    document.getElementById('desc-duracao-wrap').style.display = 'none';
+async function salvarDescarga(){
+  const filial=document.getElementById('desc-filial').value;
+  const data_d=document.getElementById('desc-date').value;
+  const nota=document.getElementById('desc-nota').value.trim();
+  const cubagem=document.getElementById('desc-cubagem').value;
+  const nome=document.getElementById('desc-nome').value.trim();
+  const pessoas=document.getElementById('desc-pessoas').value;
+  const inicio=document.getElementById('desc-inicio').value;
+  const fim=document.getElementById('desc-fim').value;
+  if(!filial||!data_d||!nota||!cubagem||!nome||!pessoas||!inicio||!fim){showDescAlert('⚠ Preencha todos os campos obrigatórios!','warn');return;}
+  const[ih,im]=inicio.split(':').map(Number),[fh,fm]=fim.split(':').map(Number);
+  let dur=(fh*60+fm)-(ih*60+im);if(dur<0)dur+=1440;
+  const est=getEstimadoMin(cubagem,pessoas);
+  const reg={filial,data:data_d,nota,cubagem:parseFloat(String(cubagem).replace(',','.')),
+    nome,pessoas:parseInt(pessoas),inicio,fim,duracao:minToHHMM(dur),
+    duracaoMin:dur,estimadoMin:est,realizado:dur<=est?'OK':'FORA',
+    pneusErrados:parseInt(document.getElementById('desc-pneus-err').value)||0,
+    reclamacao:document.getElementById('desc-reclamacao').value||'',
+    obs:document.getElementById('desc-obs').value.trim(),timestamp:Date.now()};
+  try{
+    await fbPost('descarregamentos',reg);
+    showDescAlert('✅ Descarga registrada!','ok');
+    ['desc-nota','desc-cubagem','desc-nome','desc-pessoas','desc-inicio','desc-fim','desc-pneus-err','desc-obs'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('desc-reclamacao').value='';
+    document.getElementById('desc-duracao-wrap').style.display='none';
     carregarDescargasHoje();
-    atualizarStatusDescarga();
-    carregarStatsDescarga();
-  } catch(e) {
-    showDescAlert('❌ Erro ao salvar. Verifique a conexão.', 'err');
-    console.error(e);
-  }
+  }catch(e){showDescAlert('❌ Erro ao salvar.','err');}
 }
 
+
+init();
 </script>
 </body>
 </html>
