@@ -9,7 +9,7 @@
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;--blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;isolation:isolate}
+body{font-family:'DM Sans',sans-serif;color:var(--text);min-height:100vh;background:linear-gradient(rgba(10,15,30,.55),rgba(10,15,30,.55)),url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat fixed}
 
 
 .tabs{background:rgba(255,255,255,.95)}
@@ -126,9 +126,7 @@ textarea{resize:vertical;min-height:72px}
 </style>
 </head>
 <body>
-<img src="https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg" 
-     style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55;pointer-events:none;user-select:none;z-index:-1" 
-     aria-hidden="true">
+
 <div class="topbar">
   <div class="tb-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
   <div><div class="tb-title">Preenchimento diário</div><div class="tb-sub">Mauer Logística</div></div>
@@ -340,15 +338,12 @@ textarea{resize:vertical;min-height:72px}
   <!-- TAB: RANKING CONFERENTES -->
   <div class="tab-content" id="tab-rank-conf">
     <div class="card" style="margin-bottom:12px">
-      <div class="card-title" style="margin-bottom:10px">🎖️ Ranking conferentes — hoje</div>
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-        <select id="rc-filial" onchange="renderRankingConferentes()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;-webkit-appearance:none;cursor:pointer;flex:1">
-          <option value="">Selecione a filial</option>
-        </select>
-        <button onclick="renderRankingConferentes()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Atualizar</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">🎖️ Ranking conferentes — hoje</div>
+        <button onclick="renderRankingConferentes()" style="padding:5px 12px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer">↻ Atualizar</button>
       </div>
       <div id="rc-today-wrap">
-        <div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>
+        <div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Carregando... 🎖️</div>
       </div>
     </div>
 
