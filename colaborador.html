@@ -971,7 +971,7 @@ async function init() {
 async function carregarHoje() {
   try {
     const data = await fbGet('lancamentos');
-    const today=new Date().toISOString().slice(0,10);
+    const today=getBrasiliaDateStr();
     allLancamentos = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
     lancamentosHoje = allLancamentos.filter(l=>l.data===today);
     renderPedidoHistory();renderErroHistory();
