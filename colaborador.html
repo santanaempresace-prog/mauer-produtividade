@@ -1415,7 +1415,7 @@ async function carregarStatsDescarga() {
     const mediaTempo = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : 0;
 
     const elMT = document.getElementById('stats-media-tempo');
-    if(elMT) elMT.querySelector('div:nth-child(2)').textContent = mediaTempo ? minToHHMM(mediaTempo) : '—';
+    if(elMT) elMT.textContent = mediaTempo ? minToHHMM(mediaTempo) : '—';
     const elPct = document.getElementById('stats-pct-prazo');
     if(elPct) elPct.textContent = total > 0 ? pct + '%' : '—';
     const bar = document.getElementById('stats-pct-bar');
