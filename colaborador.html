@@ -9,7 +9,8 @@
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;--blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;position:relative}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.55;pointer-events:none}
 
 
 .tabs{background:rgba(255,255,255,.97);border-radius:var(--radius)}
@@ -25,11 +26,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .alert.show{display:flex}
 .alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
 .alert-err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
-.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:3px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
 .tab-btn{padding:9px 6px;border:none;border-radius:var(--rsm);background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;line-height:1.3}
 .tab-btn.active{background:var(--text);color:#fff}
 .tab-btn span{display:block;font-size:10px;font-weight:400;opacity:.75;margin-top:1px}
-.tab-content{display:none}.tab-content.active{display:block;background:var(--bg);border-radius:var(--radius);padding-bottom:20px}
+.tab-content{display:none}.tab-content.active{display:block}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:12px}
 .card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;gap:6px}
 .card-title svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
@@ -124,7 +125,6 @@ textarea{resize:vertical;min-height:72px}
 </style>
 </head>
 <body>
-<div aria-hidden="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:url(https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg) center/cover no-repeat;opacity:0.5;z-index:-1"></div>
 
 <div class="topbar">
   <div class="tb-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
@@ -141,7 +141,6 @@ textarea{resize:vertical;min-height:72px}
     <button class="tab-btn" onclick="setTab('confirmar',this)">✅ Confirmar<span>Conferência</span></button>
     <button class="tab-btn" onclick="setTab('conferente',this)">Conferente<span>Lançar erros</span></button>
     <button class="tab-btn" onclick="setTab('grafico',this)">🏁 Corrida<span>Ranking ao vivo</span></button>
-    <button class="tab-btn" onclick="setTab('rank-conf',this)">🎖️ Conferentes<span>Ranking conferentes</span></button>
     <button class="tab-btn" onclick="setTab('descarga',this)">🚛 Descarga<span>Descarregamento</span></button>
   </div>
 
@@ -334,242 +333,74 @@ textarea{resize:vertical;min-height:72px}
       <div id="chart-empty" style="text-align:center;padding:24px;color:var(--hint);font-size:13px">Selecione um colaborador</div>
     </div>
   
-  <!-- TAB: RANKING CONFERENTES -->
-  <div class="tab-content" id="tab-rank-conf">
-
-  <div class="card" style="margin-bottom:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div class="card-title" style="margin-bottom:0">🎖️ Ranking conferentes — hoje</div>
-      <button onclick="renderRankingConferentes()" style="padding:6px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">↻ Atualizar</button>
+  <!-- TAB: DESCARGA -->
+  <div class="tab-content" id="tab-descarga">
+    <div class="card">
+      <div class="card-title">🚛 Registrar descarregamento</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>Filial <span class="req">*</span></label>
+          <select id="desc-filial" onchange="descFilialChange()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%"><option value="">Selecione</option></select>
+        </div>
+        <div class="form-group"><label>Data <span class="req">*</span></label>
+          <input type="date" id="desc-date" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>N&#186; da nota <span class="req">*</span></label>
+          <input type="text" id="desc-nota" placeholder="Ex: 22389" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Cubagem (m&#179;) <span class="req">*</span></label>
+          <input type="number" id="desc-cubagem" placeholder="Ex: 110.5" step="0.01" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>Quem descarregou <span class="req">*</span></label>
+          <input type="text" id="desc-nome" placeholder="Nome(s) dos respons&#225;veis" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Qtd de pessoas <span class="req">*</span></label>
+          <input type="number" id="desc-pessoas" placeholder="Ex: 4" min="1" max="20" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>In&#237;cio <span class="req">*</span></label>
+          <input type="time" id="desc-inicio" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Fim <span class="req">*</span></label>
+          <input type="time" id="desc-fim" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+      <div id="desc-duracao-wrap" style="display:none;margin-bottom:12px">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Dura&#231;&#227;o</div><div id="desc-duracao-txt" style="font-size:18px;font-weight:600;color:var(--text)">--</div></div>
+          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Estimado</div><div id="desc-estimado-txt" style="font-size:18px;font-weight:600;color:var(--text)">--</div></div>
+          <div id="desc-status-badge" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#eee;color:#666">--</div>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>Pneus errados</label>
+          <input type="number" id="desc-pneus-err" placeholder="0" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Reclama&#231;&#227;o?</label>
+          <select id="desc-reclamacao" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%">
+            <option value="">N&#227;o</option><option value="sim">Sim</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:16px"><label>Observa&#231;&#227;o</label>
+        <textarea id="desc-obs" placeholder="Descreva intercorr&#234;ncias, atrasos, problemas..." rows="3" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%;resize:vertical"></textarea>
+      </div>
+      <div id="desc-alert" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500"></div>
+      <button onclick="salvarDescarga()" style="width:100%;padding:13px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">🚛 Registrar descarga</button>
     </div>
-    <div id="rc-today-wrap">
-      <div style="text-align:center;padding:24px;color:var(--hint);font-size:13px">Carregando...</div>
+
+    <div class="card" style="margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">📋 Descargas de hoje</div>
+        <button onclick="carregarDescargasHoje()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-size:11px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif">↻</button>
+      </div>
+      <div id="desc-historico"><div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div></div>
     </div>
   </div>
-
-  <div class="card">
-    <div class="card-title" style="margin-bottom:12px">🌎 Ranking geral conferentes</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
-      <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px">
-        <label style="font-size:11px;color:var(--muted);font-weight:500">De</label>
-        <input type="date" id="rc-date-ini" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;width:100%">
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px">
-        <label style="font-size:11px;color:var(--muted);font-weight:500">Até</label>
-        <input type="date" id="rc-date-fim" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;outline:none;width:100%">
-      </div>
-      <div style="display:flex;gap:6px">
-        <button onclick="setRcPeriodo('hoje')" style="padding:7px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Hoje</button>
-        <button onclick="setRcPeriodo('mes')" style="padding:7px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif">Mês</button>
-        <button onclick="renderRankingConferentesGeral()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">Buscar</button>
-      </div>
-    </div>
-    <div id="rc-geral-wrap"></div>
-  </div>
-
-</div>
-
-<div class="tab-content" id="tab-descarga">
-
-  <!-- STATS RESUMO -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-    <div class="card" style="text-align:center;padding:14px 10px;margin-bottom:0">
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Tempo médio</div>
-      <div id="stats-media-tempo" style="font-size:20px;font-weight:700;color:var(--text)">—</div>
-    </div>
-    <div class="card" style="text-align:center;padding:14px 10px;margin-bottom:0">
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">% no prazo</div>
-      <div id="stats-pct-prazo" style="font-size:20px;font-weight:700;color:var(--text)">—</div>
-      <div style="height:4px;background:var(--border);border-radius:4px;margin-top:6px;overflow:hidden">
-        <div id="stats-pct-bar" style="height:100%;width:0%;border-radius:4px;background:var(--green-t);transition:width .5s"></div>
-      </div>
-    </div>
-    <div class="card" style="text-align:center;padding:14px 10px;margin-bottom:0">
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Total mês</div>
-      <div id="stats-total-geral" style="font-size:20px;font-weight:700;color:var(--text)">—</div>
-    </div>
-  </div>
-
-  <!-- POR FILIAL -->
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-title" style="margin-bottom:12px">🏭 Por filial — mês atual</div>
-    <div id="stats-por-filial"><div style="text-align:center;padding:12px;color:var(--hint);font-size:13px">Carregando...</div></div>
-  </div>
-
-  <!-- TOP DESCARREGADORES -->
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-title" style="margin-bottom:12px">🏆 Top descarregadores</div>
-    <div id="stats-top-pessoas"><div style="text-align:center;padding:12px;color:var(--hint);font-size:13px">Carregando...</div></div>
-  </div>
-
-  <!-- STATUS HOJE (aparece após selecionar filial) -->
-  <div id="desc-status-panel" style="display:none;margin-bottom:14px">
-    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:var(--radius);padding:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase">🚛 Descargas hoje</span>
-        <span id="desc-status-filial" style="font-size:11px;color:rgba(255,255,255,.4)"></span>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-        <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px;text-align:center">
-          <div id="desc-stat-total" style="font-size:20px;font-weight:700;color:#fff">0</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:2px">Total</div>
-        </div>
-        <div style="background:rgba(29,158,117,.2);border-radius:8px;padding:10px;text-align:center">
-          <div id="desc-stat-ok" style="font-size:20px;font-weight:700;color:#1D9E75">0</div>
-          <div style="font-size:10px;color:rgba(29,158,117,.8);margin-top:2px">No prazo</div>
-        </div>
-        <div style="background:rgba(224,82,82,.2);border-radius:8px;padding:10px;text-align:center">
-          <div id="desc-stat-fora" style="font-size:20px;font-weight:700;color:#e05252">0</div>
-          <div style="font-size:10px;color:rgba(224,82,82,.8);margin-top:2px">Fora prazo</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- FORMULÁRIO -->
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-title">🚛 Registrar descarregamento</div>
-    <div class="form-grid" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>Filial <span class="req">*</span></label>
-        <select id="desc-filial" onchange="descFilialChange()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%">
-          <option value="">Selecione</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Data <span class="req">*</span></label>
-        <input type="date" id="desc-date" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-      </div>
-    </div>
-    <div class="form-grid" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>N&#186; da nota <span class="req">*</span></label>
-        <input type="text" id="desc-nota" placeholder="Ex: 22389" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-      </div>
-      <div class="form-group">
-        <label>Cubagem (m&#179;) <span class="req">*</span></label>
-        <input type="number" id="desc-cubagem" placeholder="Ex: 110.5" step="0.01" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-      </div>
-    </div>
-    <div class="form-grid" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>Quem descarregou <span class="req">*</span></label>
-        <input type="text" id="desc-nome" placeholder="Nome(s)" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-      </div>
-      <div class="form-group">
-        <label>Qtd pessoas <span class="req">*</span></label>
-        <input type="number" id="desc-pessoas" placeholder="Ex: 4" min="1" max="20" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-      </div>
-    </div>
-    <div class="form-grid" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>Início <span class="req">*</span></label>
-        <input type="time" id="desc-inicio" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-      </div>
-      <div class="form-group">
-        <label>Fim <span class="req">*</span></label>
-        <input type="time" id="desc-fim" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-      </div>
-    </div>
-    <div id="desc-duracao-wrap" style="display:none;margin-bottom:12px">
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Duração</div>
-          <div id="desc-duracao-txt" style="font-size:18px;font-weight:600;color:var(--text)">--</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Estimado</div>
-          <div id="desc-estimado-txt" style="font-size:18px;font-weight:600;color:var(--text)">--</div>
-        </div>
-        <div id="desc-status-badge" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#eee;color:#666">--</div>
-      </div>
-    </div>
-    <div class="form-grid" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>Pneus errados</label>
-        <input type="number" id="desc-pneus-err" placeholder="0" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-      </div>
-      <div class="form-group">
-        <label>Reclamação?</label>
-        <select id="desc-reclamacao" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%">
-          <option value="">Não</option>
-          <option value="sim">Sim</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group" style="margin-bottom:14px">
-      <label>Observação</label>
-      <textarea id="desc-obs" placeholder="Intercorrências, atrasos..." rows="2" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%;resize:vertical"></textarea>
-    </div>
-    <div id="desc-alert" style="display:none;margin-bottom:10px;padding:10px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500"></div>
-    <button onclick="salvarDescarga()" style="width:100%;padding:13px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">🚛 Registrar descarga</button>
-  </div>
-
-  <!-- HISTÓRICO HOJE -->
-  <div class="card" style="margin-bottom:14px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div class="card-title" style="margin-bottom:0">📋 Descargas de hoje</div>
-      <button onclick="carregarDescargasHoje()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-size:11px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif">↻</button>
-    </div>
-    <div id="desc-historico"><div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div></div>
-  </div>
-
-  <!-- MINHAS MÉDIAS -->
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div class="card-title" style="margin-bottom:0">📊 Minhas médias</div>
-      <button onclick="carregarMinhasMedias()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-size:11px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif">↻</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <input type="text" id="media-nome" placeholder="Digite seu nome..." autocomplete="off" style="flex:1;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none" onkeydown="if(event.key==='Enter') carregarMinhasMedias()">
-      <button onclick="carregarMinhasMedias()" style="padding:9px 16px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Buscar</button>
-    </div>
-    <div id="media-kpis" style="display:none">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
-        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;text-align:center">
-          <div id="mk-total" style="font-size:20px;font-weight:700;color:var(--text)">0</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">Descargas</div>
-        </div>
-        <div style="background:var(--green-bg);border:1px solid var(--green-b);border-radius:var(--rsm);padding:10px;text-align:center">
-          <div id="mk-ok" style="font-size:20px;font-weight:700;color:var(--green-t)">0</div>
-          <div style="font-size:10px;color:var(--green-t);margin-top:2px">No prazo</div>
-        </div>
-        <div style="background:var(--red-bg);border:1px solid var(--red-b);border-radius:var(--rsm);padding:10px;text-align:center">
-          <div id="mk-fora" style="font-size:20px;font-weight:700;color:var(--red-t)">0</div>
-          <div style="font-size:10px;color:var(--red-t);margin-top:2px">Fora prazo</div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;text-align:center">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">% prazo</div>
-          <div id="mk-pct" style="font-size:18px;font-weight:700;color:var(--text)">—</div>
-        </div>
-        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;text-align:center">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Tempo médio</div>
-          <div id="mk-media-tempo" style="font-size:18px;font-weight:700;color:var(--text)">—</div>
-        </div>
-        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;text-align:center">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Melhor</div>
-          <div id="mk-melhor" style="font-size:18px;font-weight:700;color:var(--green-t)">—</div>
-        </div>
-      </div>
-      <div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px"><span>Desempenho</span><span id="mk-pct-label">0%</span></div>
-        <div style="height:6px;background:var(--border);border-radius:6px;overflow:hidden">
-          <div id="mk-barra" style="height:100%;width:0%;border-radius:6px;transition:width .6s;background:var(--green-t)"></div>
-        </div>
-      </div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;margin-bottom:10px;text-align:center">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Cubagem média</div>
-        <div id="mk-cub" style="font-size:18px;font-weight:700;color:var(--text)">—</div>
-      </div>
-      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Últimas descargas</div>
-      <div id="mk-historico"></div>
-    </div>
-    <div id="media-empty" style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Digite seu nome para ver suas estatísticas</div>
-  </div>
-
-</div>
 
 
 </div>
@@ -912,7 +743,7 @@ async function renderRankingConferentes() {
     const list = Object.values(ag).sort((a,b)=>b.conferidos-a.conferidos);
 
     if(!list.length) {
-      wrap.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:var(--hint);background:#1a1a2e;border-radius:var(--radius)">Nenhuma conferência registrada hoje</div>';
+      wrap.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:var(--muted)">Nenhuma conferência registrada hoje</div>';
       return;
     }
     buildRaceConf(list, wrap, 'Todas as filiais — hoje');
@@ -1016,10 +847,9 @@ function setTab(tab,btn){
   btn.classList.add('active');
   if(tab==='grafico'){renderRankingCorrida();renderChart();}
   if(tab==='confirmar'){carregarConferentesParaConfirmar();}
-  if(tab==='rank-conf'){renderRankingConferentes();renderRankingConferentesGeral();}
   if(tab==='pedido'){renderPedidoHistory();}
+  if(tab==='descarga'){descFilialChange();}
   if(tab==='conferente'){renderErroHistory();atualizarStatusConferencia();}
-  if(tab==='descarga'){carregarStatsDescarga();descFilialChange();}
 }
 
 // ---- PEDIDOS ----
@@ -1413,6 +1243,9 @@ init();
 // ESTATÍSTICAS LATERAIS DA DESCARGA
 // ============================================================
 async function carregarStatsDescarga() {
+  // Show loading state immediately
+  const ids = ['stats-por-filial','stats-top-pessoas'];
+  ids.forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML='<div style="text-align:center;padding:12px;color:var(--muted);font-size:13px">Carregando...</div>'; });
   try {
     const now = new Date();
     const mesAtual = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
