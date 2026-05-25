@@ -11,7 +11,6 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 body::before{content:'';position:fixed;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.60;z-index:0;pointer-events:none}
-.container{position:relative;z-index:1}
 .topbar{position:sticky;top:0;z-index:10;backdrop-filter:blur(8px);background:rgba(255,255,255,.92)}
 .tabs{backdrop-filter:blur(6px);background:rgba(255,255,255,.88)}
 .card{backdrop-filter:blur(6px);background:rgba(255,255,255,.92)}
@@ -22,7 +21,7 @@ body::before{content:'';position:fixed;inset:0;background:url('https://raw.githu
 .tb-title{font-size:15px;font-weight:600}.tb-sub{font-size:12px;color:var(--muted);margin-top:1px}
 .tb-status{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:20px;font-weight:500}
 .tb-status.ok{background:var(--green-bg);color:var(--green-t)}.tb-status.err{background:var(--red-bg);color:var(--red-t)}.tb-status.loading{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
-.container{max-width:580px;margin:0 auto;padding:20px 16px 56px}
+.container{position:relative;z-index:1;max-width:580px;margin:0 auto;padding:20px 16px 56px}
 .alert{border-radius:var(--radius);padding:11px 15px;font-size:13px;margin-bottom:14px;display:none;align-items:center;gap:8px;font-weight:500}
 .alert.show{display:flex}
 .alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
@@ -336,6 +335,7 @@ textarea{resize:vertical;min-height:72px}
 
   <!-- TAB DESCARGA -->
   <div class="tab-content" id="tab-descarga">
+    <div style="background:#ff0;color:#000;padding:10px;font-weight:bold;text-align:center;font-size:16px">✅ VERSÃO NOVA CARREGADA - DESCARGA</div>
     <div class="card">
       <div class="card-title">
         <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
@@ -843,7 +843,7 @@ function setTab(tab,btn){
   if(tab==='grafico'){renderRankingCorrida();renderChart();}
   if(tab==='confirmar'){carregarConferentesParaConfirmar();}
   if(tab==='rank-conf'){renderRankingConferentes();}
-  if(tab==='descarga'){descFilialChange();}
+  if(tab==='descarga'){}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente')renderErroHistory();
 }
