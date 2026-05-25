@@ -9,9 +9,9 @@
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;--blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;position:relative}
 body::before{content:'';position:fixed;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.60;z-index:-1;pointer-events:none}
-.container{position:relative;z-index:1}
+
 .topbar{position:sticky;top:0;z-index:10;backdrop-filter:blur(8px);background:rgba(255,255,255,.92)}
 .tabs{backdrop-filter:blur(6px);background:rgba(255,255,255,.88)}
 .alert{position:relative;z-index:2}
@@ -21,7 +21,7 @@ body::before{content:'';position:fixed;inset:0;background:url('https://raw.githu
 .tb-title{font-size:15px;font-weight:600}.tb-sub{font-size:12px;color:var(--muted);margin-top:1px}
 .tb-status{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:20px;font-weight:500}
 .tb-status.ok{background:var(--green-bg);color:var(--green-t)}.tb-status.err{background:var(--red-bg);color:var(--red-t)}.tb-status.loading{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
-.container{max-width:860px;margin:0 auto;padding:20px 16px 56px}
+.container{position:relative;z-index:2;max-width:860px;margin:0 auto;padding:20px 16px 56px}
 .alert{border-radius:var(--radius);padding:11px 15px;font-size:13px;margin-bottom:14px;display:none;align-items:center;gap:8px;font-weight:500}
 .alert.show{display:flex}
 .alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
@@ -375,6 +375,7 @@ textarea{resize:vertical;min-height:72px}
   <!-- TAB 6: DESCARGA -->
   <div class="tab-content" id="tab-descarga">
 
+    <!-- STATUS HOJE -->
     <div id="desc-status-panel" style="margin-bottom:14px;display:none">
       <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:var(--radius);padding:16px 18px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -383,187 +384,180 @@ textarea{resize:vertical;min-height:72px}
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
           <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:10px;text-align:center">
-            <div id="desc-stat-total" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#fff">0</div>
+            <div id="desc-stat-total" style="font-size:22px;font-weight:700;color:#fff">0</div>
             <div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:2px;text-transform:uppercase">Total</div>
           </div>
           <div style="background:rgba(29,158,117,.15);border:1px solid rgba(29,158,117,.3);border-radius:8px;padding:10px;text-align:center">
-            <div id="desc-stat-ok" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#1D9E75">0</div>
+            <div id="desc-stat-ok" style="font-size:22px;font-weight:700;color:#1D9E75">0</div>
             <div style="font-size:10px;color:rgba(29,158,117,.7);margin-top:2px;text-transform:uppercase">No prazo</div>
           </div>
           <div style="background:rgba(224,82,82,.15);border:1px solid rgba(224,82,82,.3);border-radius:8px;padding:10px;text-align:center">
-            <div id="desc-stat-fora" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#e05252">0</div>
+            <div id="desc-stat-fora" style="font-size:22px;font-weight:700;color:#e05252">0</div>
             <div style="font-size:10px;color:rgba(224,82,82,.7);margin-top:2px;text-transform:uppercase">Fora do prazo</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div id="desc-layout-grid" style="display:grid;grid-template-columns:1fr 260px;gap:14px;align-items:start">
-
-      <div>
-        <div class="card" style="margin-bottom:14px">
-          <div class="card-title"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:6px"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Registrar descarregamento</div>
-          <div class="form-grid" style="margin-bottom:12px">
-            <div class="form-group"><label>Filial <span class="req">*</span></label>
-              <select id="desc-filial" onchange="descFilialChange()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%"><option value="">Selecione</option></select>
-            </div>
-            <div class="form-group"><label>Data <span class="req">*</span></label>
-              <input type="date" id="desc-date" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-            </div>
-          </div>
-          <div class="form-grid" style="margin-bottom:12px">
-            <div class="form-group"><label>N&#186; da nota <span class="req">*</span></label>
-              <input type="text" id="desc-nota" placeholder="Ex: 22389" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-            </div>
-            <div class="form-group"><label>Cubagem (m&#179;) <span class="req">*</span></label>
-              <input type="number" id="desc-cubagem" placeholder="Ex: 110.5" step="0.01" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-            </div>
-          </div>
-          <div class="form-grid" style="margin-bottom:12px">
-            <div class="form-group"><label>Quem descarregou <span class="req">*</span></label>
-              <input type="text" id="desc-nome" placeholder="Nome(s) dos respons&#225;veis" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-            </div>
-            <div class="form-group"><label>Qtd de pessoas <span class="req">*</span></label>
-              <input type="number" id="desc-pessoas" placeholder="Ex: 4" min="1" max="20" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-            </div>
-          </div>
-          <div class="form-grid" style="margin-bottom:12px">
-            <div class="form-group"><label>In&#237;cio <span class="req">*</span></label>
-              <input type="time" id="desc-inicio" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-            </div>
-            <div class="form-group"><label>Fim <span class="req">*</span></label>
-              <input type="time" id="desc-fim" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-            </div>
-          </div>
-          <div id="desc-duracao-wrap" style="display:none;margin-bottom:12px">
-            <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-              <div>
-                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Dura&#231;&#227;o</div>
-                <div id="desc-duracao-txt" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--text)">--</div>
-              </div>
-              <div>
-                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Estimado</div>
-                <div id="desc-estimado-txt" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--text)">--</div>
-              </div>
-              <div id="desc-status-badge" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#eee;color:#666">--</div>
-            </div>
-          </div>
-          <div class="form-grid" style="margin-bottom:12px">
-            <div class="form-group"><label>Pneus errados</label>
-              <input type="number" id="desc-pneus-err" placeholder="0" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
-            </div>
-            <div class="form-group"><label>Reclama&#231;&#227;o?</label>
-              <select id="desc-reclamacao" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%">
-                <option value="">N&#227;o</option><option value="sim">Sim</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom:16px"><label>Observa&#231;&#227;o</label>
-            <textarea id="desc-obs" placeholder="Descreva intercorr&#234;ncias, atrasos, problemas..." rows="3" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%;resize:vertical"></textarea>
-          </div>
-          <div id="desc-alert" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500"></div>
-          <button onclick="salvarDescarga()" style="width:100%;padding:13px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">🚛 Registrar descarga</button>
-        </div>
-
-        <div class="card" style="margin-bottom:14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div class="card-title" style="margin-bottom:0">&#128203; Descargas de hoje</div>
-            <button onclick="carregarDescargasHoje()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);cursor:pointer">&#8635; Atualizar</button>
-          </div>
-          <div id="desc-historico"><div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div></div>
-        </div>
-
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div class="card-title" style="margin-bottom:0">&#128202; Minhas m&#233;dias</div>
-            <button onclick="carregarMinhasMedias()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);cursor:pointer">&#8635;</button>
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:14px">
-            <input type="text" id="media-nome" placeholder="Seu nome (como digitou nas descargas)" autocomplete="off" style="flex:1;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none" onkeydown="if(event.key==='Enter') carregarMinhasMedias()">
-            <button onclick="carregarMinhasMedias()" style="padding:9px 16px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Buscar</button>
-          </div>
-          <div id="media-kpis" style="display:none">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;text-align:center">
-                <div id="mk-total" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:var(--text)">0</div>
-                <div style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase">Descargas no m&#234;s</div>
-              </div>
-              <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;text-align:center">
-                <div id="mk-media-tempo" style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:var(--text)">&#8212;</div>
-                <div style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase">Tempo m&#233;dio</div>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
-              <div style="background:var(--green-bg);border:1px solid var(--green-b);border-radius:var(--rsm);padding:12px;text-align:center">
-                <div id="mk-ok" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--green-t)">0</div>
-                <div style="font-size:10px;color:var(--green-t);margin-top:3px;text-transform:uppercase">No prazo</div>
-              </div>
-              <div style="background:var(--red-bg);border:1px solid var(--red-b);border-radius:var(--rsm);padding:12px;text-align:center">
-                <div id="mk-fora" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--red-t)">0</div>
-                <div style="font-size:10px;color:var(--red-t);margin-top:3px;text-transform:uppercase">Fora prazo</div>
-              </div>
-              <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;text-align:center">
-                <div id="mk-pct" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--text)">&#8212;</div>
-                <div style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase">% prazo</div>
-              </div>
-            </div>
-            <div style="margin-bottom:12px">
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px"><span>Desempenho</span><span id="mk-pct-label">0%</span></div>
-              <div style="height:8px;background:var(--border);border-radius:8px;overflow:hidden">
-                <div id="mk-barra" style="height:100%;width:0%;border-radius:8px;transition:width .6s;background:var(--green-t)"></div>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-              <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px">
-                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Cubagem m&#233;dia</div>
-                <div id="mk-cub" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--text)">&#8212;</div>
-                <div style="font-size:10px;color:var(--hint);margin-top:1px">m&#179; por descarga</div>
-              </div>
-              <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px">
-                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Melhor tempo</div>
-                <div id="mk-melhor" style="font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:var(--green-t)">&#8212;</div>
-                <div style="font-size:10px;color:var(--hint);margin-top:1px">mais r&#225;pida</div>
-              </div>
-            </div>
-            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:8px">&#218;ltimas descargas</div>
-            <div id="mk-historico"></div>
-          </div>
-          <div id="media-empty" style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Digite seu nome para ver suas estat&#237;sticas</div>
+    <!-- STATS GERAIS (linha de 3 cards) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="card" style="text-align:center;padding:14px 12px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Tempo m&#233;dio</div>
+        <div id="stats-media-tempo" style="font-size:22px;font-weight:700;color:var(--text)">&#8212;</div>
+        <div style="font-size:10px;color:var(--hint);margin-top:2px">por descarga</div>
+      </div>
+      <div class="card" style="text-align:center;padding:14px 12px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">% no prazo</div>
+        <div id="stats-pct-prazo" style="font-size:22px;font-weight:700;color:var(--text)">&#8212;</div>
+        <div style="height:5px;background:var(--border);border-radius:5px;margin-top:6px;overflow:hidden">
+          <div id="stats-pct-bar" style="height:100%;width:0%;border-radius:5px;background:var(--green-t);transition:width .5s"></div>
         </div>
       </div>
+      <div class="card" style="text-align:center;padding:14px 12px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Total no m&#234;s</div>
+        <div id="stats-total-geral" style="font-size:22px;font-weight:700;color:var(--text)">&#8212;</div>
+      </div>
+    </div>
 
-      <div>
-        <div class="card" style="margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">&#128202; M&#233;dias gerais</div>
-          <div id="stats-media-tempo" style="margin-bottom:10px">
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Tempo m&#233;dio</div>
-            <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--text)">&#8212;</div>
-            <div style="font-size:10px;color:var(--hint);margin-top:1px">por descarga</div>
-          </div>
-          <div style="height:1px;background:var(--border);margin:10px 0"></div>
-          <div style="margin-bottom:10px">
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">% no prazo</div>
-            <div id="stats-pct-prazo" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--text)">&#8212;</div>
-            <div style="height:6px;background:var(--border);border-radius:6px;margin-top:6px;overflow:hidden">
-              <div id="stats-pct-bar" style="height:100%;width:0%;border-radius:6px;background:var(--green-t);transition:width .5s"></div>
-            </div>
-          </div>
-          <div style="height:1px;background:var(--border);margin:10px 0"></div>
+    <!-- POR FILIAL + TOP DESCARREGADORES (lado a lado) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="card">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:12px">&#127981; Por filial</div>
+        <div id="stats-por-filial"><div style="text-align:center;padding:12px;color:var(--hint);font-size:12px">Carregando...</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:12px">&#127942; Top descarregadores</div>
+        <div id="stats-top-pessoas"><div style="text-align:center;padding:12px;color:var(--hint);font-size:12px">Carregando...</div></div>
+      </div>
+    </div>
+
+    <!-- FORMULÁRIO -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:6px"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Registrar descarregamento</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>Filial <span class="req">*</span></label>
+          <select id="desc-filial" onchange="descFilialChange()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%"><option value="">Selecione</option></select>
+        </div>
+        <div class="form-group"><label>Data <span class="req">*</span></label>
+          <input type="date" id="desc-date" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>N&#186; da nota <span class="req">*</span></label>
+          <input type="text" id="desc-nota" placeholder="Ex: 22389" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Cubagem (m&#179;) <span class="req">*</span></label>
+          <input type="number" id="desc-cubagem" placeholder="Ex: 110.5" step="0.01" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>Quem descarregou <span class="req">*</span></label>
+          <input type="text" id="desc-nome" placeholder="Nome(s)" autocomplete="off" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Qtd de pessoas <span class="req">*</span></label>
+          <input type="number" id="desc-pessoas" placeholder="Ex: 4" min="1" max="20" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>In&#237;cio <span class="req">*</span></label>
+          <input type="time" id="desc-inicio" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Fim <span class="req">*</span></label>
+          <input type="time" id="desc-fim" onchange="calcDescDuracao()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+      </div>
+      <div id="desc-duracao-wrap" style="display:none;margin-bottom:12px">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Total no m&#234;s</div>
-            <div id="stats-total-geral" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--text)">&#8212;</div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Dura&#231;&#227;o</div>
+            <div id="desc-duracao-txt" style="font-size:18px;font-weight:600;color:var(--text)">--</div>
           </div>
-        </div>
-        <div class="card" style="margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:12px">&#127981; Por filial</div>
-          <div id="stats-por-filial"><div style="text-align:center;padding:12px;color:var(--hint);font-size:12px">Carregando...</div></div>
-        </div>
-        <div class="card">
-          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:12px">&#127942; Top descarregadores</div>
-          <div id="stats-top-pessoas"><div style="text-align:center;padding:12px;color:var(--hint);font-size:12px">Carregando...</div></div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Estimado</div>
+            <div id="desc-estimado-txt" style="font-size:18px;font-weight:600;color:var(--text)">--</div>
+          </div>
+          <div id="desc-status-badge" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:#eee;color:#666">--</div>
         </div>
       </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group"><label>Pneus errados</label>
+          <input type="number" id="desc-pneus-err" placeholder="0" min="0" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%">
+        </div>
+        <div class="form-group"><label>Reclama&#231;&#227;o?</label>
+          <select id="desc-reclamacao" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;-webkit-appearance:none;width:100%">
+            <option value="">N&#227;o</option><option value="sim">Sim</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:16px"><label>Observa&#231;&#227;o</label>
+        <textarea id="desc-obs" placeholder="Intercorr&#234;ncias, atrasos..." rows="2" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%;resize:vertical"></textarea>
+      </div>
+      <div id="desc-alert" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500"></div>
+      <button onclick="salvarDescarga()" style="width:100%;padding:13px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">🚛 Registrar descarga</button>
+    </div>
 
+    <!-- HISTÓRICO -->
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">&#128203; Descargas de hoje</div>
+        <button onclick="carregarDescargasHoje()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);cursor:pointer">&#8635; Atualizar</button>
+      </div>
+      <div id="desc-historico"><div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Selecione uma filial</div></div>
+    </div>
+
+    <!-- MINHAS MÉDIAS -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0">&#128202; Minhas m&#233;dias</div>
+        <button onclick="carregarMinhasMedias()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);cursor:pointer">&#8635;</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input type="text" id="media-nome" placeholder="Seu nome (como digitou nas descargas)" autocomplete="off" style="flex:1;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;outline:none" onkeydown="if(event.key==='Enter') carregarMinhasMedias()">
+        <button onclick="carregarMinhasMedias()" style="padding:9px 16px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Buscar</button>
+      </div>
+      <div id="media-kpis" style="display:none">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;text-align:center">
+            <div id="mk-total" style="font-size:22px;font-weight:700;color:var(--text)">0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase">Descargas</div>
+          </div>
+          <div style="background:var(--green-bg);border:1px solid var(--green-b);border-radius:var(--rsm);padding:12px;text-align:center">
+            <div id="mk-ok" style="font-size:22px;font-weight:700;color:var(--green-t)">0</div>
+            <div style="font-size:10px;color:var(--green-t);margin-top:2px;text-transform:uppercase">No prazo</div>
+          </div>
+          <div style="background:var(--red-bg);border:1px solid var(--red-b);border-radius:var(--rsm);padding:12px;text-align:center">
+            <div id="mk-fora" style="font-size:22px;font-weight:700;color:var(--red-t)">0</div>
+            <div style="font-size:10px;color:var(--red-t);margin-top:2px;text-transform:uppercase">Fora prazo</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;text-align:center">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">% prazo</div>
+            <div id="mk-pct" style="font-size:20px;font-weight:700;color:var(--text)">&#8212;</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;text-align:center">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Tempo m&#233;dio</div>
+            <div id="mk-media-tempo" style="font-size:20px;font-weight:700;color:var(--text)">&#8212;</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;text-align:center">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Melhor tempo</div>
+            <div id="mk-melhor" style="font-size:20px;font-weight:700;color:var(--green-t)">&#8212;</div>
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px"><span>Desempenho</span><span id="mk-pct-label">0%</span></div>
+          <div style="height:8px;background:var(--border);border-radius:8px;overflow:hidden">
+            <div id="mk-barra" style="height:100%;width:0%;border-radius:8px;transition:width .6s;background:var(--green-t)"></div>
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:8px">&#218;ltimas descargas</div>
+        <div id="mk-historico"></div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;margin-top:10px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Cubagem m&#233;dia</div>
+          <div id="mk-cub" style="font-size:18px;font-weight:600;color:var(--text)">&#8212;</div>
+        </div>
+      </div>
+      <div id="media-empty" style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Digite seu nome para ver suas estat&#237;sticas</div>
     </div>
 
   </div>
@@ -1006,17 +1000,13 @@ function loadChartColabs(){loadColabs('g-filial','g-colab');renderRankingCorrida
 function setTab(tab,btn){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  const el=document.getElementById('tab-'+tab);
-  if(!el){console.error('TAB NOT FOUND: tab-'+tab); return;}
-  el.classList.add('active');
-  btn.classList.add('active');
-  console.log('setTab:',tab,'el:',el,'display:',getComputedStyle(el).display,'children:',el.children.length);
+  document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
   if(tab==='grafico'){renderRankingCorrida();renderChart();}
   if(tab==='confirmar'){carregarConferentesParaConfirmar();}
   if(tab==='rank-conf'){renderRankingConferentes();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente'){renderErroHistory();atualizarStatusConferencia();}
-  if(tab==='descarga'){descFilialChange();carregarStatsDescarga();}
+  if(tab==='descarga'){carregarStatsDescarga();descFilialChange();}
 }
 
 // ---- PEDIDOS ----
