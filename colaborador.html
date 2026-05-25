@@ -9,8 +9,7 @@
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;--blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-body::before{content:'';position:fixed;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.45;pointer-events:none}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;position:relative}
 
 
 .tabs{background:rgba(255,255,255,.97);border-radius:var(--radius)}
@@ -125,6 +124,7 @@ textarea{resize:vertical;min-height:72px}
 </style>
 </head>
 <body>
+<div aria-hidden="true" style="position:fixed;top:0;left:0;right:0;bottom:0;background:url(https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg) center/cover no-repeat;opacity:0.5;z-index:-1"></div>
 
 <div class="topbar">
   <div class="tb-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
