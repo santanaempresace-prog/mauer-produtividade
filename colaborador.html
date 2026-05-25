@@ -9,8 +9,7 @@
 <style>
 :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;--text:#1a1917;--muted:#6b6860;--hint:#a09d96;--radius:10px;--rsm:6px;--green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;--red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;--amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;--blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-body::before{content:'';position:fixed;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.60;z-index:0;pointer-events:none}
+body{font-family:'DM Sans',sans-serif;background:#111827;color:var(--text);min-height:100vh}
 .topbar{position:sticky;top:0;z-index:10;backdrop-filter:blur(8px);background:rgba(255,255,255,.92)}
 .tabs{backdrop-filter:blur(6px);background:rgba(255,255,255,.88)}
 .card{backdrop-filter:blur(6px);background:rgba(255,255,255,.92)}
@@ -21,7 +20,7 @@ body::before{content:'';position:fixed;inset:0;background:url('https://raw.githu
 .tb-title{font-size:15px;font-weight:600}.tb-sub{font-size:12px;color:var(--muted);margin-top:1px}
 .tb-status{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:20px;font-weight:500}
 .tb-status.ok{background:var(--green-bg);color:var(--green-t)}.tb-status.err{background:var(--red-bg);color:var(--red-t)}.tb-status.loading{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
-.container{position:relative;z-index:1;max-width:580px;margin:0 auto;padding:20px 16px 56px}
+.container{max-width:580px;margin:0 auto;padding:20px 16px 56px}
 .alert{border-radius:var(--radius);padding:11px 15px;font-size:13px;margin-bottom:14px;display:none;align-items:center;gap:8px;font-weight:500}
 .alert.show{display:flex}
 .alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
@@ -30,7 +29,7 @@ body::before{content:'';position:fixed;inset:0;background:url('https://raw.githu
 .tab-btn{padding:9px 6px;border:none;border-radius:var(--rsm);background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;line-height:1.3}
 .tab-btn.active{background:var(--text);color:#fff}
 .tab-btn span{display:block;font-size:10px;font-weight:400;opacity:.75;margin-top:1px}
-.tab-content{display:none}.tab-content.active{display:block}
+.tab-content{display:none!important}.tab-content.active{display:block!important}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:12px}
 .card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;gap:6px}
 .card-title svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
@@ -1290,6 +1289,20 @@ async function salvarDescarga(){
 
 
 init();
+
+// Aplicar background image via JS - mais confiável que CSS com pseudo-elemento
+(function(){
+  var bg = "url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg')";
+  var overlay = "linear-gradient(rgba(15,24,42,0.55),rgba(15,24,42,0.55))";
+  document.body.style.backgroundImage = overlay + ',' + bg;
+  document.body.style.backgroundSize = 'auto,cover';
+  document.body.style.backgroundPosition = 'center,center';
+  document.body.style.backgroundRepeat = 'no-repeat,no-repeat';
+  document.body.style.backgroundAttachment = 'fixed,fixed';
+  // Container com fundo sólido - conteúdo sempre visível
+  var container = document.querySelector('.container');
+  if(container) container.style.background = '#f5f4f0';
+})();
 </script>
 </body>
 </html>
