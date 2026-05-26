@@ -434,6 +434,16 @@ textarea{resize:vertical}
         <div id="m-historico"></div>
       </div>
     </div>
+
+    <!-- HISTÓRICO POR FILIAL -->
+    <div class="card" id="card-filial-hist" style="margin-top:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0">🏭 Histórico por filial</div>
+        <button onclick="carregarHistoricoFilial()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-size:11px;color:var(--muted);cursor:pointer">↻</button>
+      </div>
+      <div id="hist-filial-lista"><div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Carregando...</div></div>
+    </div>
+
   </div>
 
   <!-- ══ TAB: FILIAIS ════════════════════════════════════════ -->
@@ -527,6 +537,7 @@ function setTab(tab, btn){
   btn.classList.add('active');
   if(tab==='hoje') carregarHoje();
   if(tab==='filiais') carregarFiliais();
+  if(tab==='medias') carregarHistoricoFilial();
 }
 
 // ── Cálculo de duração ───────────────────────────────────────
@@ -841,6 +852,79 @@ async function carregarFiliais(){
   }
 }
 
+// ── Histórico por filial ─────────────────────────────────────
+async function carregarHistoricoFilial(){
+  const el = document.getElementById('hist-filial-lista');
+  if(!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--hint);font-size:13px">Carregando...</div>';
+  try{
+    const data = await fbGet('descarregamentos');
+    const todos = data ? Object.values(data) : [];
+    if(!todos.length){
+      el.innerHTML='<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Sem dados</div>';
+      return;
+    }
+    // Agrupa por filial
+    const byF = {};
+    todos.forEach(d=>{
+      const f = (d.filial||'?').trim();
+      if(!byF[f]) byF[f]={ok:0,total:0,tempos:[],itens:[]};
+      byF[f].total++;
+      if(d.realizado==='OK') byF[f].ok++;
+      if(d.duracaoMin>0) byF[f].tempos.push({mins:d.duracaoMin,nota:d.nota||'—',data:d.data||'',nome:d.nome||''});
+      byF[f].itens.push(d);
+    });
+    const fls = Object.entries(byF).sort((a,b)=>b[1].total-a[1].total);
+    const maxMedia = Math.max(...fls.map(([,v])=>v.tempos.length?Math.round(v.tempos.reduce((a,b)=>a+b.mins,0)/v.tempos.length):0));
+
+    el.innerHTML = fls.map(([nome,v])=>{
+      const pct = Math.round(v.ok/v.total*100);
+      const tempos = v.tempos;
+      const media = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b.mins,0)/tempos.length) : 0;
+      const rapida = tempos.length ? tempos.reduce((a,b)=>a.mins<b.mins?a:b) : null;
+      const demorada = tempos.length ? tempos.reduce((a,b)=>a.mins>b.mins?a:b) : null;
+      const barW = maxMedia>0 ? Math.round(media/maxMedia*100) : 0;
+      const cor = pct>=80?'var(--green-t)':pct>=50?'#BA7517':'var(--red-t)';
+      const bgCor = pct>=80?'var(--green-bg)':pct>=50?'var(--amber-bg)':'var(--red-bg)';
+
+      const dtFmt = s => s ? s.split('-').reverse().join('/') : '—';
+      const mFmt = m => { const h=Math.floor(m/60); return (h>0?h+'h ':'')+String(m%60).padStart(2,'0')+'min'; };
+
+      return `<div style="border:1px solid var(--border);border-radius:var(--rsm);padding:14px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${nome}</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:var(--muted)">${v.total} descargas</span>
+            <span style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${bgCor};color:${cor}">${pct}% prazo</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
+          <div style="background:var(--bg);border-radius:var(--rsm);padding:8px;text-align:center">
+            <div style="font-size:15px;font-weight:600;color:var(--text)">${media?mFmt(media):'—'}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase">Média</div>
+          </div>
+          <div style="background:var(--green-bg);border-radius:var(--rsm);padding:8px;text-align:center">
+            <div style="font-size:15px;font-weight:600;color:var(--green-t)">${rapida?mFmt(rapida.mins):'—'}</div>
+            <div style="font-size:10px;color:var(--green-t);margin-top:2px;text-transform:uppercase">⚡ Mais rápida</div>
+          </div>
+          <div style="background:var(--red-bg);border-radius:var(--rsm);padding:8px;text-align:center">
+            <div style="font-size:15px;font-weight:600;color:var(--red-t)">${demorada?mFmt(demorada.mins):'—'}</div>
+            <div style="font-size:10px;color:var(--red-t);margin-top:2px;text-transform:uppercase">🐢 Mais lenta</div>
+          </div>
+        </div>
+        ${rapida||demorada?`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--muted)">
+          ${rapida?`<div>⚡ Nota ${rapida.nota} · ${dtFmt(rapida.data)}${rapida.nome?' · '+rapida.nome:''}</div>`:'<div></div>'}
+          ${demorada?`<div style="text-align:right">🐢 Nota ${demorada.nota} · ${dtFmt(demorada.data)}</div>`:''}
+        </div>`:''}
+        <div style="height:4px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:8px">
+          <div style="height:100%;width:${barW}%;background:${cor};border-radius:4px;transition:width .5s"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ el.innerHTML='<div style="color:var(--red-t);padding:12px;font-size:13px">Erro ao carregar</div>'; }
+}
+
 // ── Init ─────────────────────────────────────────────────────
 async function init(){
   const badge = document.getElementById('status-badge');
@@ -867,8 +951,9 @@ async function init(){
     badge.textContent='Sem conexão'; badge.className='status-badge err';
   }
 
-  // Carregar filiais tab em background
+  // Carregar tabs em background
   carregarFiliais();
+  carregarHistoricoFilial();
 }
 
 // Iniciar
