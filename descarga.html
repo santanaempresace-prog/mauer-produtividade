@@ -786,14 +786,17 @@ async function carregarFiliais(){
     document.getElementById('f-ok').textContent = oks;
     document.getElementById('f-fora').textContent = tot-oks;
 
-    // Por filial
+    // Por filial (com normalização de nomes)
+    const FMAP2 = {'ES':'ES','MAUER ES':'ES','MG':'MG','MAUER MG':'MG','SP':'MAUER ITAPEVI','MAUER ITAPEVI':'MAUER ITAPEVI','BU':'MAUER BAURU','BU ':'MAUER BAURU','MAUER BAURU':'MAUER BAURU'};
+    const normF2 = f=>{ const k=(f||'').trim().toUpperCase(); return FMAP2[k]||(f||'?').trim(); };
     const byF = {};
     doMes.forEach(d=>{
-      const f = (d.filial||'?').trim();
+      const f = normF2(d.filial);
       if(!byF[f]) byF[f]={ok:0,total:0,tempos:[]};
       byF[f].total++;
       if(d.realizado==='OK') byF[f].ok++;
-      if(d.duracaoMin>0) byF[f].tempos.push(d.duracaoMin);
+      const m=parseFloat(d.duracaoMin)||0;
+      if(m>0) byF[f].tempos.push(m);
     });
     const fls = Object.entries(byF).sort((a,b)=>b[1].total-a[1].total);
     const maxT = Math.max(...fls.map(([,v])=>v.total),1);
@@ -825,7 +828,8 @@ async function carregarFiliais(){
       if(!byP[k]) byP[k]={ok:0,total:0,tempos:[]};
       byP[k].total++;
       if(d.realizado==='OK') byP[k].ok++;
-      if(d.duracaoMin>0) byP[k].tempos.push(d.duracaoMin);
+      const m=parseFloat(d.duracaoMin)||0;
+      if(m>0) byP[k].tempos.push(m);
     });
     const top = Object.entries(byP).sort((a,b)=>b[1].total-a[1].total).slice(0,5);
     const medals = ['🥇','🥈','🥉','4°','5°'];
@@ -865,14 +869,34 @@ async function carregarHistoricoFilial(){
       return;
     }
     // Agrupa por filial
+    // Normaliza nomes de filiais
+    const FILIAL_MAP = {
+      'ES': 'ES', 'MAUER ES': 'ES',
+      'MG': 'MG', 'MAUER MG': 'MG',
+      'SP': 'MAUER ITAPEVI', 'MAUER ITAPEVI': 'MAUER ITAPEVI',
+      'BU': 'MAUER BAURU', 'MAUER BAURU': 'MAUER BAURU', 'BU ': 'MAUER BAURU',
+    };
+    function normFilial(f){ const k=(f||'').trim().toUpperCase(); return FILIAL_MAP[k]||f.trim(); }
+
     const byF = {};
     todos.forEach(d=>{
-      const f = (d.filial||'?').trim();
-      if(!byF[f]) byF[f]={ok:0,total:0,tempos:[],itens:[]};
+      const f = normFilial(d.filial);
+      if(!byF[f]) byF[f]={ok:0,total:0,tempos:[]};
       byF[f].total++;
       if(d.realizado==='OK') byF[f].ok++;
-      if(d.duracaoMin>0) byF[f].tempos.push({mins:d.duracaoMin,nota:d.nota||'—',data:d.data||'',nome:d.nome||''});
-      byF[f].itens.push(d);
+      // Aceita duracaoMin como número ou string, e também calcula a partir de inicio/fim
+      let mins = parseFloat(d.duracaoMin) || 0;
+      if(!mins && d.inicio && d.fim){
+        const[ih,im]=d.inicio.split(':').map(Number);
+        const[fh,fm]=d.fim.split(':').map(Number);
+        mins=(fh*60+fm)-(ih*60+im);
+        if(mins<0) mins+=1440;
+      }
+      if(!mins && d.duracao){
+        const mH=d.duracao.match(/(\d+)h/); const mM=d.duracao.match(/(\d+)min/);
+        mins=(mH?parseInt(mH[1])*60:0)+(mM?parseInt(mM[1]):0);
+      }
+      if(mins>0) byF[f].tempos.push({mins,nota:d.nota||'—',data:d.data||'',nome:d.nome||''});
     });
     const fls = Object.entries(byF).sort((a,b)=>b[1].total-a[1].total);
     const maxMedia = Math.max(...fls.map(([,v])=>v.tempos.length?Math.round(v.tempos.reduce((a,b)=>a+b.mins,0)/v.tempos.length):0));
