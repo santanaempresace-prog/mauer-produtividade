@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Descarregamento — Mauer Pneus</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5ba;
+  --text:#1a1917;--muted:#6b6860;--hint:#a09d96;
+  --radius:12px;--rsm:8px;
+  --green-bg:#eaf4e8;--green-t:#2d6b28;--green-b:#b8ddb4;
+  --red-bg:#faeaea;--red-t:#8b2424;--red-b:#f0b8b8;
+  --amber-bg:#fdf3e3;--amber-t:#7a4f0d;--amber-b:#f0d090;
+  --blue-bg:#e8f3fd;--blue-t:#1a4b8c;--blue-b:#a8ccf0;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:#0d1117;
+  color:var(--text);
+  min-height:100vh;
+}
+
+/* Background image */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;
+  opacity:.35;pointer-events:none;
+}
+
+/* Header */
+.header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.96);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border);
+  padding:12px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.header-brand{display:flex;align-items:center;gap:10px}
+.header-icon{
+  width:36px;height:36px;background:#1a1917;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+}
+.header-icon svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.header-title{font-size:15px;font-weight:700;color:var(--text)}
+.header-sub{font-size:11px;color:var(--muted)}
+.status-badge{
+  font-size:12px;font-weight:600;padding:5px 12px;
+  border-radius:20px;border:1.5px solid var(--border);
+}
+.status-badge.ok{background:var(--green-bg);color:var(--green-t);border-color:var(--green-b)}
+.status-badge.loading{background:var(--amber-bg);color:var(--amber-t);border-color:var(--amber-b)}
+.status-badge.err{background:var(--red-bg);color:var(--red-t);border-color:var(--red-b)}
+
+/* Layout */
+.page{
+  position:relative;z-index:1;
+  max-width:640px;margin:0 auto;
+  padding:20px 16px 60px;
+}
+
+/* Tabs */
+.tabs{
+  background:rgba(255,255,255,.95);
+  border-radius:var(--radius);
+  padding:6px;
+  display:flex;gap:4px;
+  margin-bottom:16px;
+  box-shadow:0 1px 8px rgba(0,0,0,.08);
+}
+.tab-btn{
+  flex:1;padding:10px 8px;border:none;background:transparent;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  color:var(--muted);border-radius:8px;cursor:pointer;
+  transition:all .15s;text-align:center;line-height:1.3;
+}
+.tab-btn span{display:block;font-size:10px;color:var(--hint);margin-top:1px}
+.tab-btn.active{background:var(--text);color:#fff}
+.tab-btn.active span{color:rgba(255,255,255,.6)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* Cards */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px 20px;
+  margin-bottom:14px;
+}
+.card-title{
+  font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.07em;
+  margin-bottom:16px;display:flex;align-items:center;gap:6px;
+}
+.card-title svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Forms */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+label{font-size:12px;font-weight:500;color:var(--muted)}
+.req{color:#e05252}
+input,select,textarea{
+  font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:var(--rsm);padding:9px 12px;outline:none;width:100%;
+  transition:border-color .15s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--text)}
+select{-webkit-appearance:none;cursor:pointer}
+textarea{resize:vertical}
+
+/* Duration box */
+.duracao-box{
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:var(--rsm);padding:12px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:10px;margin-bottom:12px;
+}
+.duracao-item .label{font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:3px}
+.duracao-item .val{font-family:'DM Mono',monospace;font-size:20px;font-weight:600;color:var(--text)}
+.status-pill{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600}
+.status-pill.ok{background:var(--green-bg);color:var(--green-t)}
+.status-pill.fora{background:var(--red-bg);color:var(--red-t)}
+.status-pill.nd{background:#eee;color:#888}
+
+/* Buttons */
+.btn-primary{
+  width:100%;padding:14px;background:var(--text);color:#fff;
+  border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;
+  font-size:14px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:opacity .15s;
+}
+.btn-primary:hover{opacity:.85}
+.btn-primary:disabled{opacity:.5;cursor:default}
+
+/* Alert */
+.alert-msg{
+  padding:10px 14px;border-radius:var(--rsm);
+  font-size:13px;font-weight:500;margin-bottom:12px;display:none;
+}
+.alert-msg.ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
+.alert-msg.err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
+.alert-msg.warn{background:var(--amber-bg);color:var(--amber-t);border:1px solid var(--amber-b)}
+
+/* History items */
+.hist-item{
+  border:1px solid var(--border);border-radius:var(--rsm);
+  padding:10px 14px;margin-bottom:8px;
+}
+.hist-item:last-child{margin-bottom:0}
+.hist-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.hist-nota{font-size:13px;font-weight:600}
+.hist-info{font-size:11px;color:var(--muted)}
+.badge-ok{padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600;background:var(--green-bg);color:var(--green-t)}
+.badge-fora{padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600;background:var(--red-bg);color:var(--red-t)}
+
+/* Stats panel */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 12px;text-align:center;
+}
+.stat-val{font-family:'DM Mono',monospace;font-size:26px;font-weight:700;color:var(--text);margin-bottom:4px}
+.stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.stat-card.green{border-color:var(--green-b);background:var(--green-bg)}
+.stat-card.green .stat-val{color:var(--green-t)}
+.stat-card.red{border-color:var(--red-b);background:var(--red-bg)}
+.stat-card.red .stat-val{color:var(--red-t)}
+
+/* Progress bar */
+.prog-wrap{height:8px;background:var(--border);border-radius:8px;overflow:hidden;margin-top:8px}
+.prog-bar{height:100%;border-radius:8px;transition:width .6s ease;background:var(--green-t)}
+
+/* Minhas médias search */
+.search-row{display:flex;gap:8px;margin-bottom:14px}
+.search-row input{flex:1}
+.search-row button{
+  padding:9px 16px;background:var(--text);color:#fff;
+  border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;
+}
+
+/* Dark stats panel */
+.dark-panel{
+  background:linear-gradient(135deg,#1a1a2e,#16213e);
+  border-radius:var(--radius);padding:16px;margin-bottom:14px;
+}
+.dark-panel-title{font-size:11px;font-weight:600;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
+.dark-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dark-card{border-radius:8px;padding:10px;text-align:center}
+.dark-card .dv{font-family:'DM Mono',monospace;font-size:22px;font-weight:700}
+.dark-card .dl{font-size:10px;margin-top:2px;text-transform:uppercase}
+
+/* Filial ranking */
+.filial-row{margin-bottom:12px}
+.filial-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.filial-nome{font-size:12px;font-weight:600;color:var(--text)}
+.filial-pct{font-size:12px;font-weight:700}
+.filial-bar{height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:3px}
+.filial-bar-inner{height:100%;border-radius:5px;transition:width .5s}
+.filial-meta{font-size:10px;color:var(--hint);display:flex;justify-content:space-between}
+
+/* Responsive */
+@media(max-width:480px){
+  .form-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .dark-grid{grid-template-columns:1fr 1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-brand">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    </div>
+    <div>
+      <div class="header-title">Descarregamento</div>
+      <div class="header-sub">Mauer Logística</div>
+    </div>
+  </div>
+  <div id="status-badge" class="status-badge loading">Conectando...</div>
+</div>
+
+<!-- Page -->
+<div class="page">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="setTab('registrar',this)">🚛 Registrar<span>Nova descarga</span></button>
+    <button class="tab-btn" onclick="setTab('hoje',this)">📋 Hoje<span>Descargas do dia</span></button>
+    <button class="tab-btn" onclick="setTab('medias',this)">📊 Médias<span>Meu histórico</span></button>
+    <button class="tab-btn" onclick="setTab('filiais',this)">🏭 Filiais<span>Por filial</span></button>
+  </div>
+
+  <!-- ══ TAB: REGISTRAR ══════════════════════════════════════ -->
+  <div class="tab-content active" id="tab-registrar">
+
+    <!-- Stats rápidos -->
+    <div id="quick-stats" style="display:none">
+      <div class="dark-panel">
+        <div class="dark-panel-title">🚛 Descargas hoje — <span id="qs-filial"></span></div>
+        <div class="dark-grid">
+          <div class="dark-card" style="background:rgba(255,255,255,.08)">
+            <div class="dv" style="color:#fff" id="qs-total">0</div>
+            <div class="dl" style="color:rgba(255,255,255,.5)">Total</div>
+          </div>
+          <div class="dark-card" style="background:rgba(29,158,117,.2)">
+            <div class="dv" style="color:#1D9E75" id="qs-ok">0</div>
+            <div class="dl" style="color:rgba(29,158,117,.8)">No prazo</div>
+          </div>
+          <div class="dark-card" style="background:rgba(224,82,82,.2)">
+            <div class="dv" style="color:#e05252" id="qs-fora">0</div>
+            <div class="dl" style="color:rgba(224,82,82,.8)">Fora prazo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        Registrar descarregamento
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Filial <span class="req">*</span></label>
+          <select id="filial" onchange="onFilialChange()"><option value="">Selecione</option></select>
+        </div>
+        <div class="form-group">
+          <label>Data <span class="req">*</span></label>
+          <input type="date" id="data">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>N&#186; da nota <span class="req">*</span></label>
+          <input type="text" id="nota" placeholder="Ex: 22389" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Cubagem (m&#179;) <span class="req">*</span></label>
+          <input type="number" id="cubagem" placeholder="Ex: 110.5" step="0.01" min="0">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Quem descarregou <span class="req">*</span></label>
+          <input type="text" id="nome" placeholder="Nome(s) dos respons&#225;veis" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Qtd de pessoas <span class="req">*</span></label>
+          <input type="number" id="pessoas" placeholder="Ex: 4" min="1" max="20">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>In&#237;cio <span class="req">*</span></label>
+          <input type="time" id="inicio" onchange="calcDuracao()">
+        </div>
+        <div class="form-group">
+          <label>Fim <span class="req">*</span></label>
+          <input type="time" id="fim" onchange="calcDuracao()">
+        </div>
+      </div>
+
+      <!-- Cálculo automático -->
+      <div id="duracao-wrap" style="display:none;margin-bottom:12px">
+        <div class="duracao-box">
+          <div class="duracao-item">
+            <div class="label">Dura&#231;&#227;o real</div>
+            <div class="val" id="duracao-txt">--</div>
+          </div>
+          <div class="duracao-item">
+            <div class="label">Estimado</div>
+            <div class="val" id="estimado-txt">--</div>
+          </div>
+          <div id="status-pill" class="status-pill nd">--</div>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Pneus errados</label>
+          <input type="number" id="pneus-err" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>Reclama&#231;&#227;o?</label>
+          <select id="reclamacao">
+            <option value="">N&#227;o</option>
+            <option value="sim">Sim</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Observa&#231;&#227;o</label>
+        <textarea id="obs" placeholder="Intercorr&#234;ncias, atrasos, problemas..." rows="2"></textarea>
+      </div>
+
+      <div id="form-alert" class="alert-msg"></div>
+
+      <button class="btn-primary" id="btn-salvar" onclick="salvar()">
+        🚛 Registrar descarga
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ TAB: HOJE ═══════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-hoje">
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <select id="hoje-filial" onchange="carregarHoje()" style="flex:1;min-width:140px">
+          <option value="">Todas as filiais</option>
+        </select>
+        <button onclick="carregarHoje()" style="padding:9px 16px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">↻ Atualizar</button>
+      </div>
+      <div id="hoje-stats" style="display:none" class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="hs-total">0</div>
+          <div class="stat-lbl">Total</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-val" id="hs-ok">0</div>
+          <div class="stat-lbl">No prazo</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-val" id="hs-fora">0</div>
+          <div class="stat-lbl">Fora prazo</div>
+        </div>
+      </div>
+    </div>
+    <div id="hoje-lista">
+      <div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial ou clique em Atualizar</div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: MÉDIAS ══════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-medias">
+    <div class="card">
+      <div class="card-title">📊 Minhas m&#233;dias de descarga</div>
+      <div class="search-row">
+        <input type="text" id="medias-nome" placeholder="Digite seu nome..." onkeydown="if(event.key==='Enter') buscarMedias()">
+        <button onclick="buscarMedias()">Buscar</button>
+      </div>
+      <div id="medias-empty" style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Digite seu nome para ver suas estat&#237;sticas</div>
+      <div id="medias-result" style="display:none">
+        <div class="stats-grid" style="margin-bottom:12px">
+          <div class="stat-card">
+            <div class="stat-val" id="m-total">0</div>
+            <div class="stat-lbl">Descargas m&#234;s</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-val" id="m-ok">0</div>
+            <div class="stat-lbl">No prazo</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-val" id="m-fora">0</div>
+            <div class="stat-lbl">Fora prazo</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px">
+            <span>Desempenho no m&#234;s</span>
+            <span id="m-pct-txt" style="font-weight:600">0%</span>
+          </div>
+          <div class="prog-wrap"><div class="prog-bar" id="m-prog" style="width:0%"></div></div>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="stat-card">
+            <div class="stat-val" id="m-tempo">—</div>
+            <div class="stat-lbl">Tempo m&#233;dio</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="m-melhor" style="color:var(--green-t)">—</div>
+            <div class="stat-lbl">Melhor tempo</div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:8px">&#218;ltimas 8 descargas</div>
+        <div id="m-historico"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: FILIAIS ════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-filiais">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">📈 Resumo do m&#234;s atual</div>
+      <div class="stats-grid" style="margin-bottom:0">
+        <div class="stat-card">
+          <div class="stat-val" id="f-total">—</div>
+          <div class="stat-lbl">Total</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-val" id="f-ok">—</div>
+          <div class="stat-lbl">No prazo</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-val" id="f-fora">—</div>
+          <div class="stat-lbl">Fora prazo</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0">🏭 Por filial</div>
+        <button onclick="carregarFiliais()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--rsm);font-size:11px;color:var(--muted);cursor:pointer">↻</button>
+      </div>
+      <div id="filiais-lista"><div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Carregando...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">🏆 Top descarregadores</div>
+      <div id="top-pessoas"><div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Carregando...</div></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+const FB_URL = 'https://mauer-produtividade-default-rtdb.firebaseio.com';
+
+// ── Firebase helpers ─────────────────────────────────────────
+async function fbGet(path){
+  const r = await fetch(`${FB_URL}/${path}.json`);
+  return await r.json();
+}
+async function fbPost(path, data){
+  const r = await fetch(`${FB_URL}/${path}.json`, {method:'POST', body:JSON.stringify(data), headers:{'Content-Type':'application/json'}});
+  return await r.json();
+}
+
+// ── Date helpers ─────────────────────────────────────────────
+function hoje(){
+  const n = new Date();
+  const p = x => String(x).padStart(2,'0');
+  return `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}`;
+}
+function dataLocal(){
+  return new Date().toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'})
+    .split('/').reverse().join('-');
+}
+function mesAtual(){
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+}
+
+// ── Estimativa de tempo ──────────────────────────────────────
+const BASE = [
+  {cub:30,p3:40,p6:30,p7:20},{cub:60,p3:80,p6:60,p7:50},
+  {cub:80,p3:105,p6:80,p7:70},{cub:90,p3:120,p6:90,p7:80},
+  {cub:100,p3:135,p6:100,p7:90},{cub:110,p3:165,p6:140,p7:130}
+];
+function estimado(cub, pes){
+  cub = parseFloat(String(cub).replace(',','.')) || 0;
+  pes = parseInt(pes) || 0;
+  let l = BASE[BASE.length-1];
+  for(let i=0;i<BASE.length;i++){if(cub<=BASE[i].cub){l=BASE[i];break;}}
+  return pes<=3?l.p3:pes<=6?l.p6:l.p7;
+}
+function minToStr(m){
+  const h = Math.floor(m/60);
+  return (h>0?h+'h ':'')+String(m%60).padStart(2,'0')+'min';
+}
+
+// ── Tab switching ────────────────────────────────────────────
+function setTab(tab, btn){
+  document.querySelectorAll('.tab-content').forEach(el=>{
+    el.style.display='none'; el.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  const el = document.getElementById('tab-'+tab);
+  if(el){ el.style.display='block'; el.classList.add('active'); }
+  btn.classList.add('active');
+  if(tab==='hoje') carregarHoje();
+  if(tab==='filiais') carregarFiliais();
+}
+
+// ── Cálculo de duração ───────────────────────────────────────
+function calcDuracao(){
+  const ini = document.getElementById('inicio').value;
+  const fim = document.getElementById('fim').value;
+  const wrap = document.getElementById('duracao-wrap');
+  if(!ini||!fim){wrap.style.display='none';return;}
+
+  const [ih,im] = ini.split(':').map(Number);
+  const [fh,fm] = fim.split(':').map(Number);
+  let dur = (fh*60+fm)-(ih*60+im);
+  if(dur<0) dur+=1440;
+
+  const cub = document.getElementById('cubagem').value;
+  const pes = document.getElementById('pessoas').value;
+  const est = (cub&&pes) ? estimado(cub,pes) : null;
+
+  document.getElementById('duracao-txt').textContent = minToStr(dur);
+  document.getElementById('estimado-txt').textContent = est ? minToStr(est) : '--';
+
+  const pill = document.getElementById('status-pill');
+  if(est){
+    if(dur<=est){pill.textContent='✅ No prazo';pill.className='status-pill ok';}
+    else{pill.textContent='⚠️ Fora do prazo';pill.className='status-pill fora';}
+  } else {
+    pill.textContent='--';pill.className='status-pill nd';
+  }
+  wrap.style.display='';
+}
+
+// ── Filial change ────────────────────────────────────────────
+function onFilialChange(){
+  const f = document.getElementById('filial').value;
+  const panel = document.getElementById('quick-stats');
+  const lbl = document.getElementById('qs-filial');
+  if(!f){panel.style.display='none';return;}
+  lbl.textContent = f;
+  panel.style.display='';
+  carregarQuickStats(f);
+}
+async function carregarQuickStats(filial){
+  try{
+    const data = await fbGet('descarregamentos');
+    const todos = data ? Object.values(data) : [];
+    const d = dataLocal();
+    const hoje = todos.filter(x=>x.filial===filial&&x.data===d);
+    document.getElementById('qs-total').textContent = hoje.length;
+    document.getElementById('qs-ok').textContent = hoje.filter(x=>x.realizado==='OK').length;
+    document.getElementById('qs-fora').textContent = hoje.filter(x=>x.realizado==='FORA').length;
+  }catch(e){}
+}
+
+// ── Alert helper ─────────────────────────────────────────────
+function showAlert(msg, tipo){
+  const el = document.getElementById('form-alert');
+  el.textContent = msg;
+  el.className = 'alert-msg '+tipo;
+  el.style.display = 'block';
+  if(tipo==='ok') setTimeout(()=>el.style.display='none', 4000);
+}
+
+// ── Salvar descarga ──────────────────────────────────────────
+async function salvar(){
+  const filial   = document.getElementById('filial').value;
+  const data     = document.getElementById('data').value;
+  const nota     = document.getElementById('nota').value.trim();
+  const cubagem  = document.getElementById('cubagem').value;
+  const nome     = document.getElementById('nome').value.trim();
+  const pessoas  = document.getElementById('pessoas').value;
+  const inicio   = document.getElementById('inicio').value;
+  const fim      = document.getElementById('fim').value;
+
+  if(!filial||!data||!nota||!cubagem||!nome||!pessoas||!inicio||!fim){
+    showAlert('⚠ Preencha todos os campos obrigatórios!','warn');
+    return;
+  }
+
+  const btn = document.getElementById('btn-salvar');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  const [ih,im] = inicio.split(':').map(Number);
+  const [fh,fm] = fim.split(':').map(Number);
+  let dur = (fh*60+fm)-(ih*60+im);
+  if(dur<0) dur+=1440;
+  const est = estimado(cubagem, pessoas);
+
+  const reg = {
+    filial, data, nota,
+    cubagem: parseFloat(String(cubagem).replace(',','.')),
+    nome, pessoas: parseInt(pessoas), inicio, fim,
+    duracao: minToStr(dur), duracaoMin: dur,
+    estimadoMin: est, realizado: dur<=est?'OK':'FORA',
+    pneusErrados: parseInt(document.getElementById('pneus-err').value)||0,
+    reclamacao: document.getElementById('reclamacao').value||'',
+    obs: document.getElementById('obs').value.trim(),
+    timestamp: Date.now()
+  };
+
+  try{
+    await fbPost('descarregamentos', reg);
+    showAlert('✅ Descarga registrada com sucesso!','ok');
+    // Limpa campos (mantém filial e data)
+    ['nota','cubagem','nome','pessoas','inicio','fim','pneus-err','obs'].forEach(id=>{
+      document.getElementById(id).value='';
+    });
+    document.getElementById('reclamacao').value='';
+    document.getElementById('duracao-wrap').style.display='none';
+    carregarQuickStats(filial);
+  }catch(e){
+    showAlert('❌ Erro ao salvar. Verifique a conexão.','err');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🚛 Registrar descarga';
+}
+
+// ── Tab Hoje ─────────────────────────────────────────────────
+async function carregarHoje(){
+  const filialF = document.getElementById('hoje-filial').value;
+  const lista = document.getElementById('hoje-lista');
+  lista.innerHTML = '<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Carregando...</div>';
+
+  try{
+    const data = await fbGet('descarregamentos');
+    const todos = data ? Object.values(data) : [];
+    const d = dataLocal();
+    let hoje = todos.filter(x=>x.data===d);
+    if(filialF) hoje = hoje.filter(x=>x.filial===filialF);
+    hoje.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+
+    // Stats
+    const statsEl = document.getElementById('hoje-stats');
+    if(hoje.length>0){
+      statsEl.style.display='grid';
+      document.getElementById('hs-total').textContent = hoje.length;
+      document.getElementById('hs-ok').textContent = hoje.filter(x=>x.realizado==='OK').length;
+      document.getElementById('hs-fora').textContent = hoje.filter(x=>x.realizado==='FORA').length;
+    } else {
+      statsEl.style.display='none';
+    }
+
+    if(!hoje.length){
+      lista.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Nenhuma descarga registrada hoje</div>';
+      return;
+    }
+
+    lista.innerHTML = hoje.map(d=>{
+      const ok = d.realizado==='OK';
+      return `<div class="hist-item">
+        <div class="hist-header">
+          <span class="hist-nota">Nota ${d.nota||'—'}</span>
+          <span class="${ok?'badge-ok':'badge-fora'}">${d.realizado}</span>
+        </div>
+        <div class="hist-info">${d.filial||''} · ${d.nome||'—'} · ${d.cubagem||'?'} m³</div>
+        <div class="hist-info">⏱ ${d.inicio||'--'} → ${d.fim||'--'} (${d.duracao||'?'})</div>
+        ${d.pneusErrados>0?`<div class="hist-info" style="color:var(--red-t)">⚠ ${d.pneusErrados} pneus errados</div>`:''}
+        ${d.reclamacao==='sim'?`<div class="hist-info" style="color:var(--red-t)">🔴 Reclamação</div>`:''}
+        ${d.obs?`<div class="hist-info" style="font-style:italic">${d.obs}</div>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){
+    lista.innerHTML='<div style="color:var(--red-t);padding:16px;font-size:13px">Erro ao carregar</div>';
+  }
+}
+
+// ── Tab Médias ───────────────────────────────────────────────
+async function buscarMedias(){
+  const nome = (document.getElementById('medias-nome').value||'').trim().toLowerCase();
+  const empty = document.getElementById('medias-empty');
+  const result = document.getElementById('medias-result');
+
+  if(!nome){ empty.textContent='Digite seu nome para ver suas estatísticas'; return; }
+  empty.textContent='Buscando...'; result.style.display='none';
+
+  try{
+    const data = await fbGet('descarregamentos');
+    const todos = data ? Object.values(data) : [];
+    const meus = todos.filter(d=>d.nome&&d.nome.toLowerCase().includes(nome));
+
+    if(!meus.length){
+      empty.textContent=`Nenhuma descarga encontrada para "${nome}"`;
+      return;
+    }
+
+    const mes = mesAtual();
+    const doMes = meus.filter(d=>d.data&&d.data.startsWith(mes));
+    const total = doMes.length;
+    const ok = doMes.filter(d=>d.realizado==='OK').length;
+    const fora = doMes.filter(d=>d.realizado==='FORA').length;
+    const pct = total>0 ? Math.round(ok/total*100) : 0;
+
+    const tempos = meus.filter(d=>d.duracaoMin>0).map(d=>d.duracaoMin);
+    const mediaTempo = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : 0;
+    const melhor = tempos.length ? Math.min(...tempos) : 0;
+
+    document.getElementById('m-total').textContent = total;
+    document.getElementById('m-ok').textContent = ok;
+    document.getElementById('m-fora').textContent = fora;
+    document.getElementById('m-pct-txt').textContent = pct+'%';
+    document.getElementById('m-tempo').textContent = mediaTempo ? minToStr(mediaTempo) : '—';
+    document.getElementById('m-melhor').textContent = melhor ? minToStr(melhor) : '—';
+
+    const bar = document.getElementById('m-prog');
+    bar.style.width = pct+'%';
+    bar.style.background = pct>=80?'var(--green-t)':pct>=50?'#BA7517':'#e05252';
+
+    // Histórico últimas 8
+    const recentes = meus.slice().sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0,8);
+    document.getElementById('m-historico').innerHTML = recentes.map(d=>{
+      const ok2 = d.realizado==='OK';
+      const dt = d.data?d.data.split('-').reverse().join('/'):'—';
+      const excesso = (!ok2&&d.duracaoMin&&d.estimadoMin) ? ` (+${minToStr(d.duracaoMin-d.estimadoMin)})` : '';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:8px">
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:500">Nota ${d.nota||'—'} · ${d.filial||'—'}</div>
+          <div style="font-size:11px;color:var(--muted)">${dt} · ${d.duracao||'—'}${excesso?`<span style="color:var(--red-t)">${excesso}</span>`:''}</div>
+        </div>
+        <span class="${ok2?'badge-ok':'badge-fora'}">${d.realizado}</span>
+      </div>`;
+    }).join('');
+
+    empty.style.display='none'; result.style.display='block';
+    empty.textContent='';
+  }catch(e){
+    empty.textContent='Erro ao carregar. Verifique a conexão.';
+  }
+}
+
+// ── Tab Filiais ──────────────────────────────────────────────
+async function carregarFiliais(){
+  document.getElementById('filiais-lista').innerHTML='<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Carregando...</div>';
+  document.getElementById('top-pessoas').innerHTML='<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Carregando...</div>';
+
+  try{
+    const data = await fbGet('descarregamentos');
+    const todos = data ? Object.values(data) : [];
+    const mes = mesAtual();
+    const doMes = todos.filter(d=>d.data&&d.data.startsWith(mes));
+
+    // KPIs globais
+    const tot = doMes.length;
+    const oks = doMes.filter(d=>d.realizado==='OK').length;
+    document.getElementById('f-total').textContent = tot;
+    document.getElementById('f-ok').textContent = oks;
+    document.getElementById('f-fora').textContent = tot-oks;
+
+    // Por filial
+    const byF = {};
+    doMes.forEach(d=>{
+      const f = (d.filial||'?').trim();
+      if(!byF[f]) byF[f]={ok:0,total:0,tempos:[]};
+      byF[f].total++;
+      if(d.realizado==='OK') byF[f].ok++;
+      if(d.duracaoMin>0) byF[f].tempos.push(d.duracaoMin);
+    });
+    const fls = Object.entries(byF).sort((a,b)=>b[1].total-a[1].total);
+    const maxT = Math.max(...fls.map(([,v])=>v.total),1);
+
+    if(!fls.length){
+      document.getElementById('filiais-lista').innerHTML='<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Sem dados este mês</div>';
+    } else {
+      document.getElementById('filiais-lista').innerHTML = fls.map(([nome,v])=>{
+        const pct = v.total ? Math.round(v.ok/v.total*100) : 0;
+        const mt = v.tempos.length ? Math.round(v.tempos.reduce((a,b)=>a+b,0)/v.tempos.length) : 0;
+        const cor = pct>=80?'var(--green-t)':pct>=50?'#BA7517':'#e05252';
+        const w = Math.round(v.total/maxT*100);
+        return `<div class="filial-row">
+          <div class="filial-header">
+            <span class="filial-nome">${nome}</span>
+            <span class="filial-pct" style="color:${cor}">${pct}%</span>
+          </div>
+          <div class="filial-bar"><div class="filial-bar-inner" style="width:${w}%;background:${cor}"></div></div>
+          <div class="filial-meta"><span>${v.total} descargas · ${v.ok} OK</span><span>⏱ ${mt?minToStr(mt):'—'}</span></div>
+        </div>`;
+      }).join('');
+    }
+
+    // Top pessoas
+    const byP = {};
+    doMes.forEach(d=>{
+      if(!d.nome) return;
+      const k = d.nome.trim();
+      if(!byP[k]) byP[k]={ok:0,total:0,tempos:[]};
+      byP[k].total++;
+      if(d.realizado==='OK') byP[k].ok++;
+      if(d.duracaoMin>0) byP[k].tempos.push(d.duracaoMin);
+    });
+    const top = Object.entries(byP).sort((a,b)=>b[1].total-a[1].total).slice(0,5);
+    const medals = ['🥇','🥈','🥉','4°','5°'];
+    if(!top.length){
+      document.getElementById('top-pessoas').innerHTML='<div style="text-align:center;padding:20px;color:var(--hint);font-size:13px">Sem dados este mês</div>';
+    } else {
+      document.getElementById('top-pessoas').innerHTML = top.map(([nome,v],i)=>{
+        const pct = v.total ? Math.round(v.ok/v.total*100) : 0;
+        const mt = v.tempos.length ? Math.round(v.tempos.reduce((a,b)=>a+b,0)/v.tempos.length) : 0;
+        const cor = pct>=80?'var(--green-t)':pct>=50?'#BA7517':'#e05252';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:18px;min-width:24px;text-align:center">${medals[i]}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nome}</div>
+            <div style="font-size:11px;color:var(--muted)">${v.total} descargas · ⏱ ${mt?minToStr(mt):'—'}</div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${cor}">${pct}%</span>
+        </div>`;
+      }).join('');
+    }
+
+  }catch(e){
+    document.getElementById('filiais-lista').innerHTML='<div style="color:var(--red-t);padding:12px;font-size:13px">Erro ao carregar</div>';
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────
+async function init(){
+  const badge = document.getElementById('status-badge');
+  badge.textContent='Conectando...'; badge.className='status-badge loading';
+
+  // Data atual
+  const d = document.getElementById('data');
+  if(d) d.value = dataLocal();
+
+  try{
+    const fData = await fbGet('filiais');
+    const filiais = fData ? Object.values(fData).map(f=>f.nome).sort() : [];
+
+    // Popular selects de filial
+    ['filial','hoje-filial'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      const base = id==='hoje-filial'?'<option value="">Todas as filiais</option>':'<option value="">Selecione</option>';
+      el.innerHTML = base + filiais.map(f=>`<option>${f}</option>`).join('');
+    });
+
+    badge.textContent='Conectado ✓'; badge.className='status-badge ok';
+  }catch(e){
+    badge.textContent='Sem conexão'; badge.className='status-badge err';
+  }
+
+  // Carregar filiais tab em background
+  carregarFiliais();
+}
+
+// Iniciar
+init();
+
+// Garantir que primeira aba apareça
+document.addEventListener('DOMContentLoaded',function(){
+  var first = document.getElementById('tab-registrar');
+  if(first){ first.style.display='block'; }
+});
+</script>
+</body>
+</html>
