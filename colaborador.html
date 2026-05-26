@@ -637,71 +637,48 @@ async function addPedido(){
   const qt=parseInt(document.getElementById('p-qt').value);
   if(!num||!qt||qt<1)return;
 
-  // Bloqueia letras
   if(!/^[0-9]+$/.test(num)){
     showDuplicateAlert('⚠ Número do pedido inválido — use apenas números!','warn');
     return;
   }
-
-  // Verifica duplicata na lista temporária
   if(pedidosTemp.find(p=>p.num===num)){
     showDuplicateAlert('⚠ Pedido '+num+' já está na lista atual!','warn');
     return;
   }
-  // Bloqueia duplo clique
+
   const addBtn = document.getElementById('add-pedido-btn');
-  if(addBtn) { if(addBtn.dataset.processing==='1') return; addBtn.dataset.processing='1'; }
+  if(addBtn){ if(addBtn.dataset.processing==='1') return; addBtn.dataset.processing='1'; }
+  const liberar = ()=>{ if(addBtn) addBtn.dataset.processing='0'; };
 
-  // Verifica margem e duplicata no Firebase
   try {
-    const hoje = getBrasiliaDateStr();
-    const [lancData, margemData] = await Promise.all([
-      fbGet('lancamentos'),
-      fbGet('configuracoes/margemPedidos')
-    ]);
+    const todos = await fbGet('lancamentos').then(d=>d?Object.values(d):[]);
+
+    // Duplicata em QUALQUER data — bloqueia
+    const jaExiste = todos.find(l=>l.isPedido && l.numPedido===num);
+    if(jaExiste){
+      const dt = jaExiste.data ? jaExiste.data.split('-').reverse().join('/') : '?';
+      showDuplicateAlert('🚫 Pedido '+num+' já registrado em '+dt+' por '+jaExiste.colaborador+' ('+jaExiste.filial+')!','err');
+      liberar(); return;
+    }
+
+    // Margem — avisa mas NÃO bloqueia
+    const margemData = await fbGet('configuracoes/margemPedidos');
     const margem = margemData ? Number(margemData) : 1000;
-    const todos = lancData ? Object.values(lancData) : [];
-
-    // Verifica duplicata — mesmo número em qualquer data/filial
-    const jaExisteHoje = todos.find(l=>l.isPedido && l.numPedido===num && l.data===hoje);
-    if(jaExisteHoje){
-      showDuplicateAlert('🚫 Pedido '+num+' já foi registrado hoje por '+jaExisteHoje.colaborador+' ('+jaExisteHoje.filial+')!','err');
-      const _b1=document.getElementById('add-pedido-btn');if(_b1)_b1.dataset.processing='0';
-      return;
-    }
-    // Verifica duplicata em outras datas (últimos 7 dias)
-    const seteDiasAtras = new Date(); seteDiasAtras.setDate(seteDiasAtras.getDate()-7);
-    const limiteData = seteDiasAtras.toISOString().slice(0,10);
-    const jaExisteRecente = todos.find(l=>l.isPedido && l.numPedido===num && l.data>=limiteData && l.data!==hoje);
-    if(jaExisteRecente){
-      showDuplicateAlert('⚠ Pedido '+num+' já foi registrado em '+jaExisteRecente.data.split("-").reverse().join("/")+" por "+jaExisteRecente.colaborador+' ('+jaExisteRecente.filial+'). Tem certeza que é um pedido novo?','warn');
-      // Não bloqueia — só avisa para pedidos de outros dias
-    }
-
-    // Verifica margem — pega o último pedido registrado em qualquer dia (globalmente)
-    const todosPedidos = todos.filter(l=>l.isPedido && l.numPedido);
-    if(todosPedidos.length > 0) {
-      // Ordena por timestamp ou data para pegar o mais recente
-      const sorted = todosPedidos
-        .map(l=>({num:Number(l.numPedido), ts:l.timestamp||0, data:l.data||''}))
-        .filter(l=>!isNaN(l.num) && l.num > 0)
-        .sort((a,b)=>b.ts-a.ts || b.data.localeCompare(a.data));
-      if(sorted.length > 0) {
-        // Pega o maior número entre os últimos 50 pedidos (janela recente)
-        const recentes = sorted.slice(0, 50);
-        const ultimo = Math.max(...recentes.map(l=>l.num));
-        const numInt = Number(num);
-        if(numInt < ultimo - margem || numInt > ultimo + margem) {
-          showDuplicateAlert(`⚠ Pedido ${num} fora da margem! Referência: ${ultimo} (margem: ±${margem.toLocaleString('pt-BR')})`, 'warn');
-          return;
-        }
+    const numeros = todos.filter(l=>l.isPedido&&l.numPedido).map(l=>Number(l.numPedido)).filter(n=>n>0);
+    if(numeros.length>0){
+      const ultimo = Math.max(...numeros);
+      const numInt = Number(num);
+      if(numInt < ultimo-margem || numInt > ultimo+margem){
+        showDuplicateAlert('⚠ Pedido '+num+' fora da margem (ref: '+ultimo+'). Adicionado assim mesmo.','warn');
       }
     }
   } catch(e){ console.error(e); }
 
   pedidosTemp.push({num,qt});
-  document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
+  document.getElementById('p-num').value='';
+  document.getElementById('p-qt').value='';
   document.getElementById('p-num').focus();
+  liberar();
   renderPedidoTemp();
 }
 
