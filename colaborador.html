@@ -72,7 +72,7 @@ select{cursor:pointer}
 .race-name{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
 .race-bar-wrap{flex:1;height:8px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden}
 .race-bar{height:100%;border-radius:6px;transition:width .6s cubic-bezier(.4,0,.2,1)}
-.race-val{font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.5);width:42px;text-align:right;flex-shrink:0}
+.race-val{font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:rgba(255,255,255,.85);width:42px;text-align:right;flex-shrink:0}
 .chart-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .cm{background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;text-align:center}
 .cm-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:600;color:var(--text)}
@@ -827,11 +827,9 @@ async function renderRankingGeral() {
             <div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:1px">${c.filial}</div>
           </div>
           <div class="race-bar-wrap">
-            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}">
-              <span class="race-val">${c.pneus}</span>
-            </div>
+            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}"></div>
           </div>
-          <div class="race-total">${c.pneus} 🛞</div>
+          <span class="race-val">${c.pneus}</span>
         </div>`;
       }).join('')}
       <div class="race-meta">
@@ -884,11 +882,9 @@ async function renderRankingCorrida() {
           <div class="race-pos${i===0?' first':i===1?' second':i===2?' third':''}">${medal}</div>
           <div class="race-name">${c.nome}</div>
           <div class="race-bar-wrap">
-            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}">
-              <span class="race-val">${c.pneus}</span>
-            </div>
+            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}"></div>
           </div>
-          <div class="race-total">${c.pneus} 🛞</div>
+          <span class="race-val">${c.pneus}</span>
         </div>`;
       }).join('')}
       <div class="race-meta">
