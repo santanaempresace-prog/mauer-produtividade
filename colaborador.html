@@ -661,6 +661,7 @@ async function addPedido(){
         const numInt = Number(num);
         if(numInt < ultimo - margem || numInt > ultimo + margem) {
           showDuplicateAlert(`⚠ Pedido ${num} fora da margem! Referência: ${ultimo} (margem: ±${margem.toLocaleString('pt-BR')})`, 'warn');
+          const _b2=document.getElementById('add-pedido-btn');if(_b2)_b2.dataset.processing='0';
           return;
         }
       }
@@ -670,6 +671,7 @@ async function addPedido(){
   pedidosTemp.push({num,qt});
   document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
   document.getElementById('p-num').focus();
+  const _bFinal=document.getElementById('add-pedido-btn');if(_bFinal)_bFinal.dataset.processing='0';
   renderPedidoTemp();
 }
 
@@ -806,35 +808,43 @@ async function renderRankingGeral() {
     const max=list[0]?.pneus||1;
     const totalPneus=list.reduce((a,c)=>a+c.pneus,0);
     const totalSep=list.length;
-    const cores=['#FFD700','#C0C0C0','#CD7F32','#3266ad','#1D9E75','#D85A30','#742774','#639922','#534AB7','#993556'];
-    const medalhas=['🥇','🥈','🥉'];
+    const cores=['#F5A623','#A8B8C8','#C47B3A','#3B82F6','#10B981','#F97316','#8B5CF6','#EC4899','#06B6D4','#84CC16'];
     const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const labelPeriodo = dataIni===dataFim ? dataIni.split('-').reverse().join('/') : dataIni.split('-').reverse().join('/')+' → '+dataFim.split('-').reverse().join('/');
     
-    const html=`<div class="race-track">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="font-size:13px;font-weight:600;color:#fff">🌎 ${labelPeriodo}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4)">Atualizado ${hora}</div>
+    const isTop2 = (i) => i < 2;
+    const bgRow = (i) => i===0?'rgba(245,166,35,.18)':i===1?'rgba(168,184,200,.12)':'transparent';
+    const html=`<div style="background:#111827;border-radius:var(--radius);overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid rgba(255,255,255,.07)">
+        <div style="font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em">🌎 ${labelPeriodo}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.35)">Atualizado ${hora}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:32px 1fr 80px;padding:8px 18px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
+        <div></div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em">Separador</div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;text-align:right">Pneus</div>
       </div>
       ${list.map((c,i)=>{
         const pct=Math.round((c.pneus/max)*100);
         const cor=cores[i%cores.length];
-        const medal=medalhas[i]||`${i+1}º`;
-        return`<div class="race-lane">
-          <div class="race-pos${i===0?' first':i===1?' second':i===2?' third':''}">${medal}</div>
-          <div style="min-width:90px">
-            <div class="race-name">${c.nome}</div>
-            <div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:1px">${c.filial}</div>
+        const isHL = i<2;
+        return`<div style="display:grid;grid-template-columns:32px 1fr 80px;align-items:center;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.05);background:${bgRow(i)};transition:background .15s">
+          <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:${i===0?'#F5A623':i===1?'#A8B8C8':i===2?'#C47B3A':'rgba(255,255,255,.35)'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</div>
+          <div>
+            <div style="font-size:13px;font-weight:${isHL?700:600};color:${isHL?'#fff':'rgba(255,255,255,.85)'};letter-spacing:-.01em">${c.nome}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+              <div style="height:5px;flex:1;max-width:160px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden">
+                <div style="height:100%;width:${Math.max(pct,4)}%;background:${cor};border-radius:4px;transition:width .6s"></div>
+              </div>
+              <div style="font-size:10px;color:rgba(255,255,255,.35)">${c.filial.replace('MAUER ','')}</div>
+            </div>
           </div>
-          <div class="race-bar-wrap">
-            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}"></div>
-          </div>
-          <span class="race-val">${c.pneus}</span>
+          <div style="font-family:'DM Mono',monospace;font-size:${isHL?15:14}px;font-weight:700;color:${isHL?'#fff':'rgba(255,255,255,.7)'};text-align:right">${c.pneus.toLocaleString('pt-BR')}</div>
         </div>`;
       }).join('')}
-      <div class="race-meta">
-        <span class="race-meta-txt">${totalSep} separadores no total</span>
-        <span class="race-meta-txt">${totalPneus} pneus hoje</span>
+      <div style="padding:10px 18px;display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.07)">
+        <span style="font-size:11px;color:rgba(255,255,255,.35)">${totalSep} separadores</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.35)">${totalPneus.toLocaleString('pt-BR')} pneus total</span>
       </div>
     </div>`;
     wrap.innerHTML=html;
@@ -866,30 +876,40 @@ async function renderRankingCorrida() {
     const list=Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
     const max=list[0]?.pneus||1;
     const totalPneus=list.reduce((a,c)=>a+c.pneus,0);
-    const cores=['#FFD700','#3266ad','#1D9E75','#D85A30','#742774','#639922','#534AB7','#993556'];
-    const medalhas=['🥇','🥈','🥉'];
+    const cores=['#F5A623','#A8B8C8','#C47B3A','#3B82F6','#10B981','#F97316','#8B5CF6','#EC4899','#06B6D4','#84CC16'];
     const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    const html=`<div class="race-track">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="font-size:13px;font-weight:600;color:#fff">🏁 ${filial}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4)">Atualizado ${hora}</div>
+    const bgRow2=(i)=>i===0?'rgba(245,166,35,.18)':i===1?'rgba(168,184,200,.12)':'transparent';
+    const html=`<div style="background:#111827;border-radius:var(--radius);overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid rgba(255,255,255,.07)">
+        <div style="font-size:13px;font-weight:700;color:#fff;letter-spacing:-.01em">🏁 ${filial}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.35)">Atualizado ${hora}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:32px 1fr 80px;padding:8px 18px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
+        <div></div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em">Separador</div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;text-align:right">Pneus</div>
       </div>
       ${list.map((c,i)=>{
         const pct=Math.round((c.pneus/max)*100);
         const cor=cores[i%cores.length];
-        const medal=medalhas[i]||`${i+1}º`;
-        return`<div class="race-lane">
-          <div class="race-pos${i===0?' first':i===1?' second':i===2?' third':''}">${medal}</div>
-          <div class="race-name">${c.nome}</div>
-          <div class="race-bar-wrap">
-            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}"></div>
+        const isHL=i<2;
+        return`<div style="display:grid;grid-template-columns:32px 1fr 80px;align-items:center;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.05);background:${bgRow2(i)}">
+          <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:${i===0?'#F5A623':i===1?'#A8B8C8':i===2?'#C47B3A':'rgba(255,255,255,.35)'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</div>
+          <div>
+            <div style="font-size:13px;font-weight:${isHL?700:600};color:${isHL?'#fff':'rgba(255,255,255,.85)'};letter-spacing:-.01em">${c.nome}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+              <div style="height:5px;flex:1;max-width:160px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden">
+                <div style="height:100%;width:${Math.max(pct,4)}%;background:${cor};border-radius:4px;transition:width .6s"></div>
+              </div>
+              ${c.erros>0?`<div style="font-size:10px;color:#F97316">${c.erros} erro${c.erros>1?'s':''}</div>`:''}
+            </div>
           </div>
-          <span class="race-val">${c.pneus}</span>
+          <div style="font-family:'DM Mono',monospace;font-size:${isHL?15:14}px;font-weight:700;color:${isHL?'#fff':'rgba(255,255,255,.7)'};text-align:right">${c.pneus.toLocaleString('pt-BR')}</div>
         </div>`;
       }).join('')}
-      <div class="race-meta">
-        <span class="race-meta-txt">${list.length} separadores em pista</span>
-        <span class="race-meta-txt">${totalPneus} pneus total hoje</span>
+      <div style="padding:10px 18px;display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.07)">
+        <span style="font-size:11px;color:rgba(255,255,255,.35)">${list.length} separadores em pista</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.35)">${totalPneus.toLocaleString('pt-BR')} pneus hoje</span>
       </div>
     </div>`;
     wrap.innerHTML=html;
