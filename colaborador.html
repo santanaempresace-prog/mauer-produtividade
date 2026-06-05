@@ -939,15 +939,19 @@ async function addPedido(){
         const ultimo = Math.max(...recentes.map(l=>l.num));
         const numInt = Number(num);
         if(numInt < ultimo - margem || numInt > ultimo + margem) {
-          showDuplicateAlert(`⚠ Pedido ${num} fora da margem! Referência: ${ultimo} (margem: ±${margem.toLocaleString('pt-BR')})`, 'warn');
+          showDuplicateAlert('⚠ Pedido '+num+' fora da margem! Referência: '+ultimo+' (margem: ±'+margem.toLocaleString('pt-BR')+')', 'warn');
+          const _b2=document.getElementById('add-pedido-btn');if(_b2)_b2.dataset.processing='0';
           return;
         }
       }
     }
-  } catch(e){ console.error(e); }
+  } catch(e){ console.error(e); const _be=document.getElementById('add-pedido-btn');if(_be)_be.dataset.processing='0'; }
 
   pedidosTemp.push({num,qt});
-  document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
+  const _addBtnOk = document.getElementById('add-pedido-btn');
+  if(_addBtnOk) _addBtnOk.dataset.processing='0';
+  document.getElementById('p-num').value='';
+  document.getElementById('p-qt').value='';
   document.getElementById('p-num').focus();
   renderPedidoTemp();
 }
