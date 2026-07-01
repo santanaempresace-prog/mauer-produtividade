@@ -466,17 +466,26 @@ tbody tr:hover td{background:var(--bg)}
     </div>
 
     <div class="view active" id="view-ranking">
-      <div class="card"><div class="card-header"><div class="card-title">Ranking — pneus separados</div></div><div id="ranking-list"></div></div>
       <div class="card">
-        <div class="card-header"><div class="card-title">🏅 Ranking de eficiência — Pneus por Pedido</div></div>
+        <div class="card-header">
+          <div class="card-title">🏆 Ranking de Produtividade — Índice Final</div>
+          <span id="rank-deducao-info" class="badge badge-neu"></span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          Índice Final = (Pneus × 35%) + (Pedidos × 35%) + (Qualidade × 20%) + (Média Pneus/Pedido × 10%). Cada nota é normalizada de 0 a 100 em relação ao melhor do período. Desempate: menos erros → mais pedidos → mais pneus.
+        </div>
         <div class="table-wrap"><table><thead><tr>
-          <th style="text-align:center">Posição</th>
+          <th style="text-align:center">Pos.</th>
           <th>Colaborador</th>
           <th style="text-align:right">Pneus</th>
           <th style="text-align:right">Pedidos</th>
-          <th style="text-align:right">Média (Pneus/Pedido)</th>
-          <th style="text-align:right">Índice</th>
-        </tr></thead><tbody id="ranking-eficiencia-body"></tbody></table></div>
+          <th style="text-align:right">Erros</th>
+          <th style="text-align:right">Nota Pneus</th>
+          <th style="text-align:right">Nota Pedidos</th>
+          <th style="text-align:right">Nota Qualidade</th>
+          <th style="text-align:right">Nota Média</th>
+          <th style="text-align:right">Índice Final</th>
+        </tr></thead><tbody id="ranking-produtividade-body"></tbody></table></div>
       </div>
     </div>
     <div class="view" id="view-pedidos">
@@ -494,6 +503,30 @@ tbody tr:hover td{background:var(--bg)}
     </div>
     <div class="view" id="view-erros">
       <div class="card">
+        <div class="card-header"><div class="card-title">➕ Lançar ocorrência</div></div>
+        <div class="field-row" style="flex-wrap:wrap">
+          <select id="oc-filial-sel" onchange="popularColabOcorrencia()" style="flex:1;min-width:140px"><option value="">Filial</option></select>
+          <select id="oc-colab-sel" style="flex:1;min-width:160px"><option value="">Colaborador</option></select>
+          <select id="oc-motivo-sel" style="flex:1;min-width:180px">
+            <option value="">Motivo</option>
+            <option>Produto incorreto</option>
+            <option>Quantidade incorreta</option>
+            <option>SKU incorreto</option>
+            <option>Retrabalho</option>
+            <option>Devolução por erro operacional</option>
+            <option>Erro de separação</option>
+            <option>Erro de conferência</option>
+            <option>Outros</option>
+          </select>
+        </div>
+        <div class="field-row" style="flex-wrap:wrap">
+          <input type="date" id="oc-data" style="flex:1;min-width:140px">
+          <input type="text" id="oc-pedido" placeholder="Nº do pedido (opcional)" style="flex:1;min-width:140px">
+          <input type="text" id="oc-obs" placeholder="Observação (opcional)" style="flex:2;min-width:200px">
+          <button class="btn btn-dark" onclick="lancarOcorrencia()">Registrar erro</button>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-header"><div class="card-title">Registros de erros</div><span id="erros-count" class="badge badge-neu"></span></div>
         <div class="tab-row" style="margin-bottom:14px">
           <div class="tab active" id="tab-err-sep" onclick="setErroTab('separadores',this)">Separadores</div>
@@ -509,6 +542,7 @@ tbody tr:hover td{background:var(--bg)}
 </tr></thead><tbody id="erros-body"></tbody></table></div>
         </div>
         <div id="erros-conf-wrap" style="display:none">
+
           <div class="table-wrap"><table><thead><tr>
   <th>Data/Hora</th>
   <th><div class="col-filter-wrap">Filial<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-errc-filial')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-errc-filial"></div></div></th>
@@ -582,6 +616,18 @@ tbody tr:hover td{background:var(--bg)}
 
       <div class="card" style="margin-top:12px">
         <div class="card-header">
+          <div class="card-title"><svg class="ic" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Qualidade — Ranking de Produtividade</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">Cada erro registrado desconta pontos da Nota de Qualidade do colaborador (peso 20% no Índice Final). Nota Qualidade = 100 − (erros × pontos por erro), com mínimo de 0.</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <input type="number" id="deducao-input" min="1" max="100" placeholder="Ex: 5" style="font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:8px 12px;outline:none;width:140px">
+          <button class="btn btn-dark" onclick="salvarDeducao()">Salvar</button>
+          <span id="deducao-atual" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="card-header">
           <div class="card-title"><svg class="ic" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Margem de pedidos</div>
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">Define a variação máxima permitida no número do pedido. Ex: último pedido 301817 com margem 1000 aceita de 300817 a 302817.</div>
@@ -591,6 +637,7 @@ tbody tr:hover td{background:var(--bg)}
           <span id="margem-atual" style="font-size:12px;color:var(--muted)"></span>
         </div>
       </div>
+
 
       <div class="card" style="margin-top:12px">
         <div class="card-header">
@@ -806,6 +853,7 @@ async function carregarTudo(){
     if(colData)Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});
     if(filiaisSelecionadas.size===0)filiais.forEach(f=>filiaisSelecionadas.add(f.nome));
     await carregarMargem();
+    await carregarDeducao();
     await carregarGestores();
     await carregarConferentes();
     populateFiliaisSelect();
@@ -923,6 +971,7 @@ function setView(view,el){
   if(view==='dashboard'){initDashboard();return;}
   if(view==='gestores'){renderGestoresList();return;}
   if(view==='conferentes'){renderConferentesTabs();return;}
+  if(view==='erros'){popularOcorrenciaFiliais();const dEl=document.getElementById('oc-data');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);}
   render();
 }
 
@@ -952,49 +1001,124 @@ function renderMetrics(data){
 }
 
 // ============================================================
-// RANKING
+// RANKING DE PRODUTIVIDADE (Índice Final)
 // ============================================================
-const COLORS=['#1a1917','#3266ad','#1D9E75','#BA7517','#639922','#D85A30','#534AB7','#993556'];
+let deducaoPorErro=5; // pontos descontados por erro na Nota de Qualidade (configurável)
+const MEDALHAS=['🥇','🥈','🥉'];
+
 function renderRanking(data){
   const ag={};
   data.forEach(l=>{const k=l.colaborador+'|'+l.filial;if(!ag[k])ag[k]={colaborador:l.colaborador,filial:l.filial,pneus:0,pedidos:0};ag[k].pneus+=Number(l.pneus||0);ag[k].pedidos+=Number(l.pedidos||0);});
   const{filiais:fs,ini,fim,colab}=getFilter();
   const errosPor={};
   lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab)).forEach(l=>{const k=l.colaborador+'|'+l.filial;errosPor[k]=(errosPor[k]||0)+1;});
-  const list=Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
-  const max=list[0]?.pneus||1;
-  const el=document.getElementById('ranking-list');if(!el)return;
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--hint)">Nenhum dado</div>';return;}
-  el.innerHTML=list.map((item,i)=>{
-    const pct=Math.round((item.pneus/max)*100);
-    const errs=errosPor[item.colaborador+'|'+item.filial]||0;
-    const eb=errs>0?'<span class="badge badge-bad">'+errs+' erro'+(errs>1?'s':'')+'</span>':'<span class="badge badge-ok">sem erros</span>';
-    return'<div class="rank-row"><div class="rank-num">'+(i+1)+'º</div><div style="min-width:110px"><div style="font-size:13px;font-weight:500">'+item.colaborador+'</div><div style="font-size:11px;color:var(--muted)">'+item.filial+'</div></div><div class="bar-wrap"><div class="bar" style="width:'+pct+'%;background:'+COLORS[i%COLORS.length]+'"></div></div><div class="rank-val">'+item.pneus.toLocaleString('pt-BR')+' <span style="font-size:11px;color:var(--hint)">pneus</span></div><div>'+eb+'</div></div>';
-  }).join('');
-  renderRankingEficiencia(ag);
-}
 
-const MEDALHAS=['🥇','🥈','🥉'];
-function renderRankingEficiencia(ag){
-  const tb=document.getElementById('ranking-eficiencia-body');if(!tb)return;
-  const list=Object.values(ag)
-    .filter(item=>item.pedidos>0)
-    .map(item=>({...item,media:item.pneus/item.pedidos}))
-    .sort((a,b)=>b.media-a.media);
-  if(!list.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint)">Nenhum dado</td></tr>';return;}
-  const maxMedia=list[0].media||1;
+  const infoEl=document.getElementById('rank-deducao-info');
+  if(infoEl)infoEl.textContent='-'+deducaoPorErro+' pts / erro';
+
+  const base=Object.values(ag).map(item=>{
+    const erros=errosPor[item.colaborador+'|'+item.filial]||0;
+    const media=item.pedidos>0?item.pneus/item.pedidos:0;
+    return{...item,erros,media};
+  });
+
+  const tb=document.getElementById('ranking-produtividade-body');if(!tb)return;
+  if(!base.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--hint)">Nenhum dado</td></tr>';return;}
+
+  const maxPneus=Math.max(...base.map(i=>i.pneus))||1;
+  const maxPedidos=Math.max(...base.map(i=>i.pedidos))||1;
+  const maxMedia=Math.max(...base.map(i=>i.media))||1;
+
+  const list=base.map(item=>{
+    const notaPneus=(item.pneus/maxPneus)*100;
+    const notaPedidos=(item.pedidos/maxPedidos)*100;
+    const notaQualidade=Math.max(0,100-(item.erros*deducaoPorErro));
+    const notaMedia=maxMedia>0?(item.media/maxMedia)*100:0;
+    const indiceFinal=(notaPneus*0.35)+(notaPedidos*0.35)+(notaQualidade*0.20)+(notaMedia*0.10);
+    return{...item,notaPneus,notaPedidos,notaQualidade,notaMedia,indiceFinal};
+  }).sort((a,b)=>
+    b.indiceFinal-a.indiceFinal
+    || a.erros-b.erros
+    || b.pedidos-a.pedidos
+    || b.pneus-a.pneus
+  );
+
   tb.innerHTML=list.map((item,i)=>{
-    const indice=(item.media/maxMedia)*100;
     const pos=MEDALHAS[i]?MEDALHAS[i]+' <strong>'+(i+1)+'º</strong>':(i+1)+'º';
     const destaque=i<3;
+    const nf=(v)=>v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
     return'<tr><td style="text-align:center">'+pos+'</td>'
       +'<td style="'+(destaque?'font-weight:600':'')+'">'+item.colaborador+' <span style="font-size:11px;color:var(--muted);font-weight:400">('+item.filial+')</span></td>'
       +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+item.pneus.toLocaleString('pt-BR')+'</td>'
       +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+item.pedidos.toLocaleString('pt-BR')+'</td>'
-      +'<td style="text-align:right;font-family:\'DM Mono\',monospace;'+(destaque?'font-weight:600':'')+'">'+item.media.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'
-      +'<td style="text-align:right;font-family:\'DM Mono\',monospace;'+(destaque?'font-weight:600':'')+'">'+indice.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'
+      +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+(item.erros>0?'<span class="badge badge-bad">'+item.erros+'</span>':'<span class="badge badge-ok">0</span>')+'</td>'
+      +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+nf(item.notaPneus)+'</td>'
+      +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+nf(item.notaPedidos)+'</td>'
+      +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+nf(item.notaQualidade)+'</td>'
+      +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+nf(item.notaMedia)+'</td>'
+      +'<td style="text-align:right;font-family:\'DM Mono\',monospace;font-weight:700;'+(destaque?'color:var(--text)':'')+'">'+nf(item.indiceFinal)+'</td>'
       +'</tr>';
   }).join('');
+}
+
+// ============================================================
+// LANÇAR OCORRÊNCIA (registro de erro pelo gestor)
+// ============================================================
+function popularOcorrenciaFiliais(){
+  const sel=document.getElementById('oc-filial-sel');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Filial</option>'+filiais.map(f=>'<option'+(f.nome===cur?' selected':'')+'>'+f.nome+'</option>').join('');
+  popularColabOcorrencia();
+}
+function popularColabOcorrencia(){
+  const filial=document.getElementById('oc-filial-sel')?.value;
+  const sel=document.getElementById('oc-colab-sel');if(!sel)return;
+  const lista=filial?(colaboradores[filial]||[]):Object.values(colaboradores).flat();
+  sel.innerHTML='<option value="">Colaborador</option>'+lista.map(c=>'<option>'+c.nome+'</option>').join('');
+}
+async function lancarOcorrencia(){
+  const filial=document.getElementById('oc-filial-sel').value;
+  const colaborador=document.getElementById('oc-colab-sel').value;
+  const motivo=document.getElementById('oc-motivo-sel').value;
+  const dataEl=document.getElementById('oc-data');
+  const data=dataEl.value||new Date().toISOString().slice(0,10);
+  const pedidoErro=document.getElementById('oc-pedido').value.trim();
+  const obs=document.getElementById('oc-obs').value.trim();
+  if(!filial||!colaborador||!motivo){showAlert('err','Preencha filial, colaborador e motivo.');return;}
+  const registro={filial,colaborador,motivo,data,pedidoErro,obs,timestamp:Date.now(),isErro:true,conferente:(gestorLogado?.nome||'Gestor')};
+  try{
+    const r=await fbPost('lancamentos',registro);
+    lancamentos.unshift({...registro,_key:r.name});
+    document.getElementById('oc-pedido').value='';
+    document.getElementById('oc-obs').value='';
+    document.getElementById('oc-motivo-sel').value='';
+    render();renderErros();
+    showAlert('ok','Ocorrência registrada. Ranking atualizado.');
+  }catch(e){showAlert('err','Erro ao registrar ocorrência.');console.error(e);}
+}
+
+// ============================================================
+// CONFIGURAÇÃO DE QUALIDADE (dedução por erro)
+// ============================================================
+async function carregarDeducao(){
+  try{
+    const data=await fbGet('configuracoes/deducaoPorErro');
+    deducaoPorErro=data?Number(data):5;
+    const inp=document.getElementById('deducao-input'),lbl=document.getElementById('deducao-atual');
+    if(inp)inp.value=deducaoPorErro;
+    if(lbl)lbl.textContent='Atual: '+deducaoPorErro+' pontos por erro';
+  }catch(e){console.error(e);}
+}
+async function salvarDeducao(){
+  const val=parseInt(document.getElementById('deducao-input').value);
+  if(!val||val<1){showAlert('err','Valor inválido.');return;}
+  try{
+    await fbPut('configuracoes/deducaoPorErro',val);
+    deducaoPorErro=val;
+    document.getElementById('deducao-atual').textContent='Atual: '+val+' pontos por erro';
+    showAlert('ok','Configuração salva!');
+    render();
+  }catch(e){showAlert('err','Erro ao salvar.');}
 }
 
 // ============================================================
