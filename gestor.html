@@ -66,6 +66,59 @@ body::before{content:'';position:fixed;inset:0;background:url('https://raw.githu
 .rank-num{font-family:'DM Mono',monospace;font-size:13px;color:var(--hint);min-width:22px}
 .bar-wrap{flex:1;height:6px;background:var(--bg);border-radius:10px;overflow:hidden;min-width:60px}
 .bar{height:100%;border-radius:10px}
+
+/* ---- RANKING DE PRODUTIVIDADE (novo painel) ---- */
+.rp-explica-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:800px){.rp-explica-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.rp-explica-grid{grid-template-columns:1fr}}
+.rp-explica-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px 14px}
+.rp-explica-ico{font-size:20px;margin-bottom:6px}
+.rp-explica-title{font-size:12.5px;font-weight:600;margin-bottom:4px}
+.rp-explica-desc{font-size:11.5px;color:var(--muted);line-height:1.5}
+.rp-explica-peso{font-size:10px;color:var(--hint);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+
+.rp-summary-card{border:1px solid var(--border-strong);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;background:linear-gradient(135deg,rgba(26,25,23,.03),rgba(26,25,23,0))}
+.dark .rp-summary-card{background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,0))}
+.rp-summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+@media(max-width:900px){.rp-summary-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:480px){.rp-summary-grid{grid-template-columns:repeat(2,1fr)}}
+.rp-summary-item-lbl{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.rp-summary-item-val{font-size:20px;font-weight:700;font-family:'DM Mono',monospace}
+
+.rp-row{cursor:pointer;transition:background .1s}
+.rp-row:hover td{background:var(--bg)}
+.rp-row td{border-left:3px solid transparent}
+.rp-row.rp-tier-excelente td:first-child{border-left-color:#c9a227}
+.rp-row.rp-tier-muitobom td:first-child{border-left-color:#2d6b28}
+.rp-row.rp-tier-bom td:first-child{border-left-color:#3266ad}
+.rp-row.rp-tier-atencao td:first-child{border-left-color:#c78a0f}
+.rp-row.rp-tier-melhorar td:first-child{border-left-color:#c0392b}
+
+.rp-pontos{font-size:19px;font-weight:800;font-family:'DM Mono',monospace}
+.rp-tier-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.rp-tier-excelente .rp-tier-badge,.rp-tier-badge.excelente{background:#fbf2d9;color:#8a6d1a}
+.rp-tier-muitobom .rp-tier-badge,.rp-tier-badge.muitobom{background:var(--green-bg);color:var(--green-t)}
+.rp-tier-bom .rp-tier-badge,.rp-tier-badge.bom{background:#e6eef8;color:#274b7a}
+.rp-tier-atencao .rp-tier-badge,.rp-tier-badge.atencao{background:var(--amber-bg);color:var(--amber-t)}
+.rp-tier-melhorar .rp-tier-badge,.rp-tier-badge.melhorar{background:var(--red-bg);color:var(--red-t)}
+
+.rp-mini-bar-wrap{width:64px;height:6px;background:var(--bg);border-radius:10px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
+.rp-mini-bar{height:100%;border-radius:10px}
+
+.rp-detail{background:var(--bg)}
+.rp-detail-inner{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.rp-detail-summary{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+@media(max-width:900px){.rp-detail-summary{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:480px){.rp-detail-summary{grid-template-columns:repeat(2,1fr)}}
+.rp-detail-mini{background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 11px}
+.rp-detail-mini-lbl{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.rp-detail-mini-val{font-size:15px;font-weight:700;font-family:'DM Mono',monospace}
+.rp-break-row{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.rp-break-lbl{min-width:110px;font-weight:500}
+.rp-break-bar{flex:1;height:9px;background:var(--border);border-radius:10px;overflow:hidden}
+.rp-break-fill{height:100%;border-radius:10px}
+.rp-break-val{min-width:70px;text-align:right;font-family:'DM Mono',monospace;color:var(--muted)}
+.rp-msg{font-size:12.5px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;display:flex;align-items:center;gap:8px}
 .rank-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;min-width:65px;text-align:right}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
 .badge-ok{background:var(--green-bg);color:var(--green-t)}.badge-warn{background:var(--amber-bg);color:var(--amber-t);border:1px solid var(--amber-b)}.badge-bad{background:var(--red-bg);color:var(--red-t)}.badge-neu{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
@@ -467,24 +520,55 @@ tbody tr:hover td{background:var(--bg)}
 
     <div class="view active" id="view-ranking">
       <div class="card">
+        <div class="card-header"><div class="card-title">Como sua pontuação é calculada</div></div>
+        <div class="rp-explica-grid">
+          <div class="rp-explica-card">
+            <div class="rp-explica-ico">🛞</div>
+            <div class="rp-explica-peso">Peso 35%</div>
+            <div class="rp-explica-title">Volume produzido</div>
+            <div class="rp-explica-desc">Quanto mais pneus separados, maior sua pontuação.</div>
+          </div>
+          <div class="rp-explica-card">
+            <div class="rp-explica-ico">📦</div>
+            <div class="rp-explica-peso">Peso 35%</div>
+            <div class="rp-explica-title">Pedidos concluídos</div>
+            <div class="rp-explica-desc">Quanto mais pedidos finalizados, maior sua pontuação.</div>
+          </div>
+          <div class="rp-explica-card">
+            <div class="rp-explica-ico">✅</div>
+            <div class="rp-explica-peso">Peso 20%</div>
+            <div class="rp-explica-title">Qualidade</div>
+            <div class="rp-explica-desc">Erros reduzem sua pontuação.</div>
+          </div>
+          <div class="rp-explica-card">
+            <div class="rp-explica-ico">⚖️</div>
+            <div class="rp-explica-peso">Peso 10%</div>
+            <div class="rp-explica-title">Equilíbrio</div>
+            <div class="rp-explica-desc">Sua média de pneus por pedido — peso menor, só pra manter o ranking justo.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card rp-summary-card" id="rp-lider-card" style="display:none">
+        <div class="card-header" style="margin-bottom:12px"><div class="card-title">🏆 Líder do período</div></div>
+        <div class="rp-summary-grid" id="rp-lider-grid"></div>
+      </div>
+
+      <div class="card">
         <div class="card-header">
-          <div class="card-title">🏆 Ranking de Produtividade — Índice Final</div>
+          <div class="card-title">🏆 Ranking de Produtividade</div>
           <span id="rank-deducao-info" class="badge badge-neu"></span>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
-          Índice Final = (Pneus × 35%) + (Pedidos × 35%) + (Qualidade × 20%) + (Média Pneus/Pedido × 10%). Cada nota é normalizada de 0 a 100 em relação ao melhor do período. Desempate: menos erros → mais pedidos → mais pneus.
-        </div>
+        <div style="font-size:11.5px;color:var(--hint);margin-bottom:12px">Clique em um colaborador para ver o detalhamento da pontuação.</div>
         <div class="table-wrap"><table><thead><tr>
           <th style="text-align:center">Pos.</th>
           <th>Colaborador</th>
           <th style="text-align:right">Pneus</th>
           <th style="text-align:right">Pedidos</th>
           <th style="text-align:right">Erros</th>
-          <th style="text-align:right">Nota Pneus</th>
-          <th style="text-align:right">Nota Pedidos</th>
-          <th style="text-align:right">Nota Qualidade</th>
-          <th style="text-align:right">Nota Média</th>
-          <th style="text-align:right">Índice Final</th>
+          <th style="text-align:center">Tend.</th>
+          <th style="text-align:right">Pontos</th>
+          <th>Desempenho</th>
         </tr></thead><tbody id="ranking-produtividade-body"></tbody></table></div>
       </div>
     </div>
@@ -1001,35 +1085,42 @@ function renderMetrics(data){
 }
 
 // ============================================================
-// RANKING DE PRODUTIVIDADE (Índice Final)
+// RANKING DE PRODUTIVIDADE (Índice Final) — cálculo
 // ============================================================
 let deducaoPorErro=5; // pontos descontados por erro na Nota de Qualidade (configurável)
 const MEDALHAS=['🥇','🥈','🥉'];
 
-function renderRanking(data){
+function getSubsetPneus(fs,ini,fim,colab){
+  return lancamentos.filter(l=>{
+    if(l.isPedido||l.isErro||!l.pneus)return false;
+    if(fs.size>0&&!fs.has(l.filial))return false;
+    if(ini&&l.data<ini)return false;
+    if(fim&&l.data>fim)return false;
+    if(colab&&l.colaborador!==colab)return false;
+    return true;
+  });
+}
+function getSubsetErros(fs,ini,fim,colab){
+  return lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab));
+}
+
+// Calcula o índice completo (Volume 35% / Pedidos 35% / Qualidade 20% / Equilíbrio 10%) para um conjunto de lançamentos.
+// Regra de negócio idêntica à original — apenas reorganizada em função reutilizável.
+function computeIndices(pneusData,errosData){
   const ag={};
-  data.forEach(l=>{const k=l.colaborador+'|'+l.filial;if(!ag[k])ag[k]={colaborador:l.colaborador,filial:l.filial,pneus:0,pedidos:0};ag[k].pneus+=Number(l.pneus||0);ag[k].pedidos+=Number(l.pedidos||0);});
-  const{filiais:fs,ini,fim,colab}=getFilter();
+  pneusData.forEach(l=>{const k=l.colaborador+'|'+l.filial;if(!ag[k])ag[k]={colaborador:l.colaborador,filial:l.filial,pneus:0,pedidos:0};ag[k].pneus+=Number(l.pneus||0);ag[k].pedidos+=Number(l.pedidos||0);});
   const errosPor={};
-  lancamentos.filter(l=>l.motivo&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab)).forEach(l=>{const k=l.colaborador+'|'+l.filial;errosPor[k]=(errosPor[k]||0)+1;});
-
-  const infoEl=document.getElementById('rank-deducao-info');
-  if(infoEl)infoEl.textContent='-'+deducaoPorErro+' pts / erro';
-
+  errosData.forEach(l=>{const k=l.colaborador+'|'+l.filial;errosPor[k]=(errosPor[k]||0)+1;});
   const base=Object.values(ag).map(item=>{
     const erros=errosPor[item.colaborador+'|'+item.filial]||0;
     const media=item.pedidos>0?item.pneus/item.pedidos:0;
     return{...item,erros,media};
   });
-
-  const tb=document.getElementById('ranking-produtividade-body');if(!tb)return;
-  if(!base.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--hint)">Nenhum dado</td></tr>';return;}
-
+  if(!base.length)return[];
   const maxPneus=Math.max(...base.map(i=>i.pneus))||1;
   const maxPedidos=Math.max(...base.map(i=>i.pedidos))||1;
   const maxMedia=Math.max(...base.map(i=>i.media))||1;
-
-  const list=base.map(item=>{
+  return base.map(item=>{
     const notaPneus=(item.pneus/maxPneus)*100;
     const notaPedidos=(item.pedidos/maxPedidos)*100;
     const notaQualidade=Math.max(0,100-(item.erros*deducaoPorErro));
@@ -1042,28 +1133,142 @@ function renderRanking(data){
     || b.pedidos-a.pedidos
     || b.pneus-a.pneus
   );
+}
+
+function periodoAnterior(ini,fim){
+  if(!ini||!fim)return null;
+  const iniD=new Date(ini+'T00:00:00'),fimD=new Date(fim+'T00:00:00');
+  const diffDays=Math.round((fimD-iniD)/86400000)+1;
+  const prevFim=new Date(iniD);prevFim.setDate(prevFim.getDate()-1);
+  const prevIni=new Date(prevFim);prevIni.setDate(prevIni.getDate()-diffDays+1);
+  return{ini:prevIni.toISOString().slice(0,10),fim:prevFim.toISOString().slice(0,10)};
+}
+
+function getDesempenho(pontos){
+  if(pontos>=95)return{cls:'excelente',emoji:'🥇',label:'Excelente'};
+  if(pontos>=90)return{cls:'muitobom',emoji:'🟢',label:'Muito Bom'};
+  if(pontos>=80)return{cls:'bom',emoji:'🔵',label:'Bom'};
+  if(pontos>=70)return{cls:'atencao',emoji:'🟡',label:'Atenção'};
+  return{cls:'melhorar',emoji:'🔴',label:'Precisa Melhorar'};
+}
+
+function renderRanking(data){
+  const{filiais:fs,ini,fim,colab}=getFilter();
+  const errosData=getSubsetErros(fs,ini,fim,colab);
+  const infoEl=document.getElementById('rank-deducao-info');
+  if(infoEl)infoEl.textContent='-'+deducaoPorErro+' pts / erro';
+
+  const list=computeIndices(data,errosData);
+  const tb=document.getElementById('ranking-produtividade-body');if(!tb)return;
+  const liderCard=document.getElementById('rp-lider-card');
+
+  if(!list.length){
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--hint)">Nenhum dado</td></tr>';
+    if(liderCard)liderCard.style.display='none';
+    return;
+  }
+
+  // Período anterior (para a tendência)
+  const prev=periodoAnterior(ini,fim);
+  let prevMap={};
+  if(prev){
+    const prevPneus=getSubsetPneus(fs,prev.ini,prev.fim,colab);
+    const prevErros=getSubsetErros(fs,prev.ini,prev.fim,colab);
+    computeIndices(prevPneus,prevErros).forEach(p=>{prevMap[p.colaborador+'|'+p.filial]=p.indiceFinal;});
+  }
+
+  // Card do líder
+  const lider=list[0];
+  if(liderCard){
+    liderCard.style.display='';
+    const liderTier=getDesempenho(lider.indiceFinal);
+    document.getElementById('rp-lider-grid').innerHTML=
+      '<div><div class="rp-summary-item-lbl">👤 Colaborador</div><div class="rp-summary-item-val" style="font-size:15px">'+lider.colaborador+'</div></div>'
+      +'<div><div class="rp-summary-item-lbl">⭐ Pontuação</div><div class="rp-summary-item-val">'+lider.indiceFinal.toFixed(1)+'</div></div>'
+      +'<div><div class="rp-summary-item-lbl">📦 Pedidos</div><div class="rp-summary-item-val">'+lider.pedidos.toLocaleString('pt-BR')+'</div></div>'
+      +'<div><div class="rp-summary-item-lbl">🛞 Pneus</div><div class="rp-summary-item-val">'+lider.pneus.toLocaleString('pt-BR')+'</div></div>'
+      +'<div><div class="rp-summary-item-lbl">❌ Erros</div><div class="rp-summary-item-val">'+lider.erros+'</div></div>'
+      +'<div><div class="rp-summary-item-lbl">📈 Desempenho</div><div class="rp-summary-item-val" style="font-size:14px">'+liderTier.emoji+' '+liderTier.label+'</div></div>';
+  }
+
+  const nf1=(v)=>v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+  const barColor=(cls)=>({excelente:'#c9a227',muitobom:'#2d6b28',bom:'#3266ad',atencao:'#c78a0f',melhorar:'#c0392b'}[cls]);
 
   tb.innerHTML=list.map((item,i)=>{
+    const key=item.colaborador+'|'+item.filial;
+    const tier=getDesempenho(item.indiceFinal);
     const pos=MEDALHAS[i]?MEDALHAS[i]+' <strong>'+(i+1)+'º</strong>':(i+1)+'º';
-    const destaque=i<3;
-    const nf=(v)=>v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
-    return'<tr><td style="text-align:center">'+pos+'</td>'
-      +'<td style="'+(destaque?'font-weight:600':'')+'">'+item.colaborador+' <span style="font-size:11px;color:var(--muted);font-weight:400">('+item.filial+')</span></td>'
+
+    // Tendência vs período anterior
+    let tendHtml='<span style="color:var(--hint);font-size:12px">—</span>';
+    if(prev){
+      if(prevMap[key]===undefined){tendHtml='<span title="Novo no período" style="font-size:13px">🆕</span>';}
+      else{
+        const diff=item.indiceFinal-prevMap[key];
+        if(diff>1)tendHtml='<span title="Subindo" style="font-size:14px">📈</span>';
+        else if(diff<-1)tendHtml='<span title="Caindo" style="font-size:14px">📉</span>';
+        else tendHtml='<span title="Estável" style="font-size:14px">➡️</span>';
+      }
+    }
+
+    const mainRow='<tr class="rp-row rp-tier-'+tier.cls+'" onclick="toggleRankDetail('+i+')">'
+      +'<td style="text-align:center">'+pos+'</td>'
+      +'<td style="font-weight:'+(i<3?'600':'500')+'">'+item.colaborador+' <span style="font-size:11px;color:var(--muted);font-weight:400">('+item.filial+')</span></td>'
       +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+item.pneus.toLocaleString('pt-BR')+'</td>'
       +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+item.pedidos.toLocaleString('pt-BR')+'</td>'
       +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+(item.erros>0?'<span class="badge badge-bad">'+item.erros+'</span>':'<span class="badge badge-ok">0</span>')+'</td>'
-      +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+nf(item.notaPneus)+'</td>'
-      +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+nf(item.notaPedidos)+'</td>'
-      +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+nf(item.notaQualidade)+'</td>'
-      +'<td style="text-align:right;font-family:\'DM Mono\',monospace">'+nf(item.notaMedia)+'</td>'
-      +'<td style="text-align:right;font-family:\'DM Mono\',monospace;font-weight:700;'+(destaque?'color:var(--text)':'')+'">'+nf(item.indiceFinal)+'</td>'
+      +'<td style="text-align:center">'+tendHtml+'</td>'
+      +'<td style="text-align:right"><span class="rp-pontos" style="color:'+barColor(tier.cls)+'">'+nf1(item.indiceFinal)+'</span></td>'
+      +'<td><span class="rp-tier-badge '+tier.cls+'">'+tier.emoji+' '+tier.label+'</span></td>'
       +'</tr>';
+
+    // Linha de detalhe (expandida ao clicar)
+    const pWeighted=item.notaPneus*0.35, pdWeighted=item.notaPedidos*0.35, qWeighted=item.notaQualidade*0.20, mWeighted=item.notaMedia*0.10;
+    const breakRow=(label,pct,weighted,max)=>
+      '<div class="rp-break-row"><span class="rp-break-lbl">'+label+'</span><div class="rp-break-bar"><div class="rp-break-fill" style="width:'+pct+'%;background:'+barColor(tier.cls)+'"></div></div><span class="rp-break-val">'+nf1(weighted)+' / '+max+'</span></div>';
+
+    let msgs='';
+    if(i===0){
+      msgs='<div class="rp-msg">🏆 Você está na liderança do período!</div>';
+    }else{
+      const gapLider=(lider.indiceFinal-item.indiceFinal).toFixed(1);
+      const acima=list[i-1];
+      const gapAcima=(acima.indiceFinal-item.indiceFinal).toFixed(1);
+      if(Number(gapAcima)>0.05){
+        msgs+='<div class="rp-msg">📈 Faltam apenas <strong>'+gapAcima+' pontos</strong> para ultrapassar <strong>'+acima.colaborador+'</strong>.</div>';
+      }
+      if(i>0)msgs+='<div class="rp-msg">🎯 Faltam <strong>'+gapLider+' pontos</strong> para assumir a liderança.</div>';
+    }
+
+    return mainRow
+      +'<tr class="rp-detail" id="rank-detail-'+i+'" style="display:none"><td colspan="8"><div class="rp-detail-inner">'
+        +'<div class="rp-detail-summary">'
+          +'<div class="rp-detail-mini"><div class="rp-detail-mini-lbl">🏆 Posição</div><div class="rp-detail-mini-val">'+(i+1)+'º</div></div>'
+          +'<div class="rp-detail-mini"><div class="rp-detail-mini-lbl">⭐ Pontuação</div><div class="rp-detail-mini-val">'+nf1(item.indiceFinal)+'</div></div>'
+          +'<div class="rp-detail-mini"><div class="rp-detail-mini-lbl">📦 Pedidos</div><div class="rp-detail-mini-val">'+item.pedidos.toLocaleString('pt-BR')+'</div></div>'
+          +'<div class="rp-detail-mini"><div class="rp-detail-mini-lbl">🛞 Pneus</div><div class="rp-detail-mini-val">'+item.pneus.toLocaleString('pt-BR')+'</div></div>'
+          +'<div class="rp-detail-mini"><div class="rp-detail-mini-lbl">❌ Erros</div><div class="rp-detail-mini-val">'+item.erros+'</div></div>'
+          +'<div class="rp-detail-mini"><div class="rp-detail-mini-lbl">📈 Desempenho</div><div class="rp-detail-mini-val" style="font-size:13px">'+tier.emoji+' '+tier.label+'</div></div>'
+        +'</div>'
+        +'<div>'
+          +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Como essa pontuação foi formada</div>'
+          +breakRow('🛞 Volume',item.notaPneus,pWeighted,35)
+          +breakRow('📦 Pedidos',item.notaPedidos,pdWeighted,35)
+          +breakRow('✅ Qualidade',item.notaQualidade,qWeighted,20)
+          +breakRow('⚖️ Equilíbrio',item.notaMedia,mWeighted,10)
+        +'</div>'
+        +msgs
+      +'</div></td></tr>';
   }).join('');
 }
 
-// ============================================================
-// LANÇAR OCORRÊNCIA (registro de erro pelo gestor)
-// ============================================================
+function toggleRankDetail(i){
+  const row=document.getElementById('rank-detail-'+i);
+  if(!row)return;
+  row.style.display=row.style.display==='none'?'':'none';
+}
+
+
 function popularOcorrenciaFiliais(){
   const sel=document.getElementById('oc-filial-sel');if(!sel)return;
   const cur=sel.value;
