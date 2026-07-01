@@ -1498,11 +1498,11 @@ function renderDropFilial() {
   const isTodas = filiaisSelecionadas.size === filiais.length;
   const sel1 = filiaisSelecionadas.size === 1 ? [...filiaisSelecionadas][0] : null;
   let html = '<div class="drop-item" style="'+(isTodas?'font-weight:600;color:var(--text)':'')+';padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)" onclick="selecionarFilial(null)">'
-    + '<span style="font-size:11px;color:'+(isTodas?'var(--text)':'var(--hint)');+'">'+(isTodas?'●':'○')+'</span> Todas as filiais</div>';
+    + '<span style="font-size:11px;color:'+(isTodas?'var(--text)':'var(--hint)')+'">'+(isTodas?'●':'○')+'</span> Todas as filiais</div>';
   filiais.forEach(function(f){
     const ativo = sel1 === f.nome;
     html += '<div class="drop-item" style="'+(ativo?'font-weight:600;background:var(--bg)':'')+';padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" data-nome="'+f.nome+'" onclick="selecionarFilial(this.dataset.nome)">'
-      + '<span style="font-size:11px;color:'+(ativo?'var(--text)':'var(--hint)');+'">'+(ativo?'●':'○')+'</span> '+f.nome+'</div>';
+      + '<span style="font-size:11px;color:'+(ativo?'var(--text)':'var(--hint)')+'">'+(ativo?'●':'○')+'</span> '+f.nome+'</div>';
   });
   list.innerHTML = html;
 }
