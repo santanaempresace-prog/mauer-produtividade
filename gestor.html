@@ -524,13 +524,13 @@ tbody tr:hover td{background:var(--bg)}
         <div class="rp-explica-grid">
           <div class="rp-explica-card">
             <div class="rp-explica-ico">🛞</div>
-            <div class="rp-explica-peso">Peso 30%</div>
+            <div class="rp-explica-peso">Peso 25%</div>
             <div class="rp-explica-title">Volume produzido</div>
             <div class="rp-explica-desc">Quanto mais pneus separados, maior sua pontuação.</div>
           </div>
           <div class="rp-explica-card">
             <div class="rp-explica-ico">📦</div>
-            <div class="rp-explica-peso">Peso 40%</div>
+            <div class="rp-explica-peso">Peso 45%</div>
             <div class="rp-explica-title">Pedidos concluídos</div>
             <div class="rp-explica-desc">Quanto mais pedidos finalizados, maior sua pontuação.</div>
           </div>
@@ -704,7 +704,7 @@ tbody tr:hover td{background:var(--bg)}
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">Cada erro registrado desconta pontos da Nota de Qualidade do colaborador (peso 20% no Índice Final). Nota Qualidade = 100 − (erros × pontos por erro), com mínimo de 0.</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <input type="number" id="deducao-input" min="1" max="100" placeholder="Ex: 3" style="font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:8px 12px;outline:none;width:140px">
+          <input type="number" id="deducao-input" min="1" max="100" placeholder="Ex: 10" style="font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:8px 12px;outline:none;width:140px">
           <button class="btn btn-dark" onclick="salvarDeducao()">Salvar</button>
           <span id="deducao-atual" style="font-size:12px;color:var(--muted)"></span>
         </div>
@@ -1087,7 +1087,7 @@ function renderMetrics(data){
 // ============================================================
 // RANKING DE PRODUTIVIDADE (Índice Final) — cálculo
 // ============================================================
-let deducaoPorErro=3; // pontos descontados por erro na Nota de Qualidade (configurável)
+let deducaoPorErro=10; // pontos descontados por erro na Nota de Qualidade (configurável)
 const MEDALHAS=['🥇','🥈','🥉'];
 
 function getSubsetPneus(fs,ini,fim,colab){
@@ -1125,7 +1125,7 @@ function computeIndices(pneusData,errosData){
     const notaPedidos=(item.pedidos/maxPedidos)*100;
     const notaQualidade=Math.max(0,100-(item.erros*deducaoPorErro));
     const notaMedia=maxMedia>0?(item.media/maxMedia)*100:0;
-    const indiceFinal=(notaPneus*0.30)+(notaPedidos*0.40)+(notaQualidade*0.25)+(notaMedia*0.05);
+    const indiceFinal=(notaPneus*0.25)+(notaPedidos*0.45)+(notaQualidade*0.25)+(notaMedia*0.05);
     return{...item,notaPneus,notaPedidos,notaQualidade,notaMedia,indiceFinal};
   }).sort((a,b)=>
     b.indiceFinal-a.indiceFinal
@@ -1223,7 +1223,7 @@ function renderRanking(data){
       +'</tr>';
 
     // Linha de detalhe (expandida ao clicar)
-    const pWeighted=item.notaPneus*0.30, pdWeighted=item.notaPedidos*0.40, qWeighted=item.notaQualidade*0.25, mWeighted=item.notaMedia*0.05;
+    const pWeighted=item.notaPneus*0.25, pdWeighted=item.notaPedidos*0.45, qWeighted=item.notaQualidade*0.25, mWeighted=item.notaMedia*0.05;
     const breakRow=(label,pct,weighted,max)=>
       '<div class="rp-break-row"><span class="rp-break-lbl">'+label+'</span><div class="rp-break-bar"><div class="rp-break-fill" style="width:'+pct+'%;background:'+barColor(tier.cls)+'"></div></div><span class="rp-break-val">'+nf1(weighted)+' / '+max+'</span></div>';
 
@@ -1252,8 +1252,8 @@ function renderRanking(data){
         +'</div>'
         +'<div>'
           +'<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Como essa pontuação foi formada</div>'
-          +breakRow('🛞 Volume',item.notaPneus,pWeighted,30)
-          +breakRow('📦 Pedidos',item.notaPedidos,pdWeighted,40)
+          +breakRow('🛞 Volume',item.notaPneus,pWeighted,25)
+          +breakRow('📦 Pedidos',item.notaPedidos,pdWeighted,45)
           +breakRow('✅ Qualidade',item.notaQualidade,qWeighted,25)
           +breakRow('⚖️ Equilíbrio',item.notaMedia,mWeighted,5)
         +'</div>'
@@ -1308,7 +1308,7 @@ async function lancarOcorrencia(){
 async function carregarDeducao(){
   try{
     const data=await fbGet('configuracoes/deducaoPorErro');
-    deducaoPorErro=data?Number(data):3;
+    deducaoPorErro=data?Number(data):10;
     const inp=document.getElementById('deducao-input'),lbl=document.getElementById('deducao-atual');
     if(inp)inp.value=deducaoPorErro;
     if(lbl)lbl.textContent='Atual: '+deducaoPorErro+' pontos por erro';
