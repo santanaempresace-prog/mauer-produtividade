@@ -352,6 +352,7 @@ tbody tr:hover td{background:var(--bg)}
     <div class="nav-item" onclick="setView('pedidos',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Rastreamento</div>
     <div class="nav-item" onclick="setView('erros',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Erros</div>
     <div class="nav-item" onclick="setView('historico',this)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
+    <div class="nav-item" onclick="setView('descarga',this)"><svg class="ic" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Descarga</div>
     <div class="sb-divider"></div>
     <div class="sb-label">Cadastros</div>
     <div class="nav-item" onclick="setView('config',this)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M17.66 17.66l-1.41-1.41M6.75 17.66l1.41-1.41"/></svg>Filiais e colaboradores</div>
@@ -640,6 +641,43 @@ tbody tr:hover td{background:var(--bg)}
       <div class="card">
         <div class="card-header"><div class="card-title">Histórico</div><span id="hist-count" class="badge badge-neu"></span></div>
         <div class="table-wrap"><table><thead><tr><th>Data</th><th>Hora</th><th>Filial</th><th>Colaborador</th><th>Pedidos</th><th>Pneus</th><th>Status</th></tr></thead><tbody id="hist-body"></tbody></table></div>
+      </div>
+    </div>
+    <div class="view" id="view-descarga">
+      <div class="filters" style="flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center">
+        <select id="desc-filial" onchange="renderDescarga()" style="min-width:160px;font-family:'DM Sans',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;background:var(--surface);color:var(--text);outline:none;cursor:pointer">
+          <option value="">Todas as filiais</option>
+        </select>
+        <input type="date" id="desc-ini" onchange="renderDescarga()">
+        <input type="date" id="desc-fim" onchange="renderDescarga()">
+        <button class="btn btn-outline btn-sm" onclick="clearDescargaFilters()">Limpar</button>
+        <button class="btn btn-outline btn-sm" onclick="carregarDescargas().then(renderDescarga)">↻ Atualizar</button>
+      </div>
+
+      <div class="metrics-grid" style="margin-bottom:14px">
+        <div class="metric-card"><div class="metric-lbl">Descargas</div><div class="metric-val" id="desc-kpi-total">—</div><div class="metric-sub">no período</div></div>
+        <div class="metric-card"><div class="metric-lbl">No prazo</div><div class="metric-val" id="desc-kpi-ok" style="color:var(--green-t)">—</div><div class="metric-sub" id="desc-kpi-pct">—</div></div>
+        <div class="metric-card"><div class="metric-lbl">Fora do prazo</div><div class="metric-val" id="desc-kpi-fora" style="color:var(--red-t)">—</div><div class="metric-sub">descargas</div></div>
+        <div class="metric-card"><div class="metric-lbl">Pneus errados</div><div class="metric-val" id="desc-kpi-pneus" style="color:var(--red-t)">—</div><div class="metric-sub">no período</div></div>
+        <div class="metric-card"><div class="metric-lbl">Reclamações</div><div class="metric-val" id="desc-kpi-reclamacao" style="color:var(--amber-t)">—</div><div class="metric-sub">no período</div></div>
+      </div>
+
+      <div class="pbi-grid-2" style="margin-bottom:12px">
+        <div class="card" style="margin-bottom:0">
+          <div class="card-header"><div class="card-title">🏭 Cumprimento de prazo por filial</div></div>
+          <div id="desc-filial-list"></div>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-header"><div class="card-title">🏆 Top descarregadores</div></div>
+          <div id="desc-top-list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Registros de descarga</div><span id="desc-count" class="badge badge-neu"></span></div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>Data</th><th>Horário</th><th>Filial</th><th>Nota</th><th>Cubagem</th><th>Quem descarregou</th><th>Pessoas</th><th>Duração</th><th>Status</th><th>Pneus err.</th><th>Reclamação</th><th>Obs</th>
+        </tr></thead><tbody id="desc-body"></tbody></table></div>
       </div>
     </div>
     <div class="view" id="view-config">
@@ -1056,6 +1094,7 @@ function setView(view,el){
   if(view==='gestores'){renderGestoresList();return;}
   if(view==='conferentes'){renderConferentesTabs();return;}
   if(view==='erros'){popularOcorrenciaFiliais();const dEl=document.getElementById('oc-data');if(dEl&&!dEl.value)dEl.value=new Date().toISOString().slice(0,10);}
+  if(view==='descarga'){popularDescargaFilial();(descargasCarregadas?Promise.resolve():carregarDescargas()).then(renderDescarga);return;}
   render();
 }
 
@@ -1300,6 +1339,138 @@ async function lancarOcorrencia(){
     render();renderErros();
     showAlert('ok','Ocorrência registrada. Ranking atualizado.');
   }catch(e){showAlert('err','Erro ao registrar ocorrência.');console.error(e);}
+}
+
+// ============================================================
+// DESCARGA (módulo de descarregamento — dados vêm de descarga.html)
+// ============================================================
+let descargas=[], descargasCarregadas=false;
+
+async function carregarDescargas(){
+  try{
+    const data=await fbGet('descarregamentos');
+    descargas=data?Object.entries(data).map(([k,v])=>({...v,_key:k})):[];
+    descargasCarregadas=true;
+  }catch(e){showAlert('err','Erro ao carregar dados de descarga.');console.error(e);}
+}
+
+function popularDescargaFilial(){
+  const sel=document.getElementById('desc-filial');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Todas as filiais</option>'+filiais.map(f=>'<option'+(f.nome===cur?' selected':'')+'>'+f.nome+'</option>').join('');
+}
+
+// descarga.html historicamente salvou algumas filiais com códigos curtos (ES, MG, SP, BU) —
+// normaliza para o nome completo cadastrado em "Filiais e colaboradores".
+const DESC_FILIAL_MAP={'ES':'MAUER ES','MG':'MAUER MG','SP':'MAUER ITAPEVI','BU':'MAUER BAURU'};
+function normalizarFilialDescarga(f){
+  const raw=(f||'').trim();
+  const k=raw.toUpperCase();
+  if(DESC_FILIAL_MAP[k])return DESC_FILIAL_MAP[k];
+  const match=filiais.find(fl=>fl.nome.toUpperCase()===k);
+  return match?match.nome:(raw||'—');
+}
+
+function clearDescargaFilters(){
+  const sel=document.getElementById('desc-filial');if(sel)sel.value='';
+  const ini=document.getElementById('desc-ini'),fim=document.getElementById('desc-fim');
+  if(ini)ini.value='';if(fim)fim.value='';
+  renderDescarga();
+}
+
+function filterDescargas(){
+  const filial=document.getElementById('desc-filial')?.value||'';
+  const ini=document.getElementById('desc-ini')?.value||'';
+  const fim=document.getElementById('desc-fim')?.value||'';
+  return descargas.filter(d=>{
+    if(filial&&normalizarFilialDescarga(d.filial)!==filial)return false;
+    if(ini&&d.data<ini)return false;
+    if(fim&&d.data>fim)return false;
+    return true;
+  });
+}
+
+function minToStrGestor(m){
+  m=Math.round(m);
+  const h=Math.floor(m/60);
+  return(h>0?h+'h ':'')+String(m%60).padStart(2,'0')+'min';
+}
+
+function renderDescarga(){
+  const list=filterDescargas();
+  const cntEl=document.getElementById('desc-count');if(cntEl)cntEl.textContent=list.length+' registro'+(list.length!==1?'s':'');
+
+  const total=list.length;
+  const ok=list.filter(d=>d.realizado==='OK').length;
+  const fora=total-ok;
+  const pct=total>0?Math.round(ok/total*100):0;
+  const pneusErr=list.reduce((a,d)=>a+Number(d.pneusErrados||0),0);
+  const reclamacoes=list.filter(d=>d.reclamacao==='sim').length;
+
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  set('desc-kpi-total',total.toLocaleString('pt-BR'));
+  set('desc-kpi-ok',ok.toLocaleString('pt-BR'));
+  set('desc-kpi-pct',pct+'% no prazo');
+  set('desc-kpi-fora',fora.toLocaleString('pt-BR'));
+  set('desc-kpi-pneus',pneusErr.toLocaleString('pt-BR'));
+  set('desc-kpi-reclamacao',reclamacoes.toLocaleString('pt-BR'));
+
+  // Por filial
+  const byF={};
+  list.forEach(d=>{
+    const f=normalizarFilialDescarga(d.filial);
+    if(!byF[f])byF[f]={total:0,ok:0,tempos:[]};
+    byF[f].total++;
+    if(d.realizado==='OK')byF[f].ok++;
+    const m=Number(d.duracaoMin)||0;
+    if(m>0)byF[f].tempos.push(m);
+  });
+  const flEl=document.getElementById('desc-filial-list');
+  const fls=Object.entries(byF).sort((a,b)=>b[1].total-a[1].total);
+  if(flEl){
+    if(!fls.length)flEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--hint)">Nenhum dado</div>';
+    else flEl.innerHTML=fls.map(([nome,v])=>{
+      const p=v.total?Math.round(v.ok/v.total*100):0;
+      const mt=v.tempos.length?Math.round(v.tempos.reduce((a,b)=>a+b,0)/v.tempos.length):0;
+      const cor=p>=80?'var(--green-t)':p>=50?'var(--amber-t)':'var(--red-t)';
+      return '<div class="rank-row"><div style="min-width:120px;font-size:13px;font-weight:500">'+nome+'</div><div class="bar-wrap"><div class="bar" style="width:'+p+'%;background:'+cor+'"></div></div><div class="rank-val" style="color:'+cor+'">'+p+'%</div><div style="font-size:11px;color:var(--muted);min-width:100px;text-align:right">'+v.total+' desc. · '+(mt?minToStrGestor(mt):'—')+'</div></div>';
+    }).join('');
+  }
+
+  // Top descarregadores
+  const byP={};
+  list.forEach(d=>{
+    if(!d.nome)return;
+    const k=d.nome.trim();
+    if(!byP[k])byP[k]={total:0,ok:0,tempos:[]};
+    byP[k].total++;
+    if(d.realizado==='OK')byP[k].ok++;
+    const m=Number(d.duracaoMin)||0;
+    if(m>0)byP[k].tempos.push(m);
+  });
+  const top=Object.entries(byP).sort((a,b)=>b[1].total-a[1].total).slice(0,10);
+  const medals=['🥇','🥈','🥉'];
+  const topEl=document.getElementById('desc-top-list');
+  if(topEl){
+    if(!top.length)topEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--hint)">Nenhum dado</div>';
+    else topEl.innerHTML=top.map(([nome,v],i)=>{
+      const p=v.total?Math.round(v.ok/v.total*100):0;
+      const mt=v.tempos.length?Math.round(v.tempos.reduce((a,b)=>a+b,0)/v.tempos.length):0;
+      const cor=p>=80?'var(--green-t)':p>=50?'var(--amber-t)':'var(--red-t)';
+      return '<div class="rank-row"><div class="rank-num">'+(medals[i]||(i+1)+'º')+'</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nome+'</div><div style="font-size:11px;color:var(--muted)">'+v.total+' descargas · '+(mt?minToStrGestor(mt):'—')+'</div></div><div class="rank-val" style="color:'+cor+'">'+p+'%</div></div>';
+    }).join('');
+  }
+
+  // Tabela de registros
+  const tb=document.getElementById('desc-body');
+  if(tb){
+    if(!list.length)tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--hint)">Nenhum registro de descarga</td></tr>';
+    else tb.innerHTML=list.slice().sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).map(d=>{
+      const ok2=d.realizado==='OK';
+      const statusBadge=ok2?'<span class="badge badge-ok">No prazo</span>':'<span class="badge badge-bad">Fora do prazo</span>';
+      return '<tr><td>'+fmt(d.data)+'</td><td style="font-family:\'DM Mono\',monospace;font-size:12px">'+(d.inicio||'—')+' → '+(d.fim||'—')+'</td><td><span class="badge badge-neu">'+normalizarFilialDescarga(d.filial)+'</span></td><td style="font-family:\'DM Mono\',monospace">'+(d.nota||'—')+'</td><td style="font-family:\'DM Mono\',monospace">'+(d.cubagem!=null?d.cubagem+' m³':'—')+'</td><td>'+(d.nome||'—')+'</td><td style="text-align:center">'+(d.pessoas||'—')+'</td><td style="font-family:\'DM Mono\',monospace">'+(d.duracao||'—')+'</td><td>'+statusBadge+'</td><td style="text-align:center">'+(d.pneusErrados>0?'<span class="badge badge-bad">'+d.pneusErrados+'</span>':'0')+'</td><td>'+(d.reclamacao==='sim'?'<span class="badge badge-bad">Sim</span>':'—')+'</td><td style="font-size:12px;color:var(--muted)">'+(d.obs||'—')+'</td></tr>';
+    }).join('');
+  }
 }
 
 // ============================================================
