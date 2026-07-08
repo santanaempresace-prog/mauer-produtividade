@@ -768,12 +768,16 @@ tbody tr:hover td{background:var(--bg)}
           <span id="gestores-count" class="badge badge-neu"></span>
         </div>
         <div style="background:var(--blue-bg,#e8f3fd);border:0.5px solid #a8ccf0;border-radius:var(--rsm);padding:10px 14px;font-size:12px;color:#1a4b8c;margin-bottom:14px">
-          Login será ativado futuramente. Por enquanto cadastre os gestores e vincule às filiais.
+          Cadastre o gestor com usuário e senha para que ele já consiga fazer login no painel, e vincule às filiais dele.
         </div>
         <div class="field-row" style="flex-wrap:wrap">
           <input type="text" id="new-gestor-nome" placeholder="Nome do gestor" style="flex:1;min-width:140px">
-          <input type="text" id="new-gestor-usuario" placeholder="Usuário (futuro login)" style="flex:1;min-width:140px">
-          <button class="btn btn-dark" onclick="addGestor()">+ Adicionar</button>
+          <input type="text" id="new-gestor-usuario" placeholder="Usuário (ex: joao.mauer)" style="flex:1;min-width:140px">
+        </div>
+        <div class="field-row" style="flex-wrap:wrap">
+          <input type="password" id="new-gestor-senha" placeholder="Senha" style="flex:1;min-width:140px" autocomplete="new-password">
+          <input type="password" id="new-gestor-senha2" placeholder="Confirmar senha" style="flex:1;min-width:140px" autocomplete="new-password">
+          <button class="btn btn-dark" onclick="addGestor()">+ Adicionar gestor</button>
         </div>
         <div id="gestores-list"></div>
       </div>
@@ -1823,9 +1827,12 @@ function renderGestoresList(){
   var html='';
   gestores.forEach(function(g){
     html+='<div style="padding:14px 6px;border-bottom:1px solid var(--border)">';
-    html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-    html+='<div><div style="font-weight:500;font-size:13px">'+g.nome+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Usuário: '+(g.usuario||'não definido')+'</div></div>';
-    html+='<button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeGestor(this)" data-key="'+g._key+'">Remover</button></div>';
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">';
+    html+='<div><div style="font-weight:500;font-size:13px">'+g.nome+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Usuário: '+(g.usuario||'não definido')+' '+(g.usuario?'<span class="badge badge-ok">login ativo</span>':'<span class="badge badge-warn">sem login</span>')+'</div></div>';
+    html+='<div style="display:flex;gap:6px">';
+    html+='<button class="btn btn-outline btn-sm" onclick="redefinirSenhaGestor(this)" data-usuario="'+(g.usuario||'')+'" data-nome="'+g.nome+'">🔑 Senha</button>';
+    html+='<button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="removeGestor(this)" data-key="'+g._key+'">Remover</button>';
+    html+='</div></div>';
     html+='<div style="font-size:11px;font-weight:500;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Filiais vinculadas</div>';
     html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
     filiais.forEach(function(f){
@@ -1839,10 +1846,45 @@ function renderGestoresList(){
 }
 async function addGestor(){
   const nome=document.getElementById('new-gestor-nome').value.trim();
-  const usuario=document.getElementById('new-gestor-usuario').value.trim();
+  const usuario=document.getElementById('new-gestor-usuario').value.trim().toLowerCase();
+  const senha=document.getElementById('new-gestor-senha').value;
+  const senha2=document.getElementById('new-gestor-senha2').value;
   if(!nome){showAlert('err','Digite o nome.');return;}
-  try{const r=await fbPost('gestores',{nome,usuario,filiais:[]});gestores.push({nome,usuario,filiais:[],_key:r.name});document.getElementById('new-gestor-nome').value='';document.getElementById('new-gestor-usuario').value='';renderGestoresList();showAlert('ok','Gestor adicionado!');}
-  catch(e){showAlert('err','Erro ao adicionar.');}
+  if(!usuario){showAlert('err','Digite o usuário.');return;}
+  if(!/^[a-z0-9._-]+$/.test(usuario)){showAlert('err','Usuário deve conter apenas letras, números, ponto, - ou _.');return;}
+  if(!senha||senha.length<4){showAlert('err','A senha deve ter ao menos 4 caracteres.');return;}
+  if(senha!==senha2){showAlert('err','As senhas não coincidem.');return;}
+  const chave=usuario.replace(/\./g,'_');
+  try{
+    const existente=await fbGet('usuarios/'+chave);
+    if(existente){showAlert('err','Esse usuário já existe. Escolha outro.');return;}
+    const hash=await sha256(senha);
+    const r=await fbPost('gestores',{nome,usuario,filiais:[]});
+    await fbPut('usuarios/'+chave,{usuario,nome,hash,email:''});
+    gestores.push({nome,usuario,filiais:[],_key:r.name});
+    document.getElementById('new-gestor-nome').value='';
+    document.getElementById('new-gestor-usuario').value='';
+    document.getElementById('new-gestor-senha').value='';
+    document.getElementById('new-gestor-senha2').value='';
+    renderGestoresList();
+    showAlert('ok','Gestor adicionado! Já pode fazer login com usuário e senha.');
+  }catch(e){showAlert('err','Erro ao adicionar.');console.error(e);}
+}
+async function redefinirSenhaGestor(el){
+  const usuario=el.dataset.usuario,nome=el.dataset.nome;
+  if(!usuario){showAlert('err','Este gestor não tem usuário definido. Remova e cadastre de novo com um usuário.');return;}
+  const nova=prompt('Nova senha para '+nome+' ('+usuario+'):');
+  if(!nova)return;
+  if(nova.length<4){showAlert('err','A senha deve ter ao menos 4 caracteres.');return;}
+  const confirma=prompt('Confirme a nova senha:');
+  if(nova!==confirma){showAlert('err','As senhas não coincidem.');return;}
+  try{
+    const chave=usuario.replace(/\./g,'_');
+    const existente=await fbGet('usuarios/'+chave);
+    const hash=await sha256(nova);
+    await fbPut('usuarios/'+chave,{usuario,nome,hash,email:(existente&&existente.email)||''});
+    showAlert('ok','Senha redefinida para '+nome+'.');
+  }catch(e){showAlert('err','Erro ao redefinir senha.');console.error(e);}
 }
 function vincularFilialEl(el){vincularFilial(el.dataset.key,el.dataset.filial,el.checked);}
 async function vincularFilial(gestorKey,filialNome,checked){
