@@ -1030,17 +1030,20 @@ async function salvarPedidos(){
   let ok=true;
   [['p-filial',filial],['p-date',date],['p-colab',colab]].forEach(([id,val])=>{document.getElementById(id).classList.toggle('err',!val);if(!val)ok=false;});
   if(!ok){showAlert('err','Preencha filial, data e colaborador.');return;}
-  if(registrosAbertos.length){showAlert('err','Finalize o registro em separação antes de iniciar outro.');document.getElementById('card-em-separacao').scrollIntoView({behavior:'smooth',block:'center'});return;}
   if(!pedidosTemp.length){showAlert('err','Adicione pelo menos um pedido.');return;}
   const btn=document.getElementById('btn-salvar-pedidos');
   btn.disabled=true;btn.dataset.busy='1';btn.innerHTML='<span class="spinner"></span> Iniciando...';
   // confere no servidor (pode ter sido aberto em outro aparelho)
   await carregarRegistrosAbertos();
-  if(registrosAbertos.length){btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();showAlert('err','Existe um registro em aberto. Finalize antes de iniciar outro.');return;}
   const lote=pedidosTemp.slice();
   const totalPneus=lote.reduce((a,p)=>a+p.qt,0);
   const inicio=getBrasiliaTimestamp();
+  let finalizados=[];
   try{
+    // 0) Finaliza automaticamente os registros anteriores ainda abertos (fim = agora)
+    finalizados=registrosAbertos.slice();
+    await Promise.all(finalizados.map(r=>fbPatch('registros/'+r._key,{fim:inicio,duracaoMin:Math.round((inicio-r.inicio)/60000),status:'finalizado',finalizadoAuto:true})));
+    registrosAbertos=[];
     // 1) Cria o registro (lote) com horário de início
     const reg=await fbPost('registros',{data:date,filial,colaborador:colab,inicio,fim:null,duracaoMin:null,status:'em_separacao',pedidos:lote.map(p=>({num:p.num,qt:p.qt})),totalPedidos:lote.length,totalPneus});
     const registroId=reg&&reg.name;
@@ -1054,7 +1057,7 @@ async function salvarPedidos(){
     pedidosTemp=[];renderPedidoTemp();
     registrosAbertos.unshift({...reg,_key:registroId,data:date,filial,colaborador:colab,inicio,status:'em_separacao',pedidos:lote,totalPedidos:lote.length,totalPneus});
     renderRegistrosAbertos();
-    showAlert('ok',`Separação iniciada: ${lote.length} pedido${lote.length!==1?'s':''}, ${totalPneus} pneus.`);
+    showAlert('ok',(finalizados.length?`Anterior finalizado em ${fmtDur(inicio-finalizados[0].inicio)}. `:'')+`Nova separação iniciada: ${lote.length} pedido${lote.length!==1?'s':''}, ${totalPneus} pneus.`);
     carregarHoje();
   }catch(e){showAlert('err','Erro ao salvar. Tente de novo.');console.error(e);}
   btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();
@@ -1116,10 +1119,10 @@ function renderRegistrosAbertos(){
 function atualizarBotaoIniciar(){
   const btn=document.getElementById('btn-salvar-pedidos');
   if(!btn||btn.dataset.busy==='1')return;
-  const bloq=registrosAbertos.length>0;
-  btn.classList.toggle('blocked',bloq);
-  btn.innerHTML=bloq
-    ?'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg> Finalize o registro aberto para iniciar outro'
+  const aberto=registrosAbertos.length>0;
+  btn.classList.remove('blocked');
+  btn.innerHTML=aberto
+    ?'<svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg> Finalizar anterior e iniciar novo'
     :'<svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg> Iniciar separação';
 }
 
