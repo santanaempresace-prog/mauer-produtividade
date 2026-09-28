@@ -131,7 +131,10 @@ textarea{resize:vertical;min-height:72px}
 .reg-timer{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--blue-t);min-width:62px;text-align:right}
 .reg-item.late .reg-timer{color:var(--amber-t)}
 .btn-fin{padding:10px 14px;background:var(--green-t);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;min-height:42px;white-space:nowrap}
-.btn-fin.confirm{background:var(--text)}
+.card-sep{border:2px solid var(--blue-b)}
+.btn-submit.blocked{background:var(--muted)}
+.reg-undo{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--green-bg);border:1px solid var(--green-b);border-radius:var(--rsm);font-size:13px;color:var(--green-t);font-weight:500}
+.reg-undo button{background:transparent;border:1px solid var(--green-t);color:var(--green-t);border-radius:var(--rsm);padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
 .btn-fin:disabled{opacity:.5;cursor:not-allowed}
 .reg-empty{font-size:13px;color:var(--hint);text-align:center;padding:14px}
 @media(max-width:480px){.form-grid{grid-template-columns:1fr}.pedido-add-row{grid-template-columns:1fr 90px auto}.chart-metrics{grid-template-columns:repeat(2,1fr)}}
@@ -165,6 +168,10 @@ textarea{resize:vertical;min-height:72px}
         <div class="form-group full"><label>Colaborador <span class="req">*</span></label><select id="p-colab" onchange="carregarRegistrosAbertos()"><option value="">Selecione a filial primeiro</option></select></div>
       </div>
     </div>
+    <div class="card card-sep" id="card-em-separacao" style="display:none">
+      <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 15"/><line x1="10" y1="2" x2="14" y2="2"/></svg>Em separação</div>
+      <div class="reg-list" id="reg-abertos"><div class="reg-empty">Selecione filial e colaborador</div></div>
+    </div>
     <div class="card">
       <div class="card-title"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Pedidos separados</div>
       <p class="card-sub">Adicione os pedidos um a um para rastreamento individual</p>
@@ -184,10 +191,6 @@ textarea{resize:vertical;min-height:72px}
     <button class="btn-submit" id="btn-salvar-pedidos" onclick="salvarPedidos()">
       <svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>Iniciar separação
     </button>
-    <div class="card" style="margin-top:18px" id="card-em-separacao">
-      <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 15"/><line x1="10" y1="2" x2="14" y2="2"/></svg>Em separação</div>
-      <div class="reg-list" id="reg-abertos"><div class="reg-empty">Selecione filial e colaborador</div></div>
-    </div>
     <div class="card" style="margin-top:18px">
       <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Pedidos registrados hoje</div>
       <div id="pedido-history"><div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum pedido hoje</div></div>
@@ -1027,9 +1030,13 @@ async function salvarPedidos(){
   let ok=true;
   [['p-filial',filial],['p-date',date],['p-colab',colab]].forEach(([id,val])=>{document.getElementById(id).classList.toggle('err',!val);if(!val)ok=false;});
   if(!ok){showAlert('err','Preencha filial, data e colaborador.');return;}
+  if(registrosAbertos.length){showAlert('err','Finalize o registro em separação antes de iniciar outro.');document.getElementById('card-em-separacao').scrollIntoView({behavior:'smooth',block:'center'});return;}
   if(!pedidosTemp.length){showAlert('err','Adicione pelo menos um pedido.');return;}
   const btn=document.getElementById('btn-salvar-pedidos');
-  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Iniciando...';
+  btn.disabled=true;btn.dataset.busy='1';btn.innerHTML='<span class="spinner"></span> Iniciando...';
+  // confere no servidor (pode ter sido aberto em outro aparelho)
+  await carregarRegistrosAbertos();
+  if(registrosAbertos.length){btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();showAlert('err','Existe um registro em aberto. Finalize antes de iniciar outro.');return;}
   const lote=pedidosTemp.slice();
   const totalPneus=lote.reduce((a,p)=>a+p.qt,0);
   const inicio=getBrasiliaTimestamp();
@@ -1050,7 +1057,7 @@ async function salvarPedidos(){
     showAlert('ok',`Separação iniciada: ${lote.length} pedido${lote.length!==1?'s':''}, ${totalPneus} pneus.`);
     carregarHoje();
   }catch(e){showAlert('err','Erro ao salvar. Tente de novo.');console.error(e);}
-  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4"/></svg> Iniciar separação';
+  btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();
 }
 
 // ---- REGISTROS EM SEPARAÇÃO ----
@@ -1058,11 +1065,9 @@ async function carregarRegistrosAbertos(){
   const filial=document.getElementById('p-filial').value;
   const colab=document.getElementById('p-colab').value;
   const el=document.getElementById('reg-abertos');
-  if(!filial||!colab){registrosAbertos=[];el.innerHTML='<div class="reg-empty">Selecione filial e colaborador</div>';return;}
-  el.innerHTML='<div class="reg-empty">Carregando...</div>';
+  if(!filial||!colab){registrosAbertos=[];renderRegistrosAbertos();return;}
   try{
-    const hoje=getBrasiliaDateStr();
-    const [data,cfg]=await Promise.all([fbQuery('registros','data',{equalTo:hoje}),fbGet('configuracoes/tempoAlertaRegistro')]);
+    const [data,cfg]=await Promise.all([fbQuery('registros','status',{equalTo:'em_separacao'}),fbGet('configuracoes/tempoAlertaRegistro')]);
     if(cfg&&Number(cfg)>0)tempoAlertaMin=Number(cfg);
     // confere se o usuário não trocou de colaborador enquanto carregava
     if(document.getElementById('p-colab').value!==colab)return;
@@ -1081,26 +1086,41 @@ function fmtDur(ms){
 
 function renderRegistrosAbertos(){
   const el=document.getElementById('reg-abertos');
+  const card=document.getElementById('card-em-separacao');
+  atualizarBotaoIniciar();
   if(!registrosAbertos.length){
-    el.innerHTML='<div class="reg-empty">Nenhum registro em separação</div>';
+    el.querySelectorAll('.reg-item').forEach(n=>n.remove());
+    if(!el.querySelector('.reg-undo'))card.style.display='none';
     if(regTimerInt){clearInterval(regTimerInt);regTimerInt=null;}
     return;
   }
-  const now=Date.now();
+  card.style.display='';
+  const now=Date.now(), hoje=getBrasiliaDateStr();
   el.innerHTML=registrosAbertos.map(r=>{
     const hIni=new Date(r.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+    const dIni=r.data&&r.data!==hoje?r.data.split('-').reverse().slice(0,2).join('/')+' ':'';
     const nums=(r.pedidos||[]).map(p=>p.num).join(', ');
     const late=(now-r.inicio)>tempoAlertaMin*60000;
     return `<div class="reg-item${late?' late':''}" id="reg-${r._key}">
       <div class="reg-info">
         <div class="reg-head">${r.totalPedidos} pedido${r.totalPedidos!==1?'s':''}, ${r.totalPneus} pneus</div>
-        <div class="reg-sub">Início ${hIni}${nums?' | '+nums:''}</div>
+        <div class="reg-sub">Início ${dIni}${hIni}${nums?' | '+nums:''}</div>
       </div>
       <div class="reg-timer" data-ini="${r.inicio}">${fmtDur(now-r.inicio)}</div>
       <button class="btn-fin" onclick="finalizarRegistro('${r._key}',this)">Finalizar</button>
     </div>`;
   }).join('');
   if(!regTimerInt)regTimerInt=setInterval(atualizarTimers,15000);
+}
+
+function atualizarBotaoIniciar(){
+  const btn=document.getElementById('btn-salvar-pedidos');
+  if(!btn||btn.dataset.busy==='1')return;
+  const bloq=registrosAbertos.length>0;
+  btn.classList.toggle('blocked',bloq);
+  btn.innerHTML=bloq
+    ?'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg> Finalize o registro aberto para iniciar outro'
+    :'<svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg> Iniciar separação';
 }
 
 function atualizarTimers(){
@@ -1113,13 +1133,6 @@ function atualizarTimers(){
 }
 
 async function finalizarRegistro(id,btn){
-  // Toque duplo de segurança: 1º toque arma, 2º confirma (expira em 3s)
-  if(!btn.classList.contains('confirm')){
-    btn.classList.add('confirm');btn.textContent='Confirmar?';
-    btn._t=setTimeout(()=>{btn.classList.remove('confirm');btn.textContent='Finalizar';},3000);
-    return;
-  }
-  clearTimeout(btn._t);
   btn.disabled=true;btn.textContent='...';
   const reg=registrosAbertos.find(r=>r._key===id);
   const fim=getBrasiliaTimestamp();
@@ -1127,12 +1140,35 @@ async function finalizarRegistro(id,btn){
   try{
     await fbPatch('registros/'+id,{fim,duracaoMin,status:'finalizado'});
     registrosAbertos=registrosAbertos.filter(r=>r._key!==id);
+    mostrarDesfazer(reg,duracaoMin);
     renderRegistrosAbertos();
-    showAlert('ok',`Registro finalizado em ${fmtDur((duracaoMin||0)*60000)}.`);
   }catch(e){
     console.error(e);showAlert('err','Erro ao finalizar. Tente de novo.');
-    btn.disabled=false;btn.classList.remove('confirm');btn.textContent='Finalizar';
+    btn.disabled=false;btn.textContent='Finalizar';
   }
+}
+
+// Em vez de pedir confirmação, oferece "Desfazer" por alguns segundos
+let undoTimer=null;
+function mostrarDesfazer(reg,duracaoMin){
+  const el=document.getElementById('reg-abertos');
+  const card=document.getElementById('card-em-separacao');
+  clearTimeout(undoTimer);
+  const div=document.createElement('div');div.className='reg-undo';
+  div.innerHTML=`<span>Finalizado em ${fmtDur((duracaoMin||0)*60000)}</span><button>Desfazer</button>`;
+  div.querySelector('button').onclick=()=>desfazerFinalizacao(reg,div);
+  el.appendChild(div);card.style.display='';
+  undoTimer=setTimeout(()=>{div.remove();renderRegistrosAbertos();},6000);
+}
+
+async function desfazerFinalizacao(reg,div){
+  clearTimeout(undoTimer);
+  div.querySelector('button').disabled=true;
+  try{
+    await fbPatch('registros/'+reg._key,{fim:null,duracaoMin:null,status:'em_separacao'});
+    registrosAbertos.unshift(reg);
+    div.remove();renderRegistrosAbertos();
+  }catch(e){console.error(e);showAlert('err','Não foi possível desfazer.');div.remove();renderRegistrosAbertos();}
 }
 
 function renderPedidoHistory(){
