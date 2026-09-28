@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>Preenchimento Diário — Mauer</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -400,6 +402,23 @@ async function fbQuery(path,field,opts){
 
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
+// Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
+const APP_VERSAO='2026-09-28-d';
+async function checarVersao(){
+  if(location.protocol==='file:')return false;
+  try{
+    const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});
+    const txt=await r.text();
+    const m=txt.match(/const APP_VERSAO='([^']+)'/);
+    if(m&&m[1]!==APP_VERSAO){
+      if(pedidosTemp.length)return false; // não recarrega com pedidos na lista
+      location.reload();return true;
+    }
+  }catch(e){}
+  return false;
+}
+setInterval(checarVersao,5*60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checarVersao();});
 let registrosAbertos=[], tempoAlertaMin=60, regTimerInt=null;
 
 
@@ -856,6 +875,7 @@ async function renderRankingConferentesGeral() {
 
 
 async function init() {
+  if(await checarVersao())return;
   setStatus('loading','Conectando...');
   const today=new Date().toISOString().slice(0,10);
   const _gIni=new Date();_gIni.setDate(1);
