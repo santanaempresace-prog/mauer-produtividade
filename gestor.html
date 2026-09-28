@@ -350,6 +350,7 @@ tbody tr:hover td{background:var(--bg)}
     <div class="nav-item" onclick="setView('dashboard',this)"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
     <div class="nav-item active" onclick="setView('ranking',this)"><svg class="ic" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Ranking</div>
     <div class="nav-item" onclick="setView('pedidos',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Rastreamento</div>
+    <div class="nav-item" onclick="setView('tempos',this)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 15"/><line x1="10" y1="2" x2="14" y2="2"/></svg>Tempos</div>
     <div class="nav-item" onclick="setView('erros',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Erros</div>
     <div class="nav-item" onclick="setView('historico',this)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
     <div class="nav-item" onclick="setView('descarga',this)"><svg class="ic" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Descarga</div>
@@ -621,11 +622,29 @@ tbody tr:hover td{background:var(--bg)}
         <div class="filters" style="margin-bottom:12px"><input type="text" id="busca-pedido" placeholder="Buscar nº pedido ou colaborador..." style="flex:1;min-width:180px" oninput="renderPedidos()"></div>
         <div class="table-wrap"><table><thead><tr>
   <th><div class="col-filter-wrap">Data<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-data')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-data"></div></div></th>
-  <th>Hora</th>
+  <th>Início</th><th>Fim</th><th style="text-align:right">Tempo</th>
   <th><div class="col-filter-wrap">Filial<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-filial')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-filial"></div></div></th>
   <th><div class="col-filter-wrap">Colaborador<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-colab')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-colab"></div></div></th>
   <th>Nº Pedido</th><th>Qtd Pneus</th><th>Conferência</th><th>Ação</th>
 </tr></thead><tbody id="pedidos-body"></tbody></table></div>
+      </div>
+    </div>
+    <div class="view" id="view-tempos">
+      <div class="card" id="tp-abertos-card">
+        <div class="card-header"><div class="card-title">Em separação agora</div><span id="tp-abertos-count" class="badge badge-neu"></span></div>
+        <div class="table-wrap"><table><thead><tr><th>Filial</th><th>Colaborador</th><th>Início</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Pneus</th><th style="text-align:right">Tempo</th></tr></thead><tbody id="tp-abertos-body"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Tempo por colaborador</div>
+          <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">Desconsiderar registros acima de
+            <input type="number" id="tp-max" min="10" step="10" style="width:70px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'DM Mono',monospace;font-size:12px;background:var(--surface);color:var(--text)" onchange="salvarTempoMax()"> min</label>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>#</th><th>Colaborador</th><th>Filial</th><th style="text-align:right">Registros</th><th style="text-align:right">Pneus</th><th style="text-align:right">Tempo total</th><th style="text-align:right">Média / registro</th><th style="text-align:right">Min / pneu</th><th style="text-align:right">Pneus / hora</th><th style="text-align:right">Fora do padrão</th></tr></thead><tbody id="tp-colab-body"></tbody></table></div>
+        <div style="font-size:12px;color:var(--hint);margin-top:10px">Ordenado por pneus/hora. "Fora do padrão" são registros finalizados em outro dia ou acima do limite; não entram nas médias.</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Registros</div><span id="tp-reg-count" class="badge badge-neu"></span></div>
+        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Filial</th><th>Colaborador</th><th>Início</th><th>Fim</th><th style="text-align:right">Tempo</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Pneus</th><th>Nº pedidos</th><th>Status</th></tr></thead><tbody id="tp-reg-body"></tbody></table></div>
       </div>
     </div>
     <div class="view" id="view-erros">
@@ -991,6 +1010,7 @@ async function enviarRecuperacao() {
 // ============================================================
 // ESTADO
 // ============================================================
+let registros=[], registrosMap={}, tempoMaxMin=240;
 let lancamentos=[], filiais=[], colaboradores={}, confirmacoes=[], currentView='ranking', colabTabAtivo='';
 let xlColabSelecionado='', gestores=[], conferentes={}, confTabAtivo='';
 let filiaisSelecionadas=new Set();
@@ -1012,7 +1032,10 @@ async function fbPatch(path,data){const r=await fetch('https://mauer-produtivida
 async function carregarTudo(){
   setStatus('loading','Carregando...');
   try{
-    const[lancData,filData,colData,confData]=await Promise.all([fbGet('lancamentos'),fbGet('filiais'),fbGet('colaboradores'),fbGet('confirmacoes')]);
+    const[lancData,filData,colData,confData,regData,tmaxData]=await Promise.all([fbGet('lancamentos'),fbGet('filiais'),fbGet('colaboradores'),fbGet('confirmacoes'),fbGet('registros'),fbGet('configuracoes/tempoMaxRegistro')]);
+    registros=regData?Object.entries(regData).map(([k,v])=>({...v,_key:k})):[];
+    registrosMap={};registros.forEach(r=>registrosMap[r._key]=r);
+    if(tmaxData&&Number(tmaxData)>0)tempoMaxMin=Number(tmaxData);
     lancamentos=lancData?Object.entries(lancData).map(([k,v])=>({...v,_key:k})):[];
     confirmacoes=confData?Object.entries(confData).map(([k,v])=>({...v,_key:k})):[];
     lancamentos.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
@@ -1124,6 +1147,7 @@ function render(){
   renderMetrics(data);
   if(currentView==='ranking')renderRanking(data);
   else if(currentView==='pedidos')renderPedidos();
+  else if(currentView==='tempos')renderTempos();
   else if(currentView==='erros')renderErros();
   else if(currentView==='historico')renderHistorico(data);
   else if(currentView==='config'){renderFiliaisList();renderColabTabs();}
@@ -1167,6 +1191,7 @@ function renderMetrics(data){
   mg.innerHTML='<div class="metric-card"><div class="metric-lbl">Pneus separados</div><div class="metric-val">'+tPn.toLocaleString('pt-BR')+'</div><div class="metric-sub">no período</div></div>'
     +'<div class="metric-card"><div class="metric-lbl">Pedidos</div><div class="metric-val">'+tPd.toLocaleString('pt-BR')+'</div><div class="metric-sub">separações</div></div>'
     +'<div class="metric-card"><div class="metric-lbl">Conferidos</div><div class="metric-val" style="color:'+(txConf===100?'#2d6b28':'#7a4f0d')+'">'+txConf+'%</div><div class="metric-sub">'+confDoPeriodo.length+'/'+pedidosDoPeriodo.length+' pedidos</div></div>'
+    +cardMetricaTempo()
     +'<div class="metric-card"><div class="metric-lbl">Erros</div><div class="metric-val" style="color:'+(erros.length>0?'#8b2424':'#2d6b28')+'">'+erros.length+'</div><div class="metric-sub">'+tx+'% dos lançamentos</div></div>';
 }
 
@@ -1555,14 +1580,102 @@ function renderPedidos(){
   if(busca)data=data.filter(l=>(l.numPedido||'').toLowerCase().includes(busca)||(l.colaborador||'').toLowerCase().includes(busca));
   const cnt=document.getElementById('pedidos-count');if(cnt)cnt.textContent=data.length+' pedido'+(data.length!==1?'s':'');
   const tb=document.getElementById('pedidos-body');if(!tb)return;
-  if(!data.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--hint)">Nenhum pedido</td></tr>';return;}
+  if(!data.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--hint)">Nenhum pedido</td></tr>';return;}
   tb.innerHTML=data.sort((a,b)=>b.data.localeCompare(a.data)||(b.timestamp||0)-(a.timestamp||0)).map(l=>{
     const conf=confirmacoes.find(c=>String(c.numPedido)===String(l.numPedido)&&c.filial===l.filial&&c.data===l.data);
     const statusCell=conf
       ?'<span class="badge badge-ok">✓ Conferido</span><div style="font-size:11px;color:var(--muted);margin-top:2px">por '+conf.conferente+'</div>'
       :'<span class="badge badge-warn">Pendente</span>';
-    return'<tr><td>'+fmt(l.data)+'</td><td style="font-size:12px;color:var(--muted);font-family:\'DM Mono\',monospace">'+fmtHora(l.timestamp)+'</td><td><span class="badge badge-neu">'+l.filial+'</span></td><td>'+l.colaborador+'</td><td style="font-family:\'DM Mono\',monospace;font-weight:500">'+(l.numPedido||'—')+'</td><td style="font-family:\'DM Mono\',monospace">'+(l.qtdPedido||'—')+'</td><td>'+statusCell+'</td><td><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="excluirPedido(\''+l._key+'\')">Excluir</button></td></tr>';
+    return'<tr><td>'+fmt(l.data)+'</td>'+celulasTempoPedido(l)+'<td><span class="badge badge-neu">'+l.filial+'</span></td><td>'+l.colaborador+'</td><td style="font-family:\'DM Mono\',monospace;font-weight:500">'+(l.numPedido||'—')+'</td><td style="font-family:\'DM Mono\',monospace">'+(l.qtdPedido||'—')+'</td><td>'+statusCell+'</td><td><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="excluirPedido(\''+l._key+'\')">Excluir</button></td></tr>';
   }).join('');
+}
+
+// ============================================================
+// TEMPOS DE SEPARAÇÃO (registros)
+// ============================================================
+function fmtDurMin(min){
+  if(min==null||isNaN(min))return'—';
+  min=Math.max(0,Math.round(min));
+  const h=Math.floor(min/60);
+  return h?h+'h'+String(min%60).padStart(2,'0'):min+' min';
+}
+function durRegistro(r){
+  if(r.status==='em_separacao')return (Date.now()-r.inicio)/60000;
+  if(r.duracaoMin!=null)return Number(r.duracaoMin);
+  if(r.fim&&r.inicio)return (r.fim-r.inicio)/60000;
+  return null;
+}
+function dataBrasilia(ts){return new Date(ts).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}).split('/').reverse().join('-');}
+// Fora do padrão: finalizado em outro dia ou acima do limite configurado
+function regForaPadrao(r){
+  if(r.status!=='finalizado')return false;
+  const d=durRegistro(r);
+  if(d!=null&&d>tempoMaxMin)return true;
+  return r.fim&&r.inicio&&dataBrasilia(r.fim)!==dataBrasilia(r.inicio);
+}
+function getRegistrosFiltrados(){
+  const{filiais:fs,ini,fim,colab}=getFilter();
+  return registros.filter(r=>(fs.size===0||fs.has(r.filial))&&(!ini||r.data>=ini)&&(!fim||r.data<=fim)&&(!colab||r.colaborador===colab));
+}
+function badgeStatusReg(r){
+  if(r.status==='em_separacao')return'<span class="badge badge-warn">Em separação</span>';
+  if(regForaPadrao(r))return'<span class="badge badge-bad">Fora do padrão</span>';
+  return'<span class="badge badge-ok">Finalizado</span>';
+}
+function celulasTempoPedido(l){
+  const mono='font-size:12px;font-family:\'DM Mono\',monospace';
+  const r=l.registroId&&registrosMap[l.registroId];
+  if(!r)return'<td style="'+mono+';color:var(--muted)">'+fmtHora(l.timestamp)+'</td><td style="color:var(--hint)">—</td><td style="text-align:right;color:var(--hint)">—</td>';
+  const fimCell=r.status==='em_separacao'?'<span class="badge badge-warn">Em separação</span>':'<span style="'+mono+';color:var(--muted)">'+fmtHora(r.fim)+'</span>';
+  const cor=r.status==='em_separacao'?'#7a4f0d':(regForaPadrao(r)?'#8b2424':'var(--text)');
+  const tit=(r.totalPedidos>1?'Tempo do registro ('+r.totalPedidos+' pedidos juntos)':'Tempo do registro');
+  return'<td style="'+mono+';color:var(--muted)">'+fmtHora(r.inicio)+'</td><td>'+fimCell+'</td><td style="text-align:right;'+mono+';font-weight:500;color:'+cor+'" title="'+tit+'">'+fmtDurMin(durRegistro(r))+(r.totalPedidos>1?' <span style="color:var(--hint);font-weight:400">('+r.totalPedidos+')</span>':'')+'</td>';
+}
+function statsTempo(regs){
+  const fin=regs.filter(r=>r.status==='finalizado'&&!regForaPadrao(r)&&durRegistro(r)!=null);
+  const min=fin.reduce((a,r)=>a+durRegistro(r),0);
+  const pn=fin.reduce((a,r)=>a+Number(r.totalPneus||0),0);
+  return{n:fin.length,min,pn,media:fin.length?min/fin.length:null,pnHora:min>0?pn/(min/60):null,minPneu:pn>0?min/pn:null};
+}
+function cardMetricaTempo(){
+  const regs=getRegistrosFiltrados();
+  const st=statsTempo(regs);
+  const abertos=regs.filter(r=>r.status==='em_separacao').length;
+  const sub=st.n?'média '+fmtDurMin(st.media)+' por registro':'sem registros finalizados';
+  return'<div class="metric-card"><div class="metric-lbl">Pneus por hora</div><div class="metric-val">'+(st.pnHora!=null?st.pnHora.toFixed(1).replace('.',','):'—')+'</div><div class="metric-sub">'+sub+(abertos?' | '+abertos+' em separação':'')+'</div></div>';
+}
+function renderTempos(){
+  const inp=document.getElementById('tp-max');if(inp&&document.activeElement!==inp)inp.value=tempoMaxMin;
+  const regs=getRegistrosFiltrados();
+  const mono="font-family:'DM Mono',monospace";
+  // Em separação agora (ignora filtro de data: mostra tudo que está aberto)
+  const{filiais:fs,colab}=getFilter();
+  const abertos=registros.filter(r=>r.status==='em_separacao'&&(fs.size===0||fs.has(r.filial))&&(!colab||r.colaborador===colab)).sort((a,b)=>a.inicio-b.inicio);
+  document.getElementById('tp-abertos-count').textContent=abertos.length+' aberto'+(abertos.length!==1?'s':'');
+  document.getElementById('tp-abertos-body').innerHTML=abertos.length?abertos.map(r=>{
+    const d=durRegistro(r),hoje=dataBrasilia(Date.now());
+    const cor=d>tempoMaxMin||r.data!==hoje?'#8b2424':'#7a4f0d';
+    return'<tr><td><span class="badge badge-neu">'+r.filial+'</span></td><td>'+r.colaborador+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+(r.data!==hoje?fmt(r.data)+' ':'')+fmtHora(r.inicio)+'</td><td style="text-align:right">'+r.totalPedidos+'</td><td style="text-align:right">'+r.totalPneus+'</td><td style="text-align:right;'+mono+';font-weight:500;color:'+cor+'">'+fmtDurMin(d)+'</td></tr>';
+  }).join(''):'<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--hint)">Ninguém em separação agora</td></tr>';
+  // Por colaborador
+  const por={};
+  regs.forEach(r=>{const k=r.filial+'|'+r.colaborador;(por[k]=por[k]||{colab:r.colaborador,filial:r.filial,regs:[]}).regs.push(r);});
+  const linhas=Object.values(por).map(g=>({...g,st:statsTempo(g.regs),fora:g.regs.filter(regForaPadrao).length}))
+    .sort((a,b)=>(b.st.pnHora||-1)-(a.st.pnHora||-1));
+  document.getElementById('tp-colab-body').innerHTML=linhas.length?linhas.map((g,i)=>'<tr><td style="color:var(--hint)">'+(i+1)+'</td><td style="font-weight:500">'+g.colab+'</td><td><span class="badge badge-neu">'+g.filial+'</span></td><td style="text-align:right">'+g.st.n+'</td><td style="text-align:right">'+g.st.pn.toLocaleString('pt-BR')+'</td><td style="text-align:right;'+mono+'">'+fmtDurMin(g.st.min)+'</td><td style="text-align:right;'+mono+'">'+fmtDurMin(g.st.media)+'</td><td style="text-align:right;'+mono+'">'+(g.st.minPneu!=null?g.st.minPneu.toFixed(1).replace('.',','):'—')+'</td><td style="text-align:right;'+mono+';font-weight:600">'+(g.st.pnHora!=null?g.st.pnHora.toFixed(1).replace('.',','):'—')+'</td><td style="text-align:right">'+(g.fora?'<span class="badge badge-bad">'+g.fora+'</span>':'<span style="color:var(--hint)">0</span>')+'</td></tr>').join('')
+    :'<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--hint)">Nenhum registro no período</td></tr>';
+  // Registros
+  const lista=regs.slice().sort((a,b)=>(b.inicio||0)-(a.inicio||0));
+  document.getElementById('tp-reg-count').textContent=lista.length+' registro'+(lista.length!==1?'s':'');
+  document.getElementById('tp-reg-body').innerHTML=lista.length?lista.slice(0,300).map(r=>'<tr><td>'+fmt(r.data)+'</td><td><span class="badge badge-neu">'+r.filial+'</span></td><td>'+r.colaborador+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+fmtHora(r.inicio)+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+(r.fim?(dataBrasilia(r.fim)!==dataBrasilia(r.inicio)?fmt(dataBrasilia(r.fim))+' ':'')+fmtHora(r.fim):'—')+'</td><td style="text-align:right;'+mono+';font-weight:500">'+fmtDurMin(durRegistro(r))+'</td><td style="text-align:right">'+r.totalPedidos+'</td><td style="text-align:right">'+r.totalPneus+'</td><td style="'+mono+';font-size:12px;color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.pedidos||[]).map(p=>p.num).join(', ')+'">'+(r.pedidos||[]).map(p=>p.num).join(', ')+'</td><td>'+badgeStatusReg(r)+'</td></tr>').join('')
+    :'<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--hint)">Nenhum registro no período</td></tr>';
+}
+async function salvarTempoMax(){
+  const v=Number(document.getElementById('tp-max').value);
+  if(!v||v<10){document.getElementById('tp-max').value=tempoMaxMin;return;}
+  tempoMaxMin=v;
+  try{await fbPut('configuracoes/tempoMaxRegistro',v);showAlert('ok','Limite salvo: '+v+' min');}catch(e){console.error(e);showAlert('err','Erro ao salvar limite.');}
+  render();
 }
 
 async function excluirPedido(key){
