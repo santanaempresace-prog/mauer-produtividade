@@ -122,6 +122,18 @@ textarea{resize:vertical;min-height:72px}
 
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.reg-list{display:flex;flex-direction:column;gap:8px}
+.reg-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:var(--rsm)}
+.reg-item.late{background:var(--amber-bg);border-color:var(--amber-b)}
+.reg-info{flex:1;min-width:0}
+.reg-head{font-size:13px;font-weight:600}
+.reg-sub{font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reg-timer{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--blue-t);min-width:62px;text-align:right}
+.reg-item.late .reg-timer{color:var(--amber-t)}
+.btn-fin{padding:10px 14px;background:var(--green-t);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;min-height:42px;white-space:nowrap}
+.btn-fin.confirm{background:var(--text)}
+.btn-fin:disabled{opacity:.5;cursor:not-allowed}
+.reg-empty{font-size:13px;color:var(--hint);text-align:center;padding:14px}
 @media(max-width:480px){.form-grid{grid-template-columns:1fr}.pedido-add-row{grid-template-columns:1fr 90px auto}.chart-metrics{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -148,9 +160,9 @@ textarea{resize:vertical;min-height:72px}
     <div class="card">
       <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Identificação</div>
       <div class="form-grid">
-        <div class="form-group"><label>Filial <span class="req">*</span></label><select id="p-filial" onchange="loadColabs('p-filial','p-colab')"><option value="">Selecione</option></select></div>
+        <div class="form-group"><label>Filial <span class="req">*</span></label><select id="p-filial" onchange="loadColabs('p-filial','p-colab');carregarRegistrosAbertos()"><option value="">Selecione</option></select></div>
         <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="p-date"></div>
-        <div class="form-group full"><label>Colaborador <span class="req">*</span></label><select id="p-colab"><option value="">Selecione a filial primeiro</option></select></div>
+        <div class="form-group full"><label>Colaborador <span class="req">*</span></label><select id="p-colab" onchange="carregarRegistrosAbertos()"><option value="">Selecione a filial primeiro</option></select></div>
       </div>
     </div>
     <div class="card">
@@ -170,8 +182,12 @@ textarea{resize:vertical;min-height:72px}
       </div>
     </div>
     <button class="btn-submit" id="btn-salvar-pedidos" onclick="salvarPedidos()">
-      <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Salvar e enviar ao gestor
+      <svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>Iniciar separação
     </button>
+    <div class="card" style="margin-top:18px" id="card-em-separacao">
+      <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 15"/><line x1="10" y1="2" x2="14" y2="2"/></svg>Em separação</div>
+      <div class="reg-list" id="reg-abertos"><div class="reg-empty">Selecione filial e colaborador</div></div>
+    </div>
     <div class="card" style="margin-top:18px">
       <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Pedidos registrados hoje</div>
       <div id="pedido-history"><div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum pedido hoje</div></div>
@@ -354,9 +370,34 @@ const FB_URL = 'https://mauer-produtividade-default-rtdb.firebaseio.com';
 
 async function fbGet(path){const r=await fetch(`${FB_URL}/${path}.json`);return await r.json();}
 async function fbPost(path,data){const r=await fetch(`${FB_URL}/${path}.json`,{method:'POST',body:JSON.stringify(data)});return await r.json();}
+async function fbPatch(path,data){const r=await fetch(`${FB_URL}/${path}.json`,{method:'PATCH',body:JSON.stringify(data)});if(!r.ok)throw new Error('PATCH '+r.status);return await r.json();}
+// Consulta filtrada por campo (precisa de ".indexOn" nas regras do Firebase).
+// Se o índice não existir, cai para o download completo — nunca quebra.
+async function fbQuery(path,field,opts){
+  const qs=['orderBy='+encodeURIComponent(JSON.stringify(field))];
+  if(opts.equalTo!==undefined)qs.push('equalTo='+encodeURIComponent(JSON.stringify(opts.equalTo)));
+  if(opts.startAt!==undefined)qs.push('startAt='+encodeURIComponent(JSON.stringify(opts.startAt)));
+  try{
+    const r=await fetch(`${FB_URL}/${path}.json?`+qs.join('&'));
+    const d=await r.json();
+    if(r.ok && !(d&&d.error))return d;
+    console.warn('Índice ausente em '+path+'/'+field+' — usando download completo');
+  }catch(e){console.warn(e);}
+  const all=await fbGet(path);
+  if(!all)return all;
+  const out={};
+  Object.entries(all).forEach(([k,v])=>{
+    const val=v&&v[field];
+    if(opts.equalTo!==undefined&&val!==opts.equalTo)return;
+    if(opts.startAt!==undefined&&!(val>=opts.startAt))return;
+    out[k]=v;
+  });
+  return out;
+}
 
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
+let registrosAbertos=[], tempoAlertaMin=60, regTimerInt=null;
 
 
 
@@ -902,8 +943,10 @@ async function addPedido(){
   // Verifica margem e duplicata no Firebase
   try {
     const hoje = getBrasiliaDateStr();
+    const _lim=new Date();_lim.setDate(_lim.getDate()-8);
+    const _limStr=_lim.toISOString().slice(0,10);
     const [lancData, margemData] = await Promise.all([
-      fbGet('lancamentos'),
+      fbQuery('lancamentos','data',{startAt:_limStr}),
       fbGet('configuracoes/margemPedidos')
     ]);
     const margem = margemData ? Number(margemData) : 1000;
@@ -986,18 +1029,110 @@ async function salvarPedidos(){
   if(!ok){showAlert('err','Preencha filial, data e colaborador.');return;}
   if(!pedidosTemp.length){showAlert('err','Adicione pelo menos um pedido.');return;}
   const btn=document.getElementById('btn-salvar-pedidos');
-  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Salvando...';
-  const totalPneus=pedidosTemp.reduce((a,p)=>a+p.qt,0);
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Iniciando...';
+  const lote=pedidosTemp.slice();
+  const totalPneus=lote.reduce((a,p)=>a+p.qt,0);
+  const inicio=getBrasiliaTimestamp();
   try{
-    for(let i=0;i<pedidosTemp.length;i++){
-      await fbPost('lancamentos',{data:date,filial,colaborador:colab,isPedido:true,numPedido:pedidosTemp[i].num,qtdPedido:pedidosTemp[i].qt,pedidos:0,pneus:0,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:getBrasiliaTimestamp()});
-    }
-    await fbPost('lancamentos',{data:date,filial,colaborador:colab,pedidos:pedidosTemp.length,pneus:totalPneus,isPedido:false,isErro:false,numPedido:'',qtdPedido:0,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:getBrasiliaTimestamp()});
+    // 1) Cria o registro (lote) com horário de início
+    const reg=await fbPost('registros',{data:date,filial,colaborador:colab,inicio,fim:null,duracaoMin:null,status:'em_separacao',pedidos:lote.map(p=>({num:p.num,qt:p.qt})),totalPedidos:lote.length,totalPneus});
+    const registroId=reg&&reg.name;
+    if(!registroId)throw new Error('Registro não criado');
+    // 2) Lançamentos (mesmo formato de antes + registroId), enviados em paralelo
+    const base={data:date,filial,colaborador:colab,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:inicio,registroId};
+    await Promise.all([
+      ...lote.map(p=>fbPost('lancamentos',{...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,pedidos:0,pneus:0})),
+      fbPost('lancamentos',{...base,isPedido:false,numPedido:'',qtdPedido:0,pedidos:lote.length,pneus:totalPneus})
+    ]);
     pedidosTemp=[];renderPedidoTemp();
-    showAlert('ok',`${totalPneus} pneus enviados ao painel do gestor!`);
-    await carregarHoje();
-  }catch(e){showAlert('err','Erro ao salvar.');console.error(e);}
-  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Salvar e enviar ao gestor';
+    registrosAbertos.unshift({...reg,_key:registroId,data:date,filial,colaborador:colab,inicio,status:'em_separacao',pedidos:lote,totalPedidos:lote.length,totalPneus});
+    renderRegistrosAbertos();
+    showAlert('ok',`Separação iniciada: ${lote.length} pedido${lote.length!==1?'s':''}, ${totalPneus} pneus.`);
+    carregarHoje();
+  }catch(e){showAlert('err','Erro ao salvar. Tente de novo.');console.error(e);}
+  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4"/></svg> Iniciar separação';
+}
+
+// ---- REGISTROS EM SEPARAÇÃO ----
+async function carregarRegistrosAbertos(){
+  const filial=document.getElementById('p-filial').value;
+  const colab=document.getElementById('p-colab').value;
+  const el=document.getElementById('reg-abertos');
+  if(!filial||!colab){registrosAbertos=[];el.innerHTML='<div class="reg-empty">Selecione filial e colaborador</div>';return;}
+  el.innerHTML='<div class="reg-empty">Carregando...</div>';
+  try{
+    const hoje=getBrasiliaDateStr();
+    const [data,cfg]=await Promise.all([fbQuery('registros','data',{equalTo:hoje}),fbGet('configuracoes/tempoAlertaRegistro')]);
+    if(cfg&&Number(cfg)>0)tempoAlertaMin=Number(cfg);
+    // confere se o usuário não trocou de colaborador enquanto carregava
+    if(document.getElementById('p-colab').value!==colab)return;
+    registrosAbertos=data?Object.entries(data).map(([k,v])=>({...v,_key:k}))
+      .filter(r=>r.status==='em_separacao'&&r.filial===filial&&r.colaborador===colab)
+      .sort((a,b)=>b.inicio-a.inicio):[];
+    renderRegistrosAbertos();
+  }catch(e){console.error(e);el.innerHTML='<div class="reg-empty">Erro ao carregar registros.</div>';}
+}
+
+function fmtDur(ms){
+  const m=Math.max(0,Math.floor(ms/60000));
+  const h=Math.floor(m/60);
+  return h?h+'h'+String(m%60).padStart(2,'0'):m+' min';
+}
+
+function renderRegistrosAbertos(){
+  const el=document.getElementById('reg-abertos');
+  if(!registrosAbertos.length){
+    el.innerHTML='<div class="reg-empty">Nenhum registro em separação</div>';
+    if(regTimerInt){clearInterval(regTimerInt);regTimerInt=null;}
+    return;
+  }
+  const now=Date.now();
+  el.innerHTML=registrosAbertos.map(r=>{
+    const hIni=new Date(r.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+    const nums=(r.pedidos||[]).map(p=>p.num).join(', ');
+    const late=(now-r.inicio)>tempoAlertaMin*60000;
+    return `<div class="reg-item${late?' late':''}" id="reg-${r._key}">
+      <div class="reg-info">
+        <div class="reg-head">${r.totalPedidos} pedido${r.totalPedidos!==1?'s':''}, ${r.totalPneus} pneus</div>
+        <div class="reg-sub">Início ${hIni}${nums?' | '+nums:''}</div>
+      </div>
+      <div class="reg-timer" data-ini="${r.inicio}">${fmtDur(now-r.inicio)}</div>
+      <button class="btn-fin" onclick="finalizarRegistro('${r._key}',this)">Finalizar</button>
+    </div>`;
+  }).join('');
+  if(!regTimerInt)regTimerInt=setInterval(atualizarTimers,15000);
+}
+
+function atualizarTimers(){
+  const now=Date.now();
+  document.querySelectorAll('.reg-timer[data-ini]').forEach(t=>{
+    const ini=Number(t.dataset.ini);
+    t.textContent=fmtDur(now-ini);
+    t.closest('.reg-item').classList.toggle('late',(now-ini)>tempoAlertaMin*60000);
+  });
+}
+
+async function finalizarRegistro(id,btn){
+  // Toque duplo de segurança: 1º toque arma, 2º confirma (expira em 3s)
+  if(!btn.classList.contains('confirm')){
+    btn.classList.add('confirm');btn.textContent='Confirmar?';
+    btn._t=setTimeout(()=>{btn.classList.remove('confirm');btn.textContent='Finalizar';},3000);
+    return;
+  }
+  clearTimeout(btn._t);
+  btn.disabled=true;btn.textContent='...';
+  const reg=registrosAbertos.find(r=>r._key===id);
+  const fim=getBrasiliaTimestamp();
+  const duracaoMin=reg?Math.round((fim-reg.inicio)/60000):null;
+  try{
+    await fbPatch('registros/'+id,{fim,duracaoMin,status:'finalizado'});
+    registrosAbertos=registrosAbertos.filter(r=>r._key!==id);
+    renderRegistrosAbertos();
+    showAlert('ok',`Registro finalizado em ${fmtDur((duracaoMin||0)*60000)}.`);
+  }catch(e){
+    console.error(e);showAlert('err','Erro ao finalizar. Tente de novo.');
+    btn.disabled=false;btn.classList.remove('confirm');btn.textContent='Finalizar';
+  }
 }
 
 function renderPedidoHistory(){
