@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Conferência — Mauer</title>
+<meta name="theme-color" content="#131F3B">
+<link rel="manifest" href="conferente.webmanifest">
+<link rel="icon" href="icone-mauer-192.png">
+<link rel="apple-touch-icon" href="icone-mauer-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#131F3B;--navy-2:#1E2C4E;--navy-3:#26324D;--navy-soft:#AEB6C8;--orange:#E38A29;--orange-t:#9C5A12;--orange-bg:#FBF0E4;--orange-b:#F0C999;--teal:#669EA1;--teal-t:#3F6F72;--bg:#F3F3F2;--surface:#fff;--border:#E7E6E6;--border-strong:#C9CCD3;--text:#131F3B;--muted:#5C6478;--hint:#8A91A1;--green:#2F7D5B;--green-bg:#E7F2EC;--green-b:#B5D8C5;--red:#B3261E;--red-bg:#FBEAEA;--red-b:#F0BDBA;--r:12px;--rs:8px;--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
+button{font-family:var(--font);cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
+.mono{font-family:var(--mono)}
+/* topo */
+.top{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 18px 14px;box-shadow:inset 0 -4px 0 var(--orange);display:flex;align-items:center;gap:14px}
+.top img{height:26px;width:auto;display:block}
+.top .sep{width:1px;height:22px;background:#34425F}
+.top-t{font-size:15px;font-weight:500}.top-s{font-size:12px;color:var(--navy-soft)}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:10px}
+.chip{background:var(--navy-2);color:#fff;border:1px solid #34425F;border-radius:20px;padding:8px 14px;font-size:14px;font-weight:500;min-height:40px}
+.dot{width:9px;height:9px;border-radius:50%;background:#6F7A93}.dot.ok{background:#5FC59A}.dot.err{background:#F07167}
+.clock{font-family:var(--mono);font-size:14px;color:var(--navy-soft)}
+/* layout */
+.wrap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;padding:16px;max-width:1300px;margin:0 auto;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+@media (orientation:portrait),(max-width:860px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+/* entrada */
+.entrada{padding:16px}
+.lbl{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:8px}
+.num-row{display:grid;grid-template-columns:1fr auto;gap:10px}
+#num{font-family:var(--mono);font-size:30px;font-weight:500;letter-spacing:.04em;padding:10px 16px;min-height:64px;border:2px solid var(--border-strong);border-radius:var(--rs);background:#fff;color:var(--text);width:100%;outline:none;user-select:text;-webkit-user-select:text}
+#num:focus{border-color:var(--navy)}
+#num::placeholder{color:#B9BEC9;font-size:22px;letter-spacing:0}
+.btn-buscar{background:var(--navy);color:#fff;border:none;border-radius:var(--rs);padding:0 26px;font-size:17px;font-weight:600;min-height:64px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.pad button{background:#fff;border:1px solid var(--border-strong);border-radius:var(--rs);font-family:var(--mono);font-size:26px;font-weight:500;color:var(--text);min-height:62px}
+.pad button:active{background:var(--bg);transform:scale(.98)}
+.pad .fn{font-family:var(--font);font-size:15px;color:var(--muted)}
+.dica{font-size:12px;color:var(--hint);margin-top:10px}
+.msg{margin-top:12px;padding:12px 14px;border-radius:var(--rs);font-size:15px;font-weight:500;display:none}
+.msg.show{display:block}
+.msg.warn{background:var(--orange-bg);color:var(--orange-t);border:1px solid var(--orange-b)}
+.msg.err{background:var(--red-bg);color:var(--red);border:1px solid var(--red-b)}
+.msg.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b)}
+/* pedido selecionado */
+.sel{padding:18px;display:none}
+.sel.show{display:block}
+.sel-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sel-num{font-family:var(--mono);font-size:38px;font-weight:500;line-height:1.1}
+.sel-sep{font-size:15px;color:var(--muted)}
+.sel-sep b{color:var(--text);font-weight:600}
+.sel-info{font-size:15px;color:var(--muted);margin:6px 0 16px}
+.acoes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn-ok{background:var(--green);color:#fff;border:none;border-radius:var(--r);min-height:88px;font-size:21px;font-weight:600}
+.btn-ok:active{background:#276A4D}
+.btn-erro{background:#fff;color:var(--red);border:2px solid var(--red);border-radius:var(--r);min-height:88px;font-size:21px;font-weight:600}
+.btn-erro:active{background:var(--red-bg)}
+.btn-cancel{background:transparent;border:none;color:var(--muted);font-size:15px;margin-top:12px;padding:10px;width:100%}
+.motivos{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+.motivos button{background:#fff;border:1.5px solid var(--border-strong);border-radius:var(--rs);min-height:62px;font-size:16px;font-weight:500;color:var(--text);padding:8px}
+.motivos button.on{background:var(--red);border-color:var(--red);color:#fff}
+#obs{width:100%;min-height:70px;border:1px solid var(--border-strong);border-radius:var(--rs);padding:12px;font-family:var(--font);font-size:16px;resize:none;outline:none;user-select:text;-webkit-user-select:text}
+#obs:focus{border-color:var(--navy)}
+.btn-salvar-erro{width:100%;margin-top:12px;background:var(--red);color:#fff;border:none;border-radius:var(--r);min-height:70px;font-size:19px;font-weight:600}
+.btn-salvar-erro:disabled,.btn-ok:disabled{opacity:.5}
+/* fila */
+.fila-h{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+.fila-t{font-size:16px;font-weight:600}
+.cont{font-family:var(--mono);font-size:14px;background:var(--navy);color:#fff;border-radius:20px;padding:4px 12px}
+.fila{max-height:calc(100vh - 170px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+@media (orientation:portrait),(max-width:860px){.fila{max-height:none}}
+.it{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);width:100%;background:#fff;border-left:5px solid transparent;text-align:left;border-top:none;border-right:none}
+.it:active{background:var(--bg)}
+.it.on{background:#EAF2F2;border-left-color:var(--teal)}
+.it.velho{border-left-color:var(--orange)}
+.it-num{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--text)}
+.it-sub{font-size:14px;color:var(--muted);margin-top:2px}
+.it-r{margin-left:auto;text-align:right;flex-shrink:0}
+.it-esp{font-family:var(--mono);font-size:15px;color:var(--muted)}
+.it.velho .it-esp{color:var(--orange-t);font-weight:600}
+.tag{display:inline-block;font-size:12px;font-weight:600;border-radius:20px;padding:2px 9px;margin-top:4px}
+.tag.sep{background:var(--orange-bg);color:var(--orange-t);border:1px solid var(--orange-b)}
+.tag.dt{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.vazio{padding:40px 20px;text-align:center;color:var(--muted);font-size:16px}
+.vazio b{display:block;font-size:18px;color:var(--green);margin-bottom:4px}
+.hist-h{padding:12px 16px;font-size:14px;font-weight:600;color:var(--muted);border-top:1px solid var(--border);background:var(--bg)}
+.hi{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--border);font-size:14px}
+.hi .mono{font-size:15px}
+.hi-ok{color:var(--green);font-weight:600}.hi-err{color:var(--red);font-weight:600}
+/* aviso com desfazer */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(140%);background:var(--navy);color:#fff;border-radius:var(--r);padding:12px 12px 12px 20px;display:flex;align-items:center;gap:16px;font-size:16px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,.25);transition:transform .25s ease;z-index:50;max-width:94vw}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-left:6px solid #5FC59A}.toast.err{border-left:6px solid #F07167}
+.toast button{background:transparent;border:1px solid #4A5A7C;color:#fff;border-radius:var(--rs);padding:10px 16px;font-size:15px;font-weight:600;min-height:46px}
+/* configuração */
+.setup{position:fixed;inset:0;z-index:100;background:var(--navy);display:none;align-items:center;justify-content:center;padding:20px;overflow:auto}
+.setup.show{display:flex}
+.setup::after{content:'';position:fixed;left:0;right:0;bottom:0;height:6px;background:var(--orange)}
+.setup-box{background:#fff;border-radius:16px;padding:28px;width:680px;max-width:100%}
+.setup-box img{height:40px;display:block;margin-bottom:18px}
+.setup-t{font-size:22px;font-weight:600;margin-bottom:4px}
+.setup-s{font-size:15px;color:var(--muted);margin-bottom:18px}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;max-height:52vh;overflow:auto}
+.opts button{background:#fff;border:1.5px solid var(--border-strong);border-radius:var(--rs);min-height:64px;font-size:17px;font-weight:500;color:var(--text);padding:10px}
+.opts button:active{background:var(--navy);color:#fff}
+.setup-back{background:transparent;border:none;color:var(--teal-t);font-size:15px;font-weight:600;margin-top:16px;padding:8px 0}
+@media(max-width:560px){.top{padding-left:12px;padding-right:12px;gap:10px}.top-s,.clock{display:none}.sel-num{font-size:30px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <img src="logo-mauer-branco.png" alt="Grupo Mauer" onerror="this.outerHTML='<b style=&quot;letter-spacing:.08em&quot;>MAUER</b>'">
+  <div class="sep"></div>
+  <div><div class="top-t">Conferência</div><div class="top-s" id="top-filial">—</div></div>
+  <div class="top-r">
+    <span class="clock" id="clock"></span>
+    <span class="dot" id="dot" title="Conexão"></span>
+    <button class="chip" id="chip-conf" onclick="abrirSetup('conferente')">—</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="col">
+    <div class="card sel" id="sel">
+      <div id="sel-main">
+        <div class="sel-top">
+          <div class="sel-num" id="sel-num"></div>
+          <div class="sel-sep">separado por <b id="sel-colab"></b></div>
+        </div>
+        <div class="sel-info" id="sel-info"></div>
+        <div class="acoes">
+          <button class="btn-ok" id="btn-ok" onclick="conferirOk()">Conferido OK</button>
+          <button class="btn-erro" onclick="abrirErro()">Com erro</button>
+        </div>
+        <button class="btn-cancel" onclick="limparSel()">Cancelar</button>
+      </div>
+      <div id="sel-erro" style="display:none">
+        <div class="lbl" style="font-size:15px;color:var(--text);font-weight:600">Qual foi o erro?</div>
+        <div class="motivos" id="motivos"></div>
+        <textarea id="obs" placeholder="Observação (opcional)"></textarea>
+        <button class="btn-salvar-erro" id="btn-salvar-erro" onclick="salvarErro()">Registrar erro</button>
+        <button class="btn-cancel" onclick="fecharErro()">Voltar</button>
+      </div>
+    </div>
+    <div class="card entrada">
+      <div class="lbl">Número do pedido</div>
+      <div class="num-row">
+        <input id="num" inputmode="none" autocomplete="off" placeholder="Bipe ou digite" aria-label="Número do pedido">
+        <button class="btn-buscar" onclick="buscar()">Buscar</button>
+      </div>
+      <div class="pad" id="pad">
+        <button>1</button><button>2</button><button>3</button>
+        <button>4</button><button>5</button><button>6</button>
+        <button>7</button><button>8</button><button>9</button>
+        <button class="fn" data-k="limpar">Limpar</button><button>0</button><button class="fn" data-k="apagar">Apagar</button>
+      </div>
+      <div class="msg" id="msg"></div>
+      <div class="dica">Leitor de código de barras funciona direto neste campo. Também dá para tocar no pedido na fila.</div>
+    </div>
+
+  </div>
+
+  <div class="col">
+    <div class="card" style="overflow:hidden">
+      <div class="fila-h"><div class="fila-t">Fila para conferir</div><span class="cont" id="cont">0</span></div>
+      <div class="fila" id="fila"><div class="vazio">Carregando...</div></div>
+      <div class="hist-h">Suas últimas baixas</div>
+      <div id="hist"><div class="hi" style="color:var(--hint)">Nenhuma baixa ainda</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toast-t"></span><button id="toast-undo">Desfazer</button></div>
+
+<div class="setup" id="setup">
+  <div class="setup-box">
+    <img src="logo-mauer-azul.png" alt="Grupo Mauer" onerror="this.remove()">
+    <div class="setup-t" id="setup-t"></div>
+    <div class="setup-s" id="setup-s"></div>
+    <div class="opts" id="opts"></div>
+    <button class="setup-back" id="setup-back" onclick="abrirSetup('filial')">Trocar filial</button>
+  </div>
+</div>
+
+<script>
+// Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
+const APP_VERSAO='2026-09-28-conf-1';
+const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
+const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
+const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
+const ESPERA_ALERTA_MIN=30; // pedido esperando mais que isso fica destacado
+
+let cfg={filial:'',conferente:''};
+let filiais=[], conferentesPorFilial={};
+let pedidos=[], confs=[], registrosMap={};
+let pendentes=[], selecionado=null, motivoSel='', ocupado=false, historico=[];
+
+// ---------- Firebase (REST) ----------
+async function fbGet(p){const r=await fetch(`${FB_URL}/${p}.json`);if(!r.ok)throw new Error('GET '+r.status);return r.json();}
+async function fbPost(p,d){const r=await fetch(`${FB_URL}/${p}.json`,{method:'POST',body:JSON.stringify(d)});if(!r.ok)throw new Error('POST '+r.status);return r.json();}
+async function fbDelete(p){const r=await fetch(`${FB_URL}/${p}.json`,{method:'DELETE'});if(!r.ok)throw new Error('DELETE '+r.status);}
+async function fbQuery(path,field,opts){
+  const qs=['orderBy='+encodeURIComponent(JSON.stringify(field))];
+  if(opts.startAt!==undefined)qs.push('startAt='+encodeURIComponent(JSON.stringify(opts.startAt)));
+  try{const r=await fetch(`${FB_URL}/${path}.json?`+qs.join('&'));const d=await r.json();if(r.ok&&!(d&&d.error))return d;}catch(e){}
+  const all=await fbGet(path);if(!all)return all;const out={};
+  Object.entries(all).forEach(([k,v])=>{if(!(opts.startAt!==undefined&&!((v&&v[field])>=opts.startAt)))out[k]=v;});
+  return out;
+}
+
+// ---------- utilidades ----------
+function hojeStr(off=0){const d=new Date(Date.now()-off*86400000);return d.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}).split('/').reverse().join('-');}
+function hora(ts){return new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});}
+function fmtData(d){return d.split('-').reverse().slice(0,2).join('/');}
+function fmtMin(m){m=Math.max(0,Math.round(m));const h=Math.floor(m/60);return h?h+'h'+String(m%60).padStart(2,'0'):m+' min';}
+function esc(t){return String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function lerCfg(){try{const c=JSON.parse(localStorage.getItem('mauerConferencia')||'{}');if(c&&c.filial)cfg=c;}catch(e){}}
+function salvarCfg(){try{localStorage.setItem('mauerConferencia',JSON.stringify(cfg));}catch(e){}}
+function setDot(t){document.getElementById('dot').className='dot '+t;}
+let audioCtx=null;
+function beep(ok){
+  try{navigator.vibrate&&navigator.vibrate(ok?60:[80,60,80]);}catch(e){}
+  try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.frequency.value=ok?880:260;o.type=ok?'sine':'square';g.gain.value=.08;o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+(ok?.12:.25));}catch(e){}
+}
+function msg(t,tipo){const el=document.getElementById('msg');el.textContent=t;el.className='msg show '+tipo;clearTimeout(el._t);el._t=setTimeout(()=>el.className='msg',6000);}
+function limparMsg(){document.getElementById('msg').className='msg';}
+
+// ---------- configuração do tablet ----------
+function abrirSetup(passo){
+  const s=document.getElementById('setup'),opts=document.getElementById('opts');
+  s.classList.add('show');
+  if(passo==='filial'||!cfg.filial){
+    document.getElementById('setup-t').textContent='Qual é a filial deste tablet?';
+    document.getElementById('setup-s').textContent='Fica gravado no aparelho. Só precisa escolher de novo se o tablet mudar de filial.';
+    document.getElementById('setup-back').style.display='none';
+    opts.innerHTML=filiais.length?filiais.map(f=>`<button data-v="${esc(f)}">${esc(f)}</button>`).join(''):'<div style="color:var(--muted)">Nenhuma filial cadastrada.</div>';
+    opts.onclick=e=>{const b=e.target.closest('button');if(!b)return;cfg.filial=b.dataset.v;cfg.conferente='';salvarCfg();abrirSetup('conferente');};
+  }else{
+    const lista=conferentesPorFilial[cfg.filial]||[];
+    document.getElementById('setup-t').textContent='Quem está conferindo?';
+    document.getElementById('setup-s').textContent=cfg.filial;
+    document.getElementById('setup-back').style.display='';
+    opts.innerHTML=lista.length?lista.map(n=>`<button data-v="${esc(n)}">${esc(n)}</button>`).join(''):'<div style="color:var(--muted)">Nenhum conferente cadastrado nesta filial. Cadastre no painel do gestor.</div>';
+    opts.onclick=e=>{const b=e.target.closest('button');if(!b)return;cfg.conferente=b.dataset.v;salvarCfg();fecharSetup();};
+  }
+}
+function fecharSetup(){
+  document.getElementById('setup').classList.remove('show');
+  document.getElementById('top-filial').textContent=cfg.filial;
+  document.getElementById('chip-conf').textContent=cfg.conferente;
+  historico=[];renderHist();limparSel();carregar();focar();
+}
+
+// ---------- dados ----------
+async function carregar(){
+  if(!cfg.filial)return;
+  try{
+    const ini=hojeStr(DIAS_FILA);
+    const [l,c,r]=await Promise.all([fbQuery('lancamentos','data',{startAt:ini}),fbQuery('confirmacoes','data',{startAt:ini}),fbQuery('registros','data',{startAt:ini})]);
+    pedidos=l?Object.entries(l).map(([k,v])=>({...v,_key:k})).filter(x=>x.isPedido&&x.numPedido):[];
+    confs=c?Object.entries(c).map(([k,v])=>({...v,_key:k})):[];
+    registrosMap={};if(r)Object.entries(r).forEach(([k,v])=>registrosMap[k]=v);
+    montarFila();setDot('ok');
+  }catch(e){console.error(e);setDot('err');}
+}
+function confDe(num,filial,data){return confs.find(c=>String(c.numPedido)===String(num)&&c.filial===filial&&c.data===data);}
+function infoPedido(p){
+  const reg=p.registroId&&registrosMap[p.registroId];
+  const emSep=reg&&reg.status==='em_separacao';
+  const desde=reg&&reg.fim?reg.fim:(p.timestamp||0);
+  return{num:String(p.numPedido),filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:Number(p.qtdPedido||0),emSep,desde,loteQtd:reg?reg.totalPedidos:1,_key:p._key};
+}
+function montarFila(){
+  const vistos=new Set();
+  pendentes=pedidos.filter(p=>p.filial===cfg.filial).filter(p=>{const k=p.numPedido+'|'+p.data;if(vistos.has(k))return false;vistos.add(k);return !confDe(p.numPedido,p.filial,p.data);})
+    .map(infoPedido).sort((a,b)=>(a.emSep-b.emSep)||(a.desde-b.desde));
+  renderFila();
+}
+function renderFila(){
+  const el=document.getElementById('fila'),now=Date.now(),hoje=hojeStr();
+  document.getElementById('cont').textContent=pendentes.length;
+  if(!pendentes.length){el.innerHTML='<div class="vazio"><b>Tudo conferido</b>Nenhum pedido esperando conferência.</div>';return;}
+  el.innerHTML=pendentes.map((p,i)=>{
+    const esp=(now-p.desde)/60000,velho=!p.emSep&&esp>ESPERA_ALERTA_MIN;
+    const on=selecionado&&selecionado.num===p.num&&selecionado.data===p.data;
+    return `<button class="it${on?' on':''}${velho?' velho':''}" data-i="${i}">
+      <div><div class="it-num">${esc(p.num)}</div><div class="it-sub">${esc(p.colaborador)}, ${p.qtd} pneu${p.qtd!==1?'s':''}</div></div>
+      <div class="it-r">${p.emSep?'<span class="tag sep">Em separação</span>':`<div class="it-esp">${fmtMin(esp)}</div>`}${p.data!==hoje?`<div><span class="tag dt">${fmtData(p.data)}</span></div>`:''}</div>
+    </button>`;}).join('');
+}
+document.getElementById('fila').addEventListener('click',e=>{const b=e.target.closest('.it');if(!b)return;selecionar(pendentes[Number(b.dataset.i)]);});
+
+// ---------- busca ----------
+async function buscar(){
+  const num=document.getElementById('num').value.replace(/\D/g,'');
+  document.getElementById('num').value=num;
+  if(!num){msg('Digite ou bipe o número do pedido.','warn');focar();return;}
+  let p=pendentes.find(x=>x.num===num);
+  if(!p){await carregar();p=pendentes.find(x=>x.num===num);}
+  if(p){selecionar(p);return;}
+  const outro=pedidos.find(x=>String(x.numPedido)===num);
+  const jaConf=confs.filter(c=>String(c.numPedido)===num&&c.filial===cfg.filial).sort((a,b)=>b.timestamp-a.timestamp)[0];
+  if(jaConf){msg(`Pedido ${num} já foi conferido por ${jaConf.conferente} às ${hora(jaConf.timestamp)}.`,'ok');beep(true);}
+  else if(outro&&outro.filial!==cfg.filial){msg(`Pedido ${num} é da filial ${outro.filial}, não desta.`,'err');beep(false);}
+  else{msg(`Pedido ${num} não foi registrado pelos separadores nos últimos ${DIAS_FILA} dias.`,'err');beep(false);}
+  document.getElementById('num').value='';limparSel();focar();
+}
+function selecionar(p){
+  if(!p)return;selecionado=p;motivoSel='';limparMsg();
+  document.getElementById('num').value=p.num;
+  document.getElementById('sel-num').textContent=p.num;
+  document.getElementById('sel-colab').textContent=p.colaborador;
+  const esp=(Date.now()-p.desde)/60000;
+  document.getElementById('sel-info').textContent=`${p.qtd} pneu${p.qtd!==1?'s':''}`+(p.data!==hojeStr()?`, separado em ${fmtData(p.data)}`:'')+(p.emSep?', lote ainda em separação':`, aguardando há ${fmtMin(esp)}`);
+  document.getElementById('sel').classList.add('show');
+  document.getElementById('sel-main').style.display='';document.getElementById('sel-erro').style.display='none';
+  renderFila();
+  if(window.matchMedia('(orientation:portrait)').matches)document.getElementById('sel').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function limparSel(){selecionado=null;document.getElementById('sel').classList.remove('show');document.getElementById('num').value='';renderFila();}
+
+// ---------- baixa ----------
+async function conferirOk(){
+  if(!selecionado||ocupado)return;ocupado=true;
+  const p=selecionado,btn=document.getElementById('btn-ok');btn.disabled=true;
+  try{
+    const now=Date.now();
+    const r=await fbPost('confirmacoes',{numPedido:p.num,filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:p.qtd,conferente:cfg.conferente,timestamp:now,esperaMin:p.emSep?null:Math.round((now-p.desde)/60000),comErro:false,origem:'tablet'});
+    confs.push({numPedido:p.num,filial:p.filial,data:p.data,conferente:cfg.conferente,timestamp:now,_key:r.name});
+    beep(true);registrarHist({num:p.num,ok:true,t:now});
+    toast(`Pedido ${p.num} conferido`,'ok',async()=>{await fbDelete('confirmacoes/'+r.name);confs=confs.filter(c=>c._key!==r.name);historico=historico.filter(h=>h.t!==now);renderHist();montarFila();});
+    limparSel();montarFila();
+  }catch(e){console.error(e);msg('Não foi possível dar baixa. Confira a conexão e tente de novo.','err');beep(false);}
+  btn.disabled=false;ocupado=false;focar();
+}
+function abrirErro(){
+  motivoSel='';document.getElementById('obs').value='';
+  document.getElementById('motivos').innerHTML=MOTIVOS.map(m=>`<button data-m="${esc(m)}">${esc(m)}</button>`).join('');
+  document.getElementById('sel-main').style.display='none';document.getElementById('sel-erro').style.display='';
+}
+document.getElementById('motivos').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;motivoSel=b.dataset.m;document.querySelectorAll('#motivos button').forEach(x=>x.classList.toggle('on',x===b));});
+function fecharErro(){document.getElementById('sel-main').style.display='';document.getElementById('sel-erro').style.display='none';}
+async function salvarErro(){
+  if(!selecionado||ocupado)return;
+  if(!motivoSel){msg('Escolha o motivo do erro.','warn');return;}
+  ocupado=true;const p=selecionado,btn=document.getElementById('btn-salvar-erro');btn.disabled=true;
+  const obs=document.getElementById('obs').value.trim();
+  try{
+    const now=Date.now();
+    const e1=await fbPost('lancamentos',{data:p.data,filial:p.filial,colaborador:p.colaborador,motivo:motivoSel,pedidoErro:p.num,obs,conferente:cfg.conferente.toUpperCase(),pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0,timestamp:now,origem:'tablet'});
+    const c1=await fbPost('confirmacoes',{numPedido:p.num,filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:p.qtd,conferente:cfg.conferente,timestamp:now,esperaMin:p.emSep?null:Math.round((now-p.desde)/60000),comErro:true,motivo:motivoSel,origem:'tablet'});
+    confs.push({numPedido:p.num,filial:p.filial,data:p.data,conferente:cfg.conferente,timestamp:now,_key:c1.name});
+    beep(false);registrarHist({num:p.num,ok:false,motivo:motivoSel,t:now});
+    toast(`Erro registrado no pedido ${p.num}`,'err',async()=>{await Promise.all([fbDelete('lancamentos/'+e1.name),fbDelete('confirmacoes/'+c1.name)]);confs=confs.filter(c=>c._key!==c1.name);historico=historico.filter(h=>h.t!==now);renderHist();montarFila();});
+    limparSel();montarFila();
+  }catch(e){console.error(e);msg('Não foi possível registrar o erro. Confira a conexão e tente de novo.','err');}
+  btn.disabled=false;ocupado=false;focar();
+}
+function registrarHist(h){historico.unshift(h);historico=historico.slice(0,6);renderHist();}
+function renderHist(){
+  const el=document.getElementById('hist');
+  el.innerHTML=historico.length?historico.map(h=>`<div class="hi"><span class="mono">${esc(h.num)}</span><span class="${h.ok?'hi-ok':'hi-err'}">${h.ok?'Conferido':esc(h.motivo)}</span><span style="color:var(--hint)" class="mono">${hora(h.t)}</span></div>`).join(''):'<div class="hi" style="color:var(--hint)">Nenhuma baixa ainda</div>';
+}
+let toastT=null;
+function toast(t,tipo,desfazer){
+  const el=document.getElementById('toast'),b=document.getElementById('toast-undo');
+  document.getElementById('toast-t').textContent=t;el.className='toast show '+tipo;clearTimeout(toastT);
+  b.disabled=false;b.onclick=async()=>{b.disabled=true;try{await desfazer();msg('Baixa desfeita.','warn');}catch(e){msg('Não foi possível desfazer.','err');}el.className='toast';};
+  toastT=setTimeout(()=>el.className='toast',7000);
+}
+
+// ---------- entrada: teclado na tela e leitor ----------
+const numEl=document.getElementById('num');
+function focar(){if(!document.getElementById('setup').classList.contains('show')&&document.activeElement!==document.getElementById('obs'))numEl.focus({preventScroll:true});}
+document.getElementById('pad').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.k==='apagar')numEl.value=numEl.value.slice(0,-1);
+  else if(b.dataset.k==='limpar'){numEl.value='';limparSel();}
+  else numEl.value=(numEl.value+b.textContent).slice(0,12);
+  focar();
+});
+numEl.addEventListener('input',()=>{numEl.value=numEl.value.replace(/\D/g,'').slice(0,12);});
+numEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();buscar();}});
+document.addEventListener('click',e=>{if(!e.target.closest('textarea,.setup,.toast'))setTimeout(focar,0);});
+
+// ---------- tela ligada, relógio, versão ----------
+let wakeLock=null;
+async function manterTela(){try{if('wakeLock' in navigator&&document.visibilityState==='visible')wakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
+function relogio(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});}
+async function checarVersao(){
+  if(location.protocol==='file:')return false;
+  try{const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/const APP_VERSAO='([^']+)'/);
+    if(m&&m[1]!==APP_VERSAO&&!ocupado&&!selecionado){location.reload();return true;}}catch(e){}
+  return false;
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){manterTela();checarVersao();carregar();}});
+
+// ---------- início ----------
+async function init(){
+  if(await checarVersao())return;
+  relogio();setInterval(relogio,20000);manterTela();
+  if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw-conferente.js').catch(()=>{});
+  lerCfg();
+  try{
+    const [f,c]=await Promise.all([fbGet('filiais'),fbGet('conferentes')]);
+    filiais=f?Object.values(f).map(x=>x.nome).filter(Boolean).sort():[];
+    conferentesPorFilial={};if(c)Object.values(c).forEach(v=>{(conferentesPorFilial[v.filial]=conferentesPorFilial[v.filial]||[]).push(v.nome);});
+    Object.values(conferentesPorFilial).forEach(l=>l.sort());
+    setDot('ok');
+  }catch(e){console.error(e);setDot('err');}
+  if(!cfg.filial||!cfg.conferente)abrirSetup(cfg.filial?'conferente':'filial');else fecharSetup();
+  setInterval(()=>{if(!ocupado)carregar();},15000);
+  setInterval(()=>{if(!ocupado)renderFila();},60000);
+  setInterval(checarVersao,5*60000);
+}
+init();
+</script>
+</body>
+</html>

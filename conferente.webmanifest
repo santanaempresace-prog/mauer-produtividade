@@ -1,0 +1,16 @@
+{
+  "name": "Mauer Conferência",
+  "short_name": "Conferência",
+  "description": "Baixa de conferência de pedidos — Grupo Mauer",
+  "start_url": "conferente.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#131F3B",
+  "theme_color": "#131F3B",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icone-mauer-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icone-mauer-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
