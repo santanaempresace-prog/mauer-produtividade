@@ -14,6 +14,8 @@
 :root{--navy:#131F3B;--navy-2:#1E2C4E;--navy-soft:#AEB6C8;--orange:#E38A29;--orange-t:#9C5A12;--orange-bg:#FBF0E4;--orange-b:#F0C999;--teal:#669EA1;--teal-t:#3F6F72;--bg:#F3F3F2;--surface:#fff;--border:#E7E6E6;--border-strong:#C9CCD3;--text:#131F3B;--muted:#5C6478;--hint:#8A91A1;--radius:10px;--rsm:7px;--green-bg:#E7F2EC;--green-t:#2F7D5B;--green-b:#B5D8C5;--red-bg:#FBEAEA;--red-t:#B3261E;--red-b:#F0BDBA;--amber-bg:var(--orange-bg);--amber-t:var(--orange-t);--amber-b:var(--orange-b);--blue-bg:#EAF2F2;--blue-t:var(--teal-t);--blue-b:#C4DCDD;--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;background:url('https://raw.githubusercontent.com/santanaempresace-prog/mauer-produtividade/main/bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.6;z-index:0;pointer-events:none}
+.tabs,.card:not(.card-sep){background:rgba(255,255,255,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .topbar{position:sticky;top:0;z-index:10;background:var(--navy);padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:inset 0 -4px 0 var(--orange)}
 .topbar{padding-bottom:16px}
 .tb-logo{height:26px;width:auto;display:block}
@@ -415,7 +417,7 @@ async function fbQuery(path,field,opts){
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 // Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-09-28-e';
+const APP_VERSAO='2026-09-28-f';
 async function checarVersao(){
   if(location.protocol==='file:')return false;
   try{
