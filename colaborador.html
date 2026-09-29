@@ -211,7 +211,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
       <div class="reg-list" id="reg-abertos"><div class="reg-empty">Selecione filial e colaborador</div></div>
     </div>
     <div class="card" id="card-fila-aro" style="display:none">
-      <div class="card-title" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/></svg>Pedidos do Aro para separar</span><span class="fila-cont" id="fila-cont">0</span></div>
+      <div class="card-title" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/></svg>Pedidos do Aro para separar</span><span style="display:flex;align-items:center;gap:8px"><button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="carregarFilaAro()">Atualizar</button><span class="fila-cont" id="fila-cont">0</span></span></div>
       <div class="card-sub">Marque os pedidos que você vai separar e clique em Adicionar ao lote.</div>
       <div id="fila-lista"></div>
       <div class="fila-acoes">
@@ -293,6 +293,8 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
     </div>
     <button class="btn-submit" id="robo-enviar" style="margin-top:14px" onclick="roboEnviar()">Enviar para a fila de separação</button>
     <div id="robo-status" data-state="pronto" style="margin-top:12px;padding:10px 12px;border-radius:var(--rsm);font-size:14px;font-weight:500;background:var(--bg);border:1px solid var(--border)">Aro pronto</div>
+    <div style="margin-top:14px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center">Fila atual da filial <button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="roboMostrarFila()">Atualizar</button></div>
+    <div id="robo-fila" style="margin-top:6px;border:1px solid var(--border);border-radius:var(--rsm);max-height:220px;overflow:auto;font-size:13px"></div>
     <pre id="robo-resultado" style="margin-top:10px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;max-height:240px;overflow:auto">{}</pre>
   </div>
 </div>
@@ -464,7 +466,7 @@ async function fbQuery(path,field,opts){
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 // Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-09-29-h';
+const APP_VERSAO='2026-09-29-i';
 async function checarVersao(){
   if(location.protocol==='file:')return false;
   try{
@@ -479,6 +481,8 @@ async function checarVersao(){
   return false;
 }
 setInterval(checarVersao,5*60000);
+setInterval(()=>{if(document.getElementById('p-colab')?.value&&!MODO_ROBO_SAFE())carregarFilaAro();},15000);
+function MODO_ROBO_SAFE(){try{return MODO_ROBO;}catch(e){return false;}}
 // Atualiza o card "Em separação" (ex.: lote finalizado pela conferência)
 setInterval(()=>{const b=document.getElementById('btn-salvar-pedidos');if(b&&b.dataset.busy==='1')return;if(document.querySelector('.reg-undo'))return;if(document.getElementById('p-colab')?.value)carregarRegistrosAbertos();},30000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checarVersao();});
@@ -1279,9 +1283,19 @@ async function roboEnviar(){
     }
     Object.assign(res,{ok:true,enfileirados:novos.map(p=>p.num),totalPneus:novos.reduce((a,p)=>a+p.qt,0)});
     roboStatus('ok',novos.length?'Aro colocou '+novos.length+' pedido(s) na fila, '+res.totalPneus+' pneus'+(res.duplicados.length?' | '+res.duplicados.length+' duplicado(s) ignorado(s)':''):'Todos os pedidos já estavam na fila ou separados',res);
-    document.getElementById('robo-pedidos').value='';
+    document.getElementById('robo-pedidos').value='';roboMostrarFila();
   }catch(e){console.error(e);res.erro='Falha ao gravar: '+e.message;roboStatus('erro',res.erro,res);}
   btn.disabled=false;return res;
+}
+async function roboMostrarFila(){
+  const el=document.getElementById('robo-fila');if(!el)return;
+  const filial=document.getElementById('robo-filial').value;
+  try{
+    const lim=new Date();lim.setDate(lim.getDate()-3);
+    const d=await fbQuery('filaPedidos','data',{startAt:lim.toISOString().slice(0,10)});
+    const itens=Object.values(d||{}).filter(f=>f.filial===filial).sort((a,b)=>b.criadoEm-a.criadoEm);
+    el.innerHTML=itens.length?itens.slice(0,100).map(f=>'<div style="display:flex;gap:10px;padding:7px 10px;border-top:1px solid var(--border)"><span style="font-family:var(--mono);font-weight:500">'+f.num+'</span><span style="color:var(--muted)">'+f.qt+' pneus</span><span style="margin-left:auto">'+(f.status==='disponivel'?'<span class="badge badge-warn">Na fila</span>':'<span style="color:var(--green-t);font-weight:600">Com '+(f.colaborador||'separador')+'</span>')+'</span></div>').join(''):'<div style="padding:10px;color:var(--hint)">Fila vazia</div>';
+  }catch(e){console.error(e);el.innerHTML='<div style="padding:10px;color:var(--red-t)">Erro ao ler a fila</div>';}
 }
 function initRobo(){
   if(!MODO_ROBO)return;
@@ -1297,6 +1311,7 @@ function initRobo(){
   document.getElementById('robo-data').value=ROBO_PARAMS.get('data')||getBrasiliaDateStr();
   const pp=ROBO_PARAMS.get('pedidos');if(pp)document.getElementById('robo-pedidos').value=pp.split(',').join('\n');
   roboStatus('pronto','Aro pronto',{});
+  roboMostrarFila();
   if(ROBO_PARAMS.get('auto')==='1'&&pp)roboEnviar();
 }
 
@@ -1306,11 +1321,12 @@ function filaTemId(key){return pedidosTemp.some(p=>p.filaKey===key);}
 async function carregarFilaAro(){
   const card=document.getElementById('card-fila-aro');if(!card)return;
   const filial=document.getElementById('p-filial').value,colab=document.getElementById('p-colab').value;
-  if(!filial||!colab||!roboFilialLiberada(filial)){card.style.display='none';filaAro=[];return;}
+  if(!filial||!colab){card.style.display='none';filaAro=[];return;}
   try{
     const d=await fbQuery('filaPedidos','status',{equalTo:'disponivel'});
-    filaAro=Object.entries(d||{}).map(([k,v])=>({...v,_key:k})).filter(f=>f.status==='disponivel'&&f.filial===filial).sort((a,b)=>a.criadoEm-b.criadoEm);
+    filaAro=Object.entries(d||{}).map(([k,v])=>({...v,_key:k})).filter(f=>f.status==='disponivel'&&String(f.filial||'').trim().toUpperCase()===String(filial).trim().toUpperCase()).sort((a,b)=>a.criadoEm-b.criadoEm);
   }catch(e){console.error(e);}
+  if(!filaAro.length&&!roboFilialLiberada(filial)){card.style.display='none';return;}
   renderFilaAro();
 }
 function renderFilaAro(){
