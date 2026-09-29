@@ -860,6 +860,11 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
         </div>
         <div id="filiais-list"></div>
       </div>
+      <div class="card" id="orfaos-card" style="display:none;border:1px solid var(--amber-b);background:var(--amber-bg)!important">
+        <div class="card-header"><div class="card-title" style="color:var(--amber-t)">Cadastros ligados a filiais que não existem mais</div></div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Isso acontece quando uma filial é renomeada. Os colaboradores, conferentes e o histórico continuam gravados com o nome antigo e somem das telas. Escolha para qual filial cada nome antigo vai.</div>
+        <div id="orfaos-list"></div>
+      </div>
       <div class="card">
         <div class="card-header"><div class="card-title">Colaboradores por filial</div><span id="colab-count" class="badge badge-neu"></span></div>
         <div class="field-row">
@@ -2067,6 +2072,7 @@ function renderHistorico(data){
 // FILIAIS
 // ============================================================
 function renderFiliaisList(){
+  setTimeout(()=>{try{renderOrfaos();}catch(e){}},0);
   const cnt=document.getElementById('filiais-count');if(cnt)cnt.textContent=filiais.length+' filial'+(filiais.length!==1?'s':'');
   const el=document.getElementById('filiais-list');if(!el)return;
   if(!filiais.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:12px">Nenhuma filial</div>';return;}
@@ -2085,9 +2091,57 @@ function renderFiliaisList(){
 }
 function editFilial(i){document.getElementById('fname-'+i).style.display='none';document.getElementById('finput-'+i).style.display='';document.getElementById('fedit-'+i).style.display='none';document.getElementById('fsave-'+i).style.display='';document.getElementById('finput-'+i).focus();}
 function cancelEditFilial(i){document.getElementById('fname-'+i).style.display='';document.getElementById('finput-'+i).style.display='none';document.getElementById('fedit-'+i).style.display='';document.getElementById('fsave-'+i).style.display='none';}
+// Nós do Firebase que guardam o nome da filial no campo "filial"
+const NOS_COM_FILIAL=['colaboradores','conferentes','lancamentos','registros','confirmacoes','filaPedidos','descarregamentos'];
+// Troca o nome da filial em todos os cadastros e no histórico
+async function migrarNomeFilial(antigo,novo,progresso){
+  let total=0;
+  for(const no of NOS_COM_FILIAL){
+    const data=await fbGet(no);if(!data)continue;
+    const keys=Object.entries(data).filter(([k,v])=>v&&v.filial===antigo).map(([k])=>k);
+    for(let i=0;i<keys.length;i+=400){
+      const upd={};keys.slice(i,i+400).forEach(k=>upd[k+'/filial']=novo);
+      await fbPatch(no,upd);
+    }
+    total+=keys.length;if(progresso)progresso(no,keys.length);
+  }
+  // vínculo dos gestores
+  const gs=await fbGet('gestores');
+  if(gs)for(const[k,g]of Object.entries(gs)){if(Array.isArray(g.filiais)&&g.filiais.includes(antigo)){await fbPatch('gestores/'+k,{filiais:[...new Set(g.filiais.map(f=>f===antigo?novo:f))]});total++;}}
+  return total;
+}
+function detectarOrfaos(){
+  const existentes=new Set(filiais.map(f=>f.nome));
+  const orf={};
+  Object.entries(colaboradores).forEach(([f,l])=>{if(!existentes.has(f)){(orf[f]=orf[f]||{colab:0,conf:0,lanc:0}).colab+=l.length;}});
+  Object.entries(conferentes||{}).forEach(([f,l])=>{if(!existentes.has(f)){(orf[f]=orf[f]||{colab:0,conf:0,lanc:0}).conf+=l.length;}});
+  lancamentos.forEach(l=>{if(l.filial&&orf[l.filial])orf[l.filial].lanc++;});
+  return orf;
+}
+function renderOrfaos(){
+  const card=document.getElementById('orfaos-card');if(!card)return;
+  const orf=detectarOrfaos(),nomes=Object.keys(orf);
+  if(!nomes.length){card.style.display='none';return;}
+  card.style.display='';
+  const opts=filiais.map(f=>'<option>'+f.nome+'</option>').join('');
+  document.getElementById('orfaos-list').innerHTML=nomes.map((n,i)=>'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--amber-b)"><div style="flex:1;min-width:220px"><b>'+n+'</b><div style="font-size:12px;color:var(--muted)">'+orf[n].colab+' colaborador(es), '+orf[n].conf+' conferente(s), '+orf[n].lanc+' lançamento(s)</div></div><span style="font-size:13px;color:var(--muted)">mover para</span><select id="orf-dest-'+i+'" style="min-width:180px"><option value="">Selecione</option>'+opts+'</select><button class="btn btn-dark btn-sm" onclick="corrigirOrfao('+i+')" id="orf-btn-'+i+'">Mover</button></div>').join('');
+}
+async function corrigirOrfao(i){
+  const nomes=Object.keys(detectarOrfaos());const antigo=nomes[i];const novo=document.getElementById('orf-dest-'+i).value;
+  if(!antigo)return;if(!novo){showAlert('err','Escolha a filial de destino.');return;}
+  if(!confirm('Mover tudo de "'+antigo+'" para "'+novo+'"?\n\nColaboradores, conferentes e todo o histórico (lançamentos, lotes, conferências, descargas) passam para '+novo+'.'))return;
+  const btn=document.getElementById('orf-btn-'+i);btn.disabled=true;btn.textContent='Movendo...';
+  try{const n=await migrarNomeFilial(antigo,novo,(no,q)=>{btn.textContent=no+'...';});showAlert('ok',n+' registro(s) movidos de '+antigo+' para '+novo+'.');await carregarTudo();renderOrfaos();}
+  catch(e){console.error(e);showAlert('err','Erro ao mover. Tente de novo; o que já foi movido fica salvo.');btn.disabled=false;btn.textContent='Mover';}
+}
 async function saveFilial(i){
   const novo=document.getElementById('finput-'+i).value.trim();if(!novo)return;
-  try{await fbPatch('filiais/'+filiais[i]._key,{nome:novo});filiais[i].nome=novo;cancelEditFilial(i);populateFiliaisSelect();renderFiliaisList();showAlert('ok','Filial renomeada.');}
+  const antigo=filiais[i].nome;if(novo===antigo){cancelEditFilial(i);return;}
+  if(filiais.some(f=>f.nome===novo)){showAlert('err','Já existe uma filial com esse nome.');return;}
+  if(!confirm('Renomear "'+antigo+'" para "'+novo+'"?\n\nColaboradores, conferentes e todo o histórico da filial serão atualizados para o novo nome.'))return;
+  try{await fbPatch('filiais/'+filiais[i]._key,{nome:novo});showAlert('ok','Renomeando... atualizando cadastros e histórico.');
+    const n=await migrarNomeFilial(antigo,novo);
+    showAlert('ok','Filial renomeada. '+n+' registro(s) atualizados.');await carregarTudo();renderFiliaisList();renderOrfaos();}
   catch(e){showAlert('err','Erro ao salvar.');}
 }
 async function addFilial(){
