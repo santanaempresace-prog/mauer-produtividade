@@ -344,6 +344,9 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
 @media(max-width:700px){.topbar{padding:10px 14px 14px}.tb-sub{display:none}.main{padding:14px}}
 #filial-btn,#colab-filter-btn,#gestor-filter-btn{background:var(--surface);color:var(--text);border:1px solid var(--border-strong)!important;min-height:36px}
 .dark #filial-btn[style*='var(--navy)'],.dark #colab-filter-btn[style*='var(--navy)']{background:var(--teal)!important;border-color:var(--teal)!important}
+.nav-alert{margin-left:auto;background:#D64545;color:#fff;font-size:11px;font-weight:700;border-radius:20px;padding:1px 8px;font-family:'IBM Plex Mono',monospace}
+#view-pedidos .badge,#view-pedidos th{white-space:nowrap}
+#view-pedidos td{vertical-align:middle}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -705,32 +708,39 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
     <div class="view" id="view-pedidos">
       <div class="card">
         <div class="card-header"><div class="card-title">Rastreamento de pedidos</div><span id="pedidos-count" class="badge badge-neu"></span></div>
-        <div class="filters" style="margin-bottom:12px"><input type="text" id="busca-pedido" placeholder="Buscar nº pedido ou colaborador..." style="flex:1;min-width:180px" oninput="renderPedidos()"></div>
+        <div class="filters" style="margin-bottom:12px"><input type="text" id="busca-pedido" placeholder="Buscar nº pedido ou colaborador..." style="flex:1;min-width:180px" oninput="renderPedidos()"><select id="ped-status" onchange="renderPedidos()" style="min-width:200px"><option value="">Todos os status</option><option value="finalizado">Finalizados</option><option value="aguardando">Aguardando conferência</option><option value="separacao">Em separação</option><option value="erro">Finalizados com erro</option></select></div>
         <div class="table-wrap"><table><thead><tr>
   <th><div class="col-filter-wrap">Data<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-data')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-data"></div></div></th>
-  <th>Início</th><th>Fim</th><th style="text-align:right">Tempo</th>
   <th><div class="col-filter-wrap">Filial<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-filial')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-filial"></div></div></th>
   <th><div class="col-filter-wrap">Colaborador<button class="col-filter-btn" onclick="toggleColFilter(event,'cf-ped-colab')" title="Filtrar">▾</button><div class="col-filter-dd" id="cf-ped-colab"></div></div></th>
-  <th>Nº Pedido</th><th>Qtd Pneus</th><th>Conferência</th><th>Ação</th>
+  <th>Nº Pedido</th><th style="text-align:right">Pneus</th><th>Separação</th><th>Conferência</th><th style="text-align:right">Tempo total<div style="font-weight:400;font-size:11px;color:var(--hint)">separação até conferência</div></th><th>Status</th><th>Ação</th>
 </tr></thead><tbody id="pedidos-body"></tbody></table></div>
       </div>
     </div>
     <div class="view" id="view-tempos">
+      <div class="card" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:14px 20px">
+        <div style="font-weight:600">Meta de separação</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)"><input type="number" id="tp-meta" min="1" step="1" style="width:70px;padding:6px 8px;border:1px solid var(--border-strong);border-radius:var(--rsm);font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;background:var(--surface);color:var(--text)" onchange="salvarMeta()"> pneus por hora-homem</label>
+        <div style="font-size:12px;color:var(--hint);flex:1;min-width:260px">O tempo-meta de cada lote é a quantidade de pneus dividida pela meta (mínimo 5 min). Passou disso, o lote fica <b style="color:var(--red-t)">Atrasado</b> aqui e na tela do separador.</div>
+        <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">Desconsiderar acima de
+          <input type="number" id="tp-max" min="10" step="10" style="width:70px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:var(--rsm);font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--surface);color:var(--text)" onchange="salvarTempoMax()"> min</label>
+      </div>
       <div class="card" id="tp-abertos-card">
         <div class="card-header"><div class="card-title">Em separação agora</div><span id="tp-abertos-count" class="badge badge-neu"></span></div>
-        <div class="table-wrap"><table><thead><tr><th>Filial</th><th>Colaborador</th><th>Início</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Pneus</th><th style="text-align:right">Tempo</th></tr></thead><tbody id="tp-abertos-body"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Filial</th><th>Colaborador</th><th>Início</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Pneus</th><th style="text-align:right">Meta</th><th style="text-align:right">Tempo</th><th>Situação</th></tr></thead><tbody id="tp-abertos-body"></tbody></table></div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">Tempo por colaborador</div>
-          <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">Desconsiderar registros acima de
-            <input type="number" id="tp-max" min="10" step="10" style="width:70px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--rsm);font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--surface);color:var(--text)" onchange="salvarTempoMax()"> min</label>
-        </div>
-        <div class="table-wrap"><table><thead><tr><th>#</th><th>Colaborador</th><th>Filial</th><th style="text-align:right">Registros</th><th style="text-align:right">Pneus</th><th style="text-align:right">Tempo total</th><th style="text-align:right">Média / registro</th><th style="text-align:right">Min / pneu</th><th style="text-align:right">Pneus / hora</th><th style="text-align:right">Fora do padrão</th></tr></thead><tbody id="tp-colab-body"></tbody></table></div>
-        <div style="font-size:12px;color:var(--hint);margin-top:10px">Ordenado por pneus/hora. "Fora do padrão" são registros finalizados em outro dia ou acima do limite; não entram nas médias.</div>
+        <div class="card-header"><div class="card-title">Pneus por hora-homem, por filial</div><span style="font-size:12px;color:var(--hint)">Clique numa filial para ver só os colaboradores dela</span></div>
+        <div class="table-wrap"><table><thead><tr><th>Filial</th><th style="text-align:right">Separadores</th><th style="text-align:right">Registros</th><th style="text-align:right">Pneus</th><th style="text-align:right">Horas-homem</th><th style="text-align:right">Pneus / hora-homem</th><th style="text-align:right">No prazo</th><th style="text-align:right">Atrasados</th><th style="text-align:right">Conferidos</th><th style="text-align:right">Espera média conferência</th></tr></thead><tbody id="tp-filial-body"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Pneus por hora-homem, por colaborador <span id="tp-filtro-filial"></span></div></div>
+        <div class="table-wrap"><table><thead><tr><th>#</th><th>Colaborador</th><th>Filial</th><th style="text-align:right">Registros</th><th style="text-align:right">Pneus</th><th style="text-align:right">Tempo total</th><th style="text-align:right">Média / registro</th><th style="text-align:right">Pneus / hora-homem</th><th style="text-align:right">No prazo</th><th style="text-align:right">Atrasados</th><th style="text-align:right">Fora do padrão</th></tr></thead><tbody id="tp-colab-body"></tbody></table></div>
+        <div style="font-size:12px;color:var(--hint);margin-top:10px">Verde: na meta ou acima. Vermelho: abaixo da meta. "Fora do padrão" são registros finalizados em outro dia ou acima do limite; não entram nas médias nem no prazo.</div>
       </div>
       <div class="card">
         <div class="card-header"><div class="card-title">Registros</div><span id="tp-reg-count" class="badge badge-neu"></span></div>
-        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Filial</th><th>Colaborador</th><th>Início</th><th>Fim</th><th style="text-align:right">Tempo</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Pneus</th><th>Nº pedidos</th><th>Status</th></tr></thead><tbody id="tp-reg-body"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Filial</th><th>Colaborador</th><th>Início</th><th>Fim</th><th style="text-align:right">Meta</th><th style="text-align:right">Tempo</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Pneus</th><th>Nº pedidos</th><th>Status</th></tr></thead><tbody id="tp-reg-body"></tbody></table></div>
       </div>
     </div>
     <div class="view" id="view-erros">
@@ -1096,7 +1106,7 @@ async function enviarRecuperacao() {
 // ============================================================
 // ESTADO
 // ============================================================
-let registros=[], registrosMap={}, tempoMaxMin=240;
+let registros=[], registrosMap={}, tempoMaxMin=240, tpFilial='', metaPneusHora=50;
 let lancamentos=[], filiais=[], colaboradores={}, confirmacoes=[], currentView='ranking', colabTabAtivo='';
 let xlColabSelecionado='', gestores=[], conferentes={}, confTabAtivo='';
 let filiaisSelecionadas=new Set();
@@ -1118,10 +1128,11 @@ async function fbPatch(path,data){const r=await fetch('https://mauer-produtivida
 async function carregarTudo(){
   setStatus('loading','Carregando...');
   try{
-    const[lancData,filData,colData,confData,regData,tmaxData]=await Promise.all([fbGet('lancamentos'),fbGet('filiais'),fbGet('colaboradores'),fbGet('confirmacoes'),fbGet('registros'),fbGet('configuracoes/tempoMaxRegistro')]);
+    const[lancData,filData,colData,confData,regData,tmaxData,metaData]=await Promise.all([fbGet('lancamentos'),fbGet('filiais'),fbGet('colaboradores'),fbGet('confirmacoes'),fbGet('registros'),fbGet('configuracoes/tempoMaxRegistro'),fbGet('configuracoes/metaPneusHora')]);
     registros=regData?Object.entries(regData).map(([k,v])=>({...v,_key:k})):[];
     registrosMap={};registros.forEach(r=>registrosMap[r._key]=r);
     if(tmaxData&&Number(tmaxData)>0)tempoMaxMin=Number(tmaxData);
+    if(metaData&&Number(metaData)>0)metaPneusHora=Number(metaData);
     lancamentos=lancData?Object.entries(lancData).map(([k,v])=>({...v,_key:k})):[];
     confirmacoes=confData?Object.entries(confData).map(([k,v])=>({...v,_key:k})):[];
     lancamentos.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
@@ -1229,6 +1240,7 @@ function filtrarPorGestor(key){
 // RENDER
 // ============================================================
 function render(){
+  try{atualizarBadgeTempos();}catch(e){}
   const data=filterData();
   renderMetrics(data);
   if(currentView==='ranking')renderRanking(data);
@@ -1664,21 +1676,69 @@ function renderPedidos(){
   let data=lancamentos.filter(l=>l.isPedido&&(fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)&&(!colab||l.colaborador===colab)
     &&passesColFilter('cf-ped-data',fmt(l.data))&&passesColFilter('cf-ped-filial',l.filial||'—')&&passesColFilter('cf-ped-colab',l.colaborador||'—'));
   if(busca)data=data.filter(l=>(l.numPedido||'').toLowerCase().includes(busca)||(l.colaborador||'').toLowerCase().includes(busca));
+  const stF=document.getElementById('ped-status')?.value||'';
+  if(stF)data=data.filter(l=>{const c=cicloPedido(l);return stF==='erro'?(c.status==='finalizado'&&c.conf.comErro):c.status===stF;});
   const cnt=document.getElementById('pedidos-count');if(cnt)cnt.textContent=data.length+' pedido'+(data.length!==1?'s':'');
   const tb=document.getElementById('pedidos-body');if(!tb)return;
   if(!data.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--hint)">Nenhum pedido</td></tr>';return;}
   tb.innerHTML=data.sort((a,b)=>b.data.localeCompare(a.data)||(b.timestamp||0)-(a.timestamp||0)).map(l=>{
-    const conf=confirmacoes.find(c=>String(c.numPedido)===String(l.numPedido)&&c.filial===l.filial&&c.data===l.data);
-    const statusCell=conf
-      ?'<span class="badge badge-ok">✓ Conferido</span><div style="font-size:11px;color:var(--muted);margin-top:2px">por '+conf.conferente+'</div>'
-      :'<span class="badge badge-warn">Pendente</span>';
-    return'<tr><td>'+fmt(l.data)+'</td>'+celulasTempoPedido(l)+'<td><span class="badge badge-neu">'+l.filial+'</span></td><td>'+l.colaborador+'</td><td style="font-family:\'IBM Plex Mono\',monospace;font-weight:500">'+(l.numPedido||'—')+'</td><td style="font-family:\'IBM Plex Mono\',monospace">'+(l.qtdPedido||'—')+'</td><td>'+statusCell+'</td><td><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="excluirPedido(\''+l._key+'\')">Excluir</button></td></tr>';
+    return'<tr><td>'+fmt(l.data)+'</td><td><span class="badge badge-neu">'+l.filial+'</span></td><td>'+l.colaborador+'</td><td style="font-family:\'IBM Plex Mono\',monospace;font-weight:500">'+(l.numPedido||'—')+'</td><td style="text-align:right;font-family:\'IBM Plex Mono\',monospace">'+(l.qtdPedido||'—')+'</td>'+celulasCiclo(l)+'<td><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="excluirPedido(\''+l._key+'\')">Excluir</button></td></tr>';
   }).join('');
 }
 
 // ============================================================
 // TEMPOS DE SEPARAÇÃO (registros)
 // ============================================================
+// Ciclo completo do pedido: início da separação -> baixa da conferência
+function cicloPedido(l){
+  const reg=l.registroId&&registrosMap[l.registroId];
+  const conf=confirmacoes.find(c=>String(c.numPedido)===String(l.numPedido)&&c.filial===l.filial&&c.data===l.data);
+  const ini=reg&&reg.inicio?reg.inicio:(l.timestamp||null);
+  let status;
+  if(conf)status='finalizado';
+  else if(reg&&reg.status==='em_separacao')status='separacao';
+  else status='aguardando';
+  const fimSep=reg&&reg.fim?reg.fim:null;
+  const totalMin=conf&&conf.timestamp&&ini?(conf.timestamp-ini)/60000:null;
+  const correndoMin=!conf&&ini?(Date.now()-ini)/60000:null;
+  return{reg,conf,ini,fimSep,status,totalMin,correndoMin};
+}
+function celulasCiclo(l){
+  const c=cicloPedido(l),mono="font-family:'IBM Plex Mono',monospace";
+  const sub='font-size:11px;color:var(--muted);margin-top:2px';
+  // Separação
+  let sep;
+  if(c.reg){
+    const d=durRegistro(c.reg),atr=regAtrasado(c.reg);
+    sep='<div style="'+mono+';font-size:12px">'+fmtHora(c.reg.inicio)+' → '+(c.reg.fim?fmtHora(c.reg.fim):'…')+'</div><div style="'+sub+';'+mono+';color:'+(atr?'var(--red-t)':'var(--muted)')+'">'+fmtDurMin(d)+(c.reg.totalPedidos>1?' (lote de '+c.reg.totalPedidos+')':'')+(atr?' | atrasado':'')+'</div>';
+  }else sep='<div style="'+mono+';font-size:12px;color:var(--muted)">'+fmtHora(l.timestamp)+'</div><div style="'+sub+'">sem tempo registrado</div>';
+  // Conferência
+  let conf;
+  if(c.conf){
+    const dt=c.conf.timestamp?dataBrasilia(c.conf.timestamp):null;
+    const hr=c.conf.timestamp?((dt&&dt!==c.conf.data?fmt(dt)+' ':'')+fmtHora(c.conf.timestamp)):'—';
+    conf='<div style="'+mono+';font-size:12px">'+hr+'</div><div style="'+sub+'">'+c.conf.conferente+(c.conf.esperaMin!=null?' | esperou '+fmtDurMin(c.conf.esperaMin):'')+'</div>';
+  }else conf='<span style="color:var(--hint)">—</span>';
+  // Tempo total
+  const tot=c.totalMin!=null
+    ?'<span style="'+mono+';font-weight:700">'+fmtDurMin(c.totalMin)+'</span>'
+    :(c.correndoMin!=null?'<span style="'+mono+';color:var(--hint)" title="Ainda em andamento">'+fmtDurMin(c.correndoMin)+' …</span>':'—');
+  // Status
+  let st;
+  if(c.status==='finalizado')st=c.conf.comErro?'<span class="badge badge-bad" title="'+(c.conf.motivo||'')+'">Finalizado com erro</span>'+(c.conf.motivo?'<div style="'+sub+'">'+c.conf.motivo+'</div>':''):'<span class="badge badge-ok">Finalizado</span>';
+  else if(c.status==='separacao')st='<span class="badge badge-warn">Em separação</span>';
+  else st='<span class="badge badge-neu">Aguardando conferência</span>';
+  return'<td>'+sep+'</td><td>'+conf+'</td><td style="text-align:right">'+tot+'</td><td>'+st+'</td>';
+}
+function celulaConferencia(conf){
+  if(!conf)return'<span class="badge badge-warn">Pendente</span>';
+  const dt=conf.timestamp?dataBrasilia(conf.timestamp):null;
+  const hr=conf.timestamp?((dt&&dt!==conf.data?fmt(dt)+' ':'')+fmtHora(conf.timestamp)):'';
+  const badge=conf.comErro?'<span class="badge badge-bad" title="'+(conf.motivo||'')+'">Com erro'+(hr?' '+hr:'')+'</span>':'<span class="badge badge-ok">Conferido'+(hr?' '+hr:'')+'</span>';
+  const extra=['por '+conf.conferente];
+  if(conf.esperaMin!=null)extra.push('esperou '+fmtDurMin(conf.esperaMin));
+  return badge+'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+extra.join(' | ')+'</div>';
+}
 function fmtDurMin(min){
   if(min==null||isNaN(min))return'—';
   min=Math.max(0,Math.round(min));
@@ -1703,17 +1763,22 @@ function getRegistrosFiltrados(){
   const{filiais:fs,ini,fim,colab}=getFilter();
   return registros.filter(r=>(fs.size===0||fs.has(r.filial))&&(!ini||r.data>=ini)&&(!fim||r.data<=fim)&&(!colab||r.colaborador===colab));
 }
+function getConfsFiltradas(){
+  const{filiais:fs,ini,fim,colab}=getFilter();
+  return confirmacoes.filter(c=>(fs.size===0||fs.has(c.filial))&&(!ini||c.data>=ini)&&(!fim||c.data<=fim)&&(!colab||c.colaborador===colab));
+}
 function badgeStatusReg(r){
-  if(r.status==='em_separacao')return'<span class="badge badge-warn">Em separação</span>';
-  if(regForaPadrao(r))return'<span class="badge badge-bad">Fora do padrão</span>';
-  return'<span class="badge badge-ok">Finalizado</span>';
+  const atr=regAtrasado(r);
+  if(r.status==='em_separacao')return atr?'<span class="badge badge-bad">Em separação, atrasado</span>':'<span class="badge badge-warn">Em separação</span>';
+  if(regForaPadrao(r))return'<span class="badge badge-warn">Fora do padrão</span>';
+  return atr?'<span class="badge badge-bad">Atrasado</span>':'<span class="badge badge-ok">No prazo</span>';
 }
 function celulasTempoPedido(l){
   const mono='font-size:12px;font-family:\'IBM Plex Mono\',monospace';
   const r=l.registroId&&registrosMap[l.registroId];
   if(!r)return'<td style="'+mono+';color:var(--muted)">'+fmtHora(l.timestamp)+'</td><td style="color:var(--hint)">—</td><td style="text-align:right;color:var(--hint)">—</td>';
   const fimCell=r.status==='em_separacao'?'<span class="badge badge-warn">Em separação</span>':'<span style="'+mono+';color:var(--muted)">'+fmtHora(r.fim)+'</span>';
-  const cor=r.status==='em_separacao'?'#9C5A12':(regForaPadrao(r)?'#B3261E':'var(--text)');
+  const cor=regAtrasado(r)?'var(--red-t)':(r.status==='em_separacao'?'#9C5A12':(regForaPadrao(r)?'var(--muted)':'var(--green-t)'));
   const tit=(r.totalPedidos>1?'Tempo do registro ('+r.totalPedidos+' pedidos juntos)':'Tempo do registro');
   return'<td style="'+mono+';color:var(--muted)">'+fmtHora(r.inicio)+'</td><td>'+fimCell+'</td><td style="text-align:right;'+mono+';font-weight:500;color:'+cor+'" title="'+tit+'">'+fmtDurMin(durRegistro(r))+(r.totalPedidos>1?' <span style="color:var(--hint);font-weight:400">('+r.totalPedidos+')</span>':'')+'</td>';
 }
@@ -1727,34 +1792,81 @@ function cardMetricaTempo(){
   const regs=getRegistrosFiltrados();
   const st=statsTempo(regs);
   const abertos=regs.filter(r=>r.status==='em_separacao').length;
-  const sub=st.n?'média '+fmtDurMin(st.media)+' por registro':'sem registros finalizados';
-  return'<div class="metric-card"><div class="metric-lbl">Pneus por hora</div><div class="metric-val">'+(st.pnHora!=null?st.pnHora.toFixed(1).replace('.',','):'—')+'</div><div class="metric-sub">'+sub+(abertos?' | '+abertos+' em separação':'')+'</div></div>';
+  const sub='meta '+metaPneusHora+(st.n?' | média '+fmtDurMin(st.media)+' por registro':'');
+  return'<div class="metric-card"><div class="metric-lbl">Pneus por hora-homem</div><div class="metric-val" style="color:'+corPnHora(st.pnHora)+'">'+(st.pnHora!=null?st.pnHora.toFixed(1).replace('.',','):'—')+'</div><div class="metric-sub">'+sub+(abertos?' | '+abertos+' em separação':'')+'</div></div>';
+}
+function metaMinReg(r){return Math.max(5,Math.ceil((Number(r.totalPneus)||0)/metaPneusHora*60));}
+function regAtrasado(r){
+  const d=durRegistro(r);if(d==null)return false;
+  if(r.status==='em_separacao')return d>metaMinReg(r);
+  return r.status==='finalizado'&&!regForaPadrao(r)&&d>metaMinReg(r);
+}
+function corPnHora(v){return v==null?'var(--hint)':(v>=metaPneusHora?'var(--green-t)':'var(--red-t)');}
+function fmtPn(v){return v!=null?v.toFixed(1).replace('.',','):'—';}
+function atualizarBadgeTempos(){
+  const n=registros.filter(r=>r.status==='em_separacao'&&regAtrasado(r)).length;
+  const nav=[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.trim().startsWith('Tempos'));
+  if(!nav)return;
+  let b=nav.querySelector('.nav-alert');
+  if(!n){if(b)b.remove();return;}
+  if(!b){b=document.createElement('span');b.className='nav-alert';nav.appendChild(b);}
+  b.textContent=n;b.title=n+' lote(s) atrasado(s) agora';
 }
 function renderTempos(){
   const inp=document.getElementById('tp-max');if(inp&&document.activeElement!==inp)inp.value=tempoMaxMin;
+  const im=document.getElementById('tp-meta');if(im&&document.activeElement!==im)im.value=metaPneusHora;
   const regs=getRegistrosFiltrados();
   const mono="font-family:'IBM Plex Mono',monospace";
-  // Em separação agora (ignora filtro de data: mostra tudo que está aberto)
+  const R='text-align:right';
+  // ---- Em separação agora
   const{filiais:fs,colab}=getFilter();
-  const abertos=registros.filter(r=>r.status==='em_separacao'&&(fs.size===0||fs.has(r.filial))&&(!colab||r.colaborador===colab)).sort((a,b)=>a.inicio-b.inicio);
-  document.getElementById('tp-abertos-count').textContent=abertos.length+' aberto'+(abertos.length!==1?'s':'');
+  const abertos=registros.filter(r=>r.status==='em_separacao'&&(fs.size===0||fs.has(r.filial))&&(!colab||r.colaborador===colab))
+    .sort((a,b)=>(regAtrasado(b)-regAtrasado(a))||(a.inicio-b.inicio));
+  const nAtr=abertos.filter(regAtrasado).length;
+  document.getElementById('tp-abertos-count').innerHTML=abertos.length+' aberto'+(abertos.length!==1?'s':'')+(nAtr?' <span class="badge badge-bad" style="margin-left:4px">'+nAtr+' atrasado'+(nAtr!==1?'s':'')+'</span>':'');
   document.getElementById('tp-abertos-body').innerHTML=abertos.length?abertos.map(r=>{
-    const d=durRegistro(r),hoje=dataBrasilia(Date.now());
-    const cor=d>tempoMaxMin||r.data!==hoje?'#B3261E':'#9C5A12';
-    return'<tr><td><span class="badge badge-neu">'+r.filial+'</span></td><td>'+r.colaborador+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+(r.data!==hoje?fmt(r.data)+' ':'')+fmtHora(r.inicio)+'</td><td style="text-align:right">'+r.totalPedidos+'</td><td style="text-align:right">'+r.totalPneus+'</td><td style="text-align:right;'+mono+';font-weight:500;color:'+cor+'">'+fmtDurMin(d)+'</td></tr>';
-  }).join(''):'<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--hint)">Ninguém em separação agora</td></tr>';
-  // Por colaborador
-  const por={};
-  regs.forEach(r=>{const k=r.filial+'|'+r.colaborador;(por[k]=por[k]||{colab:r.colaborador,filial:r.filial,regs:[]}).regs.push(r);});
-  const linhas=Object.values(por).map(g=>({...g,st:statsTempo(g.regs),fora:g.regs.filter(regForaPadrao).length}))
+    const d=durRegistro(r),meta=metaMinReg(r),atr=d>meta,hoje=dataBrasilia(Date.now());
+    const pct=Math.min(100,d/meta*100);
+    return'<tr'+(atr?' style="background:var(--red-bg)"':'')+'><td><span class="badge badge-neu">'+r.filial+'</span></td><td style="font-weight:500">'+r.colaborador+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+(r.data!==hoje?fmt(r.data)+' ':'')+fmtHora(r.inicio)+'</td><td style="'+R+'">'+r.totalPedidos+'</td><td style="'+R+'">'+r.totalPneus+'</td><td style="'+R+';'+mono+';color:var(--muted)">'+meta+' min</td><td style="'+R+';'+mono+';font-weight:600;color:'+(atr?'var(--red-t)':'var(--text)')+'">'+fmtDurMin(d)+'</td><td style="min-width:150px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:7px;border-radius:4px;background:var(--border);overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(atr?'var(--red-t)':'var(--teal)')+'"></div></div>'+(atr?'<span class="badge badge-bad">Atrasado +'+fmtDurMin(d-meta)+'</span>':'<span class="badge badge-ok">No prazo</span>')+'</div></td></tr>';
+  }).join(''):'<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--hint)">Ninguém em separação agora</td></tr>';
+  // ---- Por filial
+  const confsPer=getConfsFiltradas();
+  const pf={};
+  regs.forEach(r=>{(pf[r.filial]=pf[r.filial]||{filial:r.filial,regs:[],colabs:new Set()}).regs.push(r);pf[r.filial].colabs.add(r.colaborador);});
+  confsPer.forEach(c=>{pf[c.filial]=pf[c.filial]||{filial:c.filial,regs:[],colabs:new Set()};});
+  const extra=g=>{const fin=g.regs.filter(r=>r.status==='finalizado'&&!regForaPadrao(r));const atr=fin.filter(regAtrasado).length;return{atr,noPrazo:fin.length?(fin.length-atr)/fin.length*100:null};};
+  const linF=Object.values(pf).map(g=>{const cs=confsPer.filter(c=>c.filial===g.filial);const esp=cs.filter(c=>c.esperaMin!=null);return{...g,st:statsTempo(g.regs),...extra(g),nConf:cs.length,espMed:esp.length?esp.reduce((a,c)=>a+Number(c.esperaMin),0)/esp.length:null};})
     .sort((a,b)=>(b.st.pnHora||-1)-(a.st.pnHora||-1));
-  document.getElementById('tp-colab-body').innerHTML=linhas.length?linhas.map((g,i)=>'<tr><td style="color:var(--hint)">'+(i+1)+'</td><td style="font-weight:500">'+g.colab+'</td><td><span class="badge badge-neu">'+g.filial+'</span></td><td style="text-align:right">'+g.st.n+'</td><td style="text-align:right">'+g.st.pn.toLocaleString('pt-BR')+'</td><td style="text-align:right;'+mono+'">'+fmtDurMin(g.st.min)+'</td><td style="text-align:right;'+mono+'">'+fmtDurMin(g.st.media)+'</td><td style="text-align:right;'+mono+'">'+(g.st.minPneu!=null?g.st.minPneu.toFixed(1).replace('.',','):'—')+'</td><td style="text-align:right;'+mono+';font-weight:600">'+(g.st.pnHora!=null?g.st.pnHora.toFixed(1).replace('.',','):'—')+'</td><td style="text-align:right">'+(g.fora?'<span class="badge badge-bad">'+g.fora+'</span>':'<span style="color:var(--hint)">0</span>')+'</td></tr>').join('')
+  const linhaF=(g,isTot)=>'<tr'+(isTot?' style="font-weight:600;background:var(--bg)"':' class="tp-fil-row" data-f="'+g.filial+'" style="cursor:pointer'+(tpFilial===g.filial?';background:rgba(102,158,161,.14)':'')+'"')+'><td>'+(isTot?'Total':'<span class="badge badge-neu">'+g.filial+'</span>')+'</td><td style="'+R+'">'+g.colabs.size+'</td><td style="'+R+'">'+g.st.n+'</td><td style="'+R+'">'+g.st.pn.toLocaleString('pt-BR')+'</td><td style="'+R+';'+mono+'">'+fmtDurMin(g.st.min)+'</td><td style="'+R+';'+mono+';font-weight:700;color:'+corPnHora(g.st.pnHora)+'">'+fmtPn(g.st.pnHora)+'</td><td style="'+R+'">'+(g.noPrazo!=null?Math.round(g.noPrazo)+'%':'—')+'</td><td style="'+R+'">'+(g.atr?'<span class="badge badge-bad">'+g.atr+'</span>':'<span style="color:var(--hint)">0</span>')+'</td><td style="'+R+'">'+g.nConf+'</td><td style="'+R+';'+mono+'">'+fmtDurMin(g.espMed)+'</td></tr>';
+  const espAll=confsPer.filter(c=>c.esperaMin!=null);
+  const totG={colabs:new Set(regs.map(r=>r.colaborador)),st:statsTempo(regs),...extra({regs}),nConf:confsPer.length,espMed:espAll.length?espAll.reduce((a,c)=>a+Number(c.esperaMin),0)/espAll.length:null};
+  document.getElementById('tp-filial-body').innerHTML=linF.length?linF.map(g=>linhaF(g,false)).join('')+(linF.length>1?linhaF(totG,true):'')
     :'<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--hint)">Nenhum registro no período</td></tr>';
-  // Registros
+  document.querySelectorAll('.tp-fil-row').forEach(tr=>tr.onclick=()=>{tpFilial=tpFilial===tr.dataset.f?'':tr.dataset.f;renderTempos();});
+  document.getElementById('tp-filtro-filial').innerHTML=tpFilial?'<span class="badge badge-neu" style="margin-left:8px;cursor:pointer" onclick="tpFilial=\'\';renderTempos()">'+tpFilial+' ✕</span>':'';
+  // ---- Por colaborador
+  const por={};
+  regs.filter(r=>!tpFilial||r.filial===tpFilial).forEach(r=>{const k=r.filial+'|'+r.colaborador;(por[k]=por[k]||{colab:r.colaborador,filial:r.filial,regs:[]}).regs.push(r);});
+  const linhas=Object.values(por).map(g=>({...g,st:statsTempo(g.regs),...extra(g),fora:g.regs.filter(regForaPadrao).length}))
+    .sort((a,b)=>(b.st.pnHora||-1)-(a.st.pnHora||-1));
+  document.getElementById('tp-colab-body').innerHTML=linhas.length?linhas.map((g,i)=>{
+    const abaixo=g.st.pnHora!=null&&g.st.pnHora<metaPneusHora;
+    return'<tr><td style="color:var(--hint)">'+(i+1)+'</td><td style="font-weight:500">'+g.colab+'</td><td><span class="badge badge-neu">'+g.filial+'</span></td><td style="'+R+'">'+g.st.n+'</td><td style="'+R+'">'+g.st.pn.toLocaleString('pt-BR')+'</td><td style="'+R+';'+mono+'">'+fmtDurMin(g.st.min)+'</td><td style="'+R+';'+mono+'">'+fmtDurMin(g.st.media)+'</td><td style="'+R+';'+mono+';font-weight:700;color:'+corPnHora(g.st.pnHora)+'">'+fmtPn(g.st.pnHora)+(abaixo?' <span style="font-weight:400;font-size:11px">▼</span>':'')+'</td><td style="'+R+'">'+(g.noPrazo!=null?Math.round(g.noPrazo)+'%':'—')+'</td><td style="'+R+'">'+(g.atr?'<span class="badge badge-bad">'+g.atr+'</span>':'<span style="color:var(--hint)">0</span>')+'</td><td style="'+R+'">'+(g.fora?'<span class="badge badge-warn">'+g.fora+'</span>':'<span style="color:var(--hint)">0</span>')+'</td></tr>';
+  }).join(''):'<tr><td colspan="11" style="text-align:center;padding:18px;color:var(--hint)">Nenhum registro no período</td></tr>';
+  // ---- Registros
   const lista=regs.slice().sort((a,b)=>(b.inicio||0)-(a.inicio||0));
   document.getElementById('tp-reg-count').textContent=lista.length+' registro'+(lista.length!==1?'s':'');
-  document.getElementById('tp-reg-body').innerHTML=lista.length?lista.slice(0,300).map(r=>'<tr><td>'+fmt(r.data)+'</td><td><span class="badge badge-neu">'+r.filial+'</span></td><td>'+r.colaborador+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+fmtHora(r.inicio)+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+(r.fim?(dataBrasilia(r.fim)!==dataBrasilia(r.inicio)?fmt(dataBrasilia(r.fim))+' ':'')+fmtHora(r.fim):'—')+'</td><td style="text-align:right;'+mono+';font-weight:500">'+fmtDurMin(durRegistro(r))+'</td><td style="text-align:right">'+r.totalPedidos+'</td><td style="text-align:right">'+r.totalPneus+'</td><td style="'+mono+';font-size:12px;color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.pedidos||[]).map(p=>p.num).join(', ')+'">'+(r.pedidos||[]).map(p=>p.num).join(', ')+'</td><td>'+badgeStatusReg(r)+'</td></tr>').join('')
-    :'<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--hint)">Nenhum registro no período</td></tr>';
+  document.getElementById('tp-reg-body').innerHTML=lista.length?lista.slice(0,300).map(r=>{
+    const atr=regAtrasado(r),d=durRegistro(r);
+    return'<tr'+(atr?' style="background:var(--red-bg)"':'')+'><td>'+fmt(r.data)+'</td><td><span class="badge badge-neu">'+r.filial+'</span></td><td>'+r.colaborador+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+fmtHora(r.inicio)+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+(r.fim?(dataBrasilia(r.fim)!==dataBrasilia(r.inicio)?fmt(dataBrasilia(r.fim))+' ':'')+fmtHora(r.fim):'—')+'</td><td style="'+R+';'+mono+';color:var(--muted)">'+metaMinReg(r)+' min</td><td style="'+R+';'+mono+';font-weight:600;color:'+(atr?'var(--red-t)':'var(--text)')+'">'+fmtDurMin(d)+'</td><td style="'+R+'">'+r.totalPedidos+'</td><td style="'+R+'">'+r.totalPneus+'</td><td style="'+mono+';font-size:12px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.pedidos||[]).map(p=>p.num).join(', ')+'">'+(r.pedidos||[]).map(p=>p.num).join(', ')+'</td><td>'+badgeStatusReg(r)+'</td></tr>';
+  }).join(''):'<tr><td colspan="11" style="text-align:center;padding:18px;color:var(--hint)">Nenhum registro no período</td></tr>';
+}
+async function salvarMeta(){
+  const v=Number(document.getElementById('tp-meta').value);
+  if(!v||v<1){document.getElementById('tp-meta').value=metaPneusHora;return;}
+  metaPneusHora=v;
+  try{await fbPut('configuracoes/metaPneusHora',v);showAlert('ok','Meta salva: '+v+' pneus por hora-homem');}catch(e){console.error(e);showAlert('err','Erro ao salvar a meta.');}
+  render();
 }
 async function salvarTempoMax(){
   const v=Number(document.getElementById('tp-max').value);
@@ -2127,7 +2239,7 @@ function exportarMes(){
   const wb=XLSX.utils.book_new();
   if(dados.length){const rows=[['Data','Hora','Filial','Colaborador','Pedidos','Pneus']];dados.sort((a,b)=>a.data.localeCompare(b.data)).forEach(l=>rows.push([fmt(l.data),fmtHora(l.timestamp),l.filial,l.colaborador,l.pedidos||0,l.pneus||0]));XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Lançamentos');}
   if(erros.length){const er=[['Data','Hora','Filial','Colaborador','Motivo','Nº Pedido','Obs','Conferente']];erros.forEach(l=>er.push([fmt(l.data),fmtHora(l.timestamp),l.filial,l.colaborador,l.motivo,l.pedidoErro||'',l.obs||'',l.conferente||'']));XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(er),'Erros');}
-  if(pedidos.length){const pr=[['Data','Hora','Filial','Colaborador','Nº Pedido','Qtd Pneus']];pedidos.forEach(l=>pr.push([fmt(l.data),fmtHora(l.timestamp),l.filial,l.colaborador,l.numPedido||'',l.qtdPedido||'']));XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pr),'Rastreamento');}
+  if(pedidos.length){const pr=[['Data','Filial','Colaborador','Nº Pedido','Qtd Pneus','Início separação','Fim separação','Tempo separação (min)','Hora da baixa','Conferente','Espera conferência (min)','Tempo total (min)','Status']];pedidos.forEach(l=>{const c=cicloPedido(l);const r=c.reg;pr.push([fmt(l.data),l.filial,l.colaborador,l.numPedido||'',l.qtdPedido||'',c.ini?fmtHora(c.ini):'',c.fimSep?fmtHora(c.fimSep):'',r&&durRegistro(r)!=null?Math.round(durRegistro(r)):'',c.conf&&c.conf.timestamp?fmt(dataBrasilia(c.conf.timestamp))+' '+fmtHora(c.conf.timestamp):'',c.conf?c.conf.conferente:'',c.conf&&c.conf.esperaMin!=null?c.conf.esperaMin:'',c.totalMin!=null?Math.round(c.totalMin):'',c.status==='finalizado'?(c.conf.comErro?'Finalizado com erro':'Finalizado'):(c.status==='separacao'?'Em separação':'Aguardando conferência')]);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pr),'Rastreamento');}
   const mes=new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(' ','_');
   XLSX.writeFile(wb,'produtividade_mauer_'+mes+'.xlsx');
   showAlert('ok','Exportado!');
