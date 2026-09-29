@@ -198,7 +198,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-09-28-conf-1';
+const APP_VERSAO='2026-09-29-conf-3';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
@@ -212,6 +212,7 @@ let pendentes=[], selecionado=null, motivoSel='', ocupado=false, historico=[];
 // ---------- Firebase (REST) ----------
 async function fbGet(p){const r=await fetch(`${FB_URL}/${p}.json`);if(!r.ok)throw new Error('GET '+r.status);return r.json();}
 async function fbPost(p,d){const r=await fetch(`${FB_URL}/${p}.json`,{method:'POST',body:JSON.stringify(d)});if(!r.ok)throw new Error('POST '+r.status);return r.json();}
+async function fbPatch(p,d){const r=await fetch(`${FB_URL}/${p}.json`,{method:'PATCH',body:JSON.stringify(d)});if(!r.ok)throw new Error('PATCH '+r.status);return r.json();}
 async function fbDelete(p){const r=await fetch(`${FB_URL}/${p}.json`,{method:'DELETE'});if(!r.ok)throw new Error('DELETE '+r.status);}
 async function fbQuery(path,field,opts){
   const qs=['orderBy='+encodeURIComponent(JSON.stringify(field))];
@@ -283,7 +284,7 @@ function infoPedido(p){
   const reg=p.registroId&&registrosMap[p.registroId];
   const emSep=reg&&reg.status==='em_separacao';
   const desde=reg&&reg.fim?reg.fim:(p.timestamp||0);
-  return{num:String(p.numPedido),filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:Number(p.qtdPedido||0),emSep,desde,loteQtd:reg?reg.totalPedidos:1,_key:p._key};
+  return{num:String(p.numPedido),filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:Number(p.qtdPedido||0),emSep,desde,loteQtd:reg?reg.totalPedidos:1,registroId:p.registroId||null,regInicio:reg?reg.inicio:null,_key:p._key};
 }
 function montarFila(){
   const vistos=new Set();
@@ -335,15 +336,39 @@ function selecionar(p){
 function limparSel(){selecionado=null;document.getElementById('sel').classList.remove('show');document.getElementById('num').value='';renderFila();}
 
 // ---------- baixa ----------
+// A conferência finaliza o PEDIDO individualmente dentro do lote do separador.
+// O lote só é encerrado quando todos os pedidos dele estiverem conferidos.
+async function finalizarPedidoNoLote(p,ts){
+  if(!p.registroId)return null;
+  const reg=registrosMap[p.registroId];
+  if(!reg||reg.status!=='em_separacao')return null;
+  const fin={...(reg.pedidosFinalizados||{}),[p.num]:ts};
+  const nums=(reg.pedidos||[]).map(x=>String(x.num));
+  const todos=nums.length>0&&nums.every(n=>fin[n]);
+  const dados={['pedidosFinalizados/'+p.num]:ts};
+  if(todos)Object.assign(dados,{fim:ts,duracaoMin:Math.round((ts-reg.inicio)/60000),status:'finalizado',finalizadoAuto:true,finalizadoPor:'conferencia'});
+  await fbPatch('registros/'+p.registroId,dados);
+  reg.pedidosFinalizados=fin;if(todos)Object.assign(reg,{fim:ts,status:'finalizado'});
+  return{id:p.registroId,num:p.num,fechouLote:todos};
+}
+async function desfazerPedidoNoLote(info){
+  if(!info)return;
+  const dados={['pedidosFinalizados/'+info.num]:null};
+  if(info.fechouLote)Object.assign(dados,{fim:null,duracaoMin:null,status:'em_separacao',finalizadoAuto:null,finalizadoPor:null});
+  await fbPatch('registros/'+info.id,dados);
+  const reg=registrosMap[info.id];
+  if(reg){if(reg.pedidosFinalizados)delete reg.pedidosFinalizados[info.num];if(info.fechouLote)Object.assign(reg,{fim:null,status:'em_separacao'});}
+}
 async function conferirOk(){
   if(!selecionado||ocupado)return;ocupado=true;
   const p=selecionado,btn=document.getElementById('btn-ok');btn.disabled=true;
   try{
     const now=Date.now();
-    const r=await fbPost('confirmacoes',{numPedido:p.num,filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:p.qtd,conferente:cfg.conferente,timestamp:now,esperaMin:p.emSep?null:Math.round((now-p.desde)/60000),comErro:false,origem:'tablet'});
+    const r=await fbPost('confirmacoes',{numPedido:p.num,filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:p.qtd,conferente:cfg.conferente,timestamp:now,esperaMin:p.emSep?0:Math.round((now-p.desde)/60000),comErro:false,origem:'tablet'});
     confs.push({numPedido:p.num,filial:p.filial,data:p.data,conferente:cfg.conferente,timestamp:now,_key:r.name});
+    let loteInfo=null;try{loteInfo=await finalizarPedidoNoLote(p,now);}catch(e){console.error(e);}
     beep(true);registrarHist({num:p.num,ok:true,t:now});
-    toast(`Pedido ${p.num} conferido`,'ok',async()=>{await fbDelete('confirmacoes/'+r.name);confs=confs.filter(c=>c._key!==r.name);historico=historico.filter(h=>h.t!==now);renderHist();montarFila();});
+    toast(`Pedido ${p.num} conferido`,'ok',async()=>{await fbDelete('confirmacoes/'+r.name);await desfazerPedidoNoLote(loteInfo);confs=confs.filter(c=>c._key!==r.name);historico=historico.filter(h=>h.t!==now);renderHist();montarFila();});
     limparSel();montarFila();
   }catch(e){console.error(e);msg('Não foi possível dar baixa. Confira a conexão e tente de novo.','err');beep(false);}
   btn.disabled=false;ocupado=false;focar();
@@ -363,10 +388,11 @@ async function salvarErro(){
   try{
     const now=Date.now();
     const e1=await fbPost('lancamentos',{data:p.data,filial:p.filial,colaborador:p.colaborador,motivo:motivoSel,pedidoErro:p.num,obs,conferente:cfg.conferente.toUpperCase(),pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0,timestamp:now,origem:'tablet'});
-    const c1=await fbPost('confirmacoes',{numPedido:p.num,filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:p.qtd,conferente:cfg.conferente,timestamp:now,esperaMin:p.emSep?null:Math.round((now-p.desde)/60000),comErro:true,motivo:motivoSel,origem:'tablet'});
+    const c1=await fbPost('confirmacoes',{numPedido:p.num,filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:p.qtd,conferente:cfg.conferente,timestamp:now,esperaMin:p.emSep?0:Math.round((now-p.desde)/60000),comErro:true,motivo:motivoSel,origem:'tablet'});
     confs.push({numPedido:p.num,filial:p.filial,data:p.data,conferente:cfg.conferente,timestamp:now,_key:c1.name});
+    let loteInfo=null;try{loteInfo=await finalizarPedidoNoLote(p,now);}catch(e){console.error(e);}
     beep(false);registrarHist({num:p.num,ok:false,motivo:motivoSel,t:now});
-    toast(`Erro registrado no pedido ${p.num}`,'err',async()=>{await Promise.all([fbDelete('lancamentos/'+e1.name),fbDelete('confirmacoes/'+c1.name)]);confs=confs.filter(c=>c._key!==c1.name);historico=historico.filter(h=>h.t!==now);renderHist();montarFila();});
+    toast(`Erro registrado no pedido ${p.num}`,'err',async()=>{await Promise.all([fbDelete('lancamentos/'+e1.name),fbDelete('confirmacoes/'+c1.name)]);await desfazerPedidoNoLote(loteInfo);confs=confs.filter(c=>c._key!==c1.name);historico=historico.filter(h=>h.t!==now);renderHist();montarFila();});
     limparSel();montarFila();
   }catch(e){console.error(e);msg('Não foi possível registrar o erro. Confira a conexão e tente de novo.','err');}
   btn.disabled=false;ocupado=false;focar();
