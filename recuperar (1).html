@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recuperação de filiais — Mauer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#131F3B;--orange:#E38A29;--bg:#F3F3F2;--border:#E7E6E6;--bs:#C9CCD3;--text:#131F3B;--muted:#5C6478;--hint:#8A91A1;--green:#2F7D5B;--green-bg:#E7F2EC;--red:#B3261E;--red-bg:#FBEAEA;--amber:#9C5A12;--amber-bg:#FBF0E4;--amber-b:#F0C999}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+.top{background:var(--navy);color:#fff;padding:14px 24px 18px;box-shadow:inset 0 -4px 0 var(--orange);display:flex;align-items:center;gap:14px}
+.top img{height:26px}.top b{font-weight:500;font-size:15px}
+.wrap{max-width:980px;margin:0 auto;padding:22px 18px 60px}
+.card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+h2{font-size:16px;margin-bottom:6px}
+.sub{color:var(--muted);margin-bottom:12px;line-height:1.5}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;color:var(--muted);text-align:left;background:var(--bg);padding:9px 10px;font-weight:500}
+td{padding:10px;border-top:1px solid var(--border);vertical-align:middle}
+.r{text-align:right}.mono{font-family:'IBM Plex Mono',monospace}
+.tag{display:inline-block;font-size:12px;font-weight:600;border-radius:20px;padding:2px 10px}
+.ok{background:var(--green-bg);color:var(--green)}.orf{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-b)}
+select{font-family:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--bs);border-radius:7px;min-width:190px;background:#fff}
+.btn{font-family:inherit;font-size:15px;font-weight:600;border:none;border-radius:8px;padding:12px 20px;cursor:pointer;background:var(--navy);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sec{background:#fff;color:var(--navy);border:1px solid var(--bs)}
+.passos{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.msg{padding:12px 14px;border-radius:8px;margin-top:12px;display:none;line-height:1.5}
+.msg.show{display:block}.msg.ok{background:var(--green-bg);color:var(--green)}.msg.err{background:var(--red-bg);color:var(--red)}.msg.info{background:var(--amber-bg);color:var(--amber)}
+#log{font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:12px;max-height:220px;overflow:auto;white-space:pre-wrap;display:none}
+.tot{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.tot div{flex:1;min-width:180px;background:var(--bg);border-radius:8px;padding:10px 12px}
+.tot span{display:block;font-size:12px;color:var(--muted)}.tot b{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="top"><img src="logo-mauer-branco.png" alt="Grupo Mauer" onerror="this.remove()"><b>Recuperação de filiais renomeadas</b></div>
+<div class="wrap">
+
+  <div class="card">
+    <h2>Situação atual</h2>
+    <div class="sub">Lista todos os nomes de filial encontrados nos lançamentos e cadastros. Os marcados como <span class="tag orf">fora do cadastro</span> são os dados que sumiram das telas depois da troca de nome.</div>
+    <div id="carregando" class="sub">Lendo o banco de dados...</div>
+    <div class="tot" id="totais" style="display:none"></div>
+    <div style="overflow:auto;margin-top:12px"><table id="tab" style="display:none"><thead><tr><th>Nome gravado</th><th>Situação</th><th class="r">Pneus</th><th class="r">Pedidos</th><th class="r">Colab.</th><th class="r">Lotes</th><th>Vincular a</th></tr></thead><tbody id="corpo"></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Recuperar</h2>
+    <div class="sub"><b>1.</b> Baixe o backup completo antes de qualquer alteração (fica salvo no seu computador).<br><b>2.</b> Confira o vínculo de cada nome antigo na tabela acima.<br><b>3.</b> Clique em Recuperar. Os dados passam para a filial atual e voltam a aparecer no gestor e no colaborador.</div>
+    <div class="passos">
+      <button class="btn sec" id="btn-backup" onclick="baixarBackup()" disabled>1. Baixar backup</button>
+      <button class="btn" id="btn-rec" onclick="recuperar()" disabled>3. Recuperar</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div id="log"></div>
+  </div>
+</div>
+<script>
+const FB='https://mauer-produtividade-default-rtdb.firebaseio.com';
+const NOS=['colaboradores','conferentes','lancamentos','registros','confirmacoes','filaPedidos','descarregamentos'];
+// Vínculos sugeridos (nome antigo -> nome atual)
+const SUGESTAO={'MAUER BAURU':'MAUER RP','MAUER ITAPEVI':'MAUER SP'};
+let dados={},filiaisAtuais=[],backupFeito=false,orfaos=[];
+
+async function get(p){const r=await fetch(FB+'/'+p+'.json');if(!r.ok)throw new Error('Leitura '+p+': '+r.status);return r.json();}
+async function patch(p,d){const r=await fetch(FB+'/'+p+'.json',{method:'PATCH',body:JSON.stringify(d)});if(!r.ok)throw new Error('Gravação '+p+': '+r.status);}
+function msg(t,tipo){const m=document.getElementById('msg');m.innerHTML=t;m.className='msg show '+tipo;}
+function log(t){const l=document.getElementById('log');l.style.display='block';l.textContent+=t+'\n';l.scrollTop=l.scrollHeight;}
+const fmt=n=>Number(n||0).toLocaleString('pt-BR');
+
+async function carregar(){
+  try{
+    const res=await Promise.all(['filiais','gestores',...NOS].map(get));
+    ['filiais','gestores',...NOS].forEach((n,i)=>dados[n]=res[i]||{});
+    filiaisAtuais=Object.values(dados.filiais).map(f=>f.nome).filter(Boolean).sort();
+    montar();
+    document.getElementById('btn-backup').disabled=false;
+  }catch(e){console.error(e);document.getElementById('carregando').innerHTML='<span style="color:var(--red)">Não foi possível ler o banco: '+e.message+'</span>';}
+}
+function montar(){
+  const est={};
+  const add=(f,campo,q)=>{if(!f)return;(est[f]=est[f]||{pneus:0,pedidos:0,colab:0,lotes:0})[campo]+=q;};
+  Object.values(dados.lancamentos).forEach(l=>{if(!l)return;if(!l.isPedido&&!l.isErro&&l.pneus)add(l.filial,'pneus',Number(l.pneus)||0);if(l.isPedido)add(l.filial,'pedidos',1);if(!est[l.filial])add(l.filial,'pneus',0);});
+  Object.values(dados.colaboradores).forEach(c=>c&&add(c.filial,'colab',1));
+  Object.values(dados.registros).forEach(r=>r&&add(r.filial,'lotes',1));
+  filiaisAtuais.forEach(f=>{if(!est[f])est[f]={pneus:0,pedidos:0,colab:0,lotes:0};});
+  const set=new Set(filiaisAtuais);
+  const nomes=Object.keys(est).sort((a,b)=>(set.has(a)-set.has(b))||a.localeCompare(b));
+  orfaos=nomes.filter(n=>!set.has(n));
+  const totAll=nomes.reduce((a,n)=>a+est[n].pneus,0),totOrf=orfaos.reduce((a,n)=>a+est[n].pneus,0);
+  document.getElementById('totais').style.display='flex';
+  document.getElementById('totais').innerHTML='<div><span>Pneus no banco (todas as filiais)</span><b>'+fmt(totAll)+'</b></div><div><span>Aparecendo no gestor hoje</span><b>'+fmt(totAll-totOrf)+'</b></div><div><span>Fora do cadastro (a recuperar)</span><b style="color:'+(totOrf?'var(--amber)':'var(--green)')+'">'+fmt(totOrf)+'</b></div>';
+  const opts=f=>'<option value="">Não mover</option>'+filiaisAtuais.map(x=>'<option'+(x===f?' selected':'')+'>'+x+'</option>').join('');
+  document.getElementById('corpo').innerHTML=nomes.map(n=>{const o=!set.has(n),e=est[n];
+    const sug=SUGESTAO[n.toUpperCase().trim()]&&filiaisAtuais.includes(SUGESTAO[n.toUpperCase().trim()])?SUGESTAO[n.toUpperCase().trim()]:'';
+    return '<tr'+(o?' style="background:#FFFBF5"':'')+'><td><b>'+n+'</b></td><td>'+(o?'<span class="tag orf">fora do cadastro</span>':'<span class="tag ok">no cadastro</span>')+'</td><td class="r mono">'+fmt(e.pneus)+'</td><td class="r mono">'+fmt(e.pedidos)+'</td><td class="r mono">'+e.colab+'</td><td class="r mono">'+e.lotes+'</td><td>'+(o?'<select data-antigo="'+n.replace(/"/g,'&quot;')+'">'+opts(sug)+'</select>':'')+'</td></tr>';}).join('');
+  document.getElementById('carregando').style.display='none';document.getElementById('tab').style.display='';
+  if(!orfaos.length)msg('Nenhum dado fora do cadastro. Está tudo vinculado a filiais atuais.','ok');
+}
+function baixarBackup(){
+  const blob=new Blob([JSON.stringify({geradoEm:new Date().toISOString(),dados},null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-mauer-produtividade-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  backupFeito=true;document.getElementById('btn-rec').disabled=!orfaos.length;
+  msg('Backup baixado. Guarde esse arquivo. Agora confira os vínculos na tabela e clique em Recuperar.','info');
+}
+async function recuperar(){
+  if(!backupFeito){msg('Baixe o backup primeiro.','err');return;}
+  const mapa={};document.querySelectorAll('select[data-antigo]').forEach(s=>{if(s.value)mapa[s.dataset.antigo]=s.value;});
+  const pares=Object.entries(mapa);
+  if(!pares.length){msg('Escolha em "Vincular a" para qual filial cada nome antigo vai.','err');return;}
+  if(!confirm('Confirmar recuperação?\n\n'+pares.map(([a,b])=>a+'  →  '+b).join('\n')))return;
+  const btn=document.getElementById('btn-rec');btn.disabled=true;btn.textContent='Recuperando...';
+  let total=0;
+  try{
+    for(const no of NOS){
+      const ent=Object.entries(dados[no]||{}).filter(([k,v])=>v&&mapa[v.filial]);
+      for(let i=0;i<ent.length;i+=400){
+        const upd={};ent.slice(i,i+400).forEach(([k,v])=>upd[k+'/filial']=mapa[v.filial]);
+        await patch(no,upd);
+      }
+      if(ent.length)log(no+': '+ent.length+' registro(s) vinculados');
+      total+=ent.length;
+    }
+    for(const [k,g] of Object.entries(dados.gestores||{})){
+      if(g&&Array.isArray(g.filiais)&&g.filiais.some(f=>mapa[f])){await patch('gestores/'+k,{filiais:[...new Set(g.filiais.map(f=>mapa[f]||f))]});log('gestor '+(g.nome||k)+': vínculo de filial atualizado');}
+    }
+    msg('<b>Recuperação concluída.</b> '+fmt(total)+' registro(s) vinculados às filiais atuais. Abra o gestor e confira os totais.','ok');
+    btn.textContent='Recuperado';
+    document.getElementById('carregando').style.display='';document.getElementById('tab').style.display='none';
+    await carregar();
+  }catch(e){console.error(e);msg('Parou com erro: '+e.message+'. O que já foi vinculado fica salvo; clique em Recuperar de novo para terminar.','err');btn.disabled=false;btn.textContent='3. Recuperar';}
+}
+carregar();
+</script>
+</body>
+</html>
