@@ -258,7 +258,24 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
   </div>
 
   <!-- TAB 3: CONFIRMAR -->
-  <div class="tab-content" id="tab-confirmar">
+  
+<!-- ===== ABA OCULTA DO ROBÔ: abre só com colaborador.html?robo=1 ===== -->
+<div class="tab-content" id="tab-robo">
+  <div class="card">
+    <div class="card-title"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/></svg>Aro | lançamento automático</div>
+    <div class="card-sub">Uso exclusivo do Aro, o robô de lançamentos. Liberado para: <b id="robo-liberadas"></b></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Filial</label><select id="robo-filial" onchange="roboCarregarColabs()"></select></div>
+      <div class="form-group"><label>Data</label><input type="date" id="robo-data"></div>
+      <div class="form-group full"><label>Colaborador (separador)</label><select id="robo-colab"></select></div>
+      <div class="form-group full"><label>Pedidos: um por linha, no formato numero;quantidade</label><textarea id="robo-pedidos" rows="6" placeholder="363582;16&#10;363583;8" style="font-family:var(--mono)"></textarea></div>
+    </div>
+    <button class="btn-submit" id="robo-enviar" style="margin-top:14px" onclick="roboEnviar()">Lançar e iniciar separação</button>
+    <div id="robo-status" data-state="pronto" style="margin-top:12px;padding:10px 12px;border-radius:var(--rsm);font-size:14px;font-weight:500;background:var(--bg);border:1px solid var(--border)">Aro pronto</div>
+    <pre id="robo-resultado" style="margin-top:10px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;max-height:240px;overflow:auto">{}</pre>
+  </div>
+</div>
+<div class="tab-content" id="tab-confirmar">
     <div class="card" style="margin-bottom:12px">
       <div class="card-title" style="margin-bottom:12px">
         <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -426,7 +443,7 @@ async function fbQuery(path,field,opts){
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 // Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-09-29-e';
+const APP_VERSAO='2026-09-29-g';
 async function checarVersao(){
   if(location.protocol==='file:')return false;
   try{
@@ -926,6 +943,7 @@ async function init() {
     await carregarConferentesData();
     await carregarHoje();
     setStatus('ok','Conectado ✓');
+    initRobo();
   } catch(e) {
     setStatus('err','Sem conexão');
     showAlert('err','Não foi possível conectar.');
@@ -1175,6 +1193,94 @@ async function fecharLotesJaConferidos(lista){
     }
     return restantes;
   }catch(e){console.error(e);return lista;}
+}
+
+
+// ===================== ROBÔ (aba oculta) =====================
+// Filiais liberadas para o robô. Para abrir para todas, coloque as outras aqui (ou use ['*']).
+const ROBO_FILIAIS=['MAUER SP'];
+const ROBO_PARAMS=new URLSearchParams(location.search);
+const MODO_ROBO=ROBO_PARAMS.has('robo');
+function roboFilialLiberada(nome){return ROBO_FILIAIS.includes('*')||ROBO_FILIAIS.some(f=>f.toUpperCase()===String(nome||'').toUpperCase());}
+function roboStatus(estado,msg,res){
+  const el=document.getElementById('robo-status');el.dataset.state=estado;el.textContent=msg;
+  const cores={ok:['var(--green-bg)','var(--green-t)','var(--green-b)'],erro:['var(--red-bg)','var(--red-t)','var(--red-b)'],processando:['var(--orange-bg)','var(--orange-t)','var(--orange-b)'],pronto:['var(--bg)','var(--muted)','var(--border)']}[estado]||[];
+  if(cores.length){el.style.background=cores[0];el.style.color=cores[1];el.style.borderColor=cores[2];}
+  if(res!==undefined){document.getElementById('robo-resultado').textContent=JSON.stringify(res,null,2);window.roboUltimoResultado=res;}
+}
+function roboCarregarColabs(){
+  const f=document.getElementById('robo-filial').value,sel=document.getElementById('robo-colab');
+  const cols=(f&&colaboradores[f])||[];
+  sel.innerHTML='<option value="">Selecione</option>'+cols.map(c=>'<option>'+c.nome+'</option>').join('');
+}
+function roboParsePedidos(txt){
+  const itens=[],erros=[];
+  String(txt||'').split(/[\n,]+/).map(l=>l.trim()).filter(Boolean).forEach(l=>{
+    const m=l.match(/^(\d+)\s*[;:\t ]\s*(\d+)$/);
+    if(!m){erros.push({linha:l,erro:'formato inválido (use numero;quantidade)'});return;}
+    const qt=parseInt(m[2]);if(!qt||qt<1){erros.push({linha:l,erro:'quantidade inválida'});return;}
+    itens.push({num:m[1],qt});
+  });
+  return{itens,erros};
+}
+async function roboEnviar(){
+  const btn=document.getElementById('robo-enviar');
+  if(btn.disabled)return window.roboUltimoResultado;
+  const filial=document.getElementById('robo-filial').value;
+  const colab=document.getElementById('robo-colab').value;
+  const data=document.getElementById('robo-data').value||getBrasiliaDateStr();
+  const res={ok:false,filial,colaborador:colab,data,lancados:[],duplicados:[],invalidos:[],registroId:null,anteriorFinalizado:null};
+  if(!filial||!roboFilialLiberada(filial)){res.erro='Filial não liberada para o Aro';roboStatus('erro',res.erro,res);return res;}
+  if(!colab){res.erro='Colaborador não informado ou não cadastrado na filial';roboStatus('erro',res.erro,res);return res;}
+  const {itens,erros}=roboParsePedidos(document.getElementById('robo-pedidos').value);
+  res.invalidos=erros;
+  if(!itens.length){res.erro='Nenhum pedido válido';roboStatus('erro',res.erro,res);return res;}
+  btn.disabled=true;roboStatus('processando','Lançando...');
+  try{
+    // duplicados: mesmo nº já lançado nos últimos 8 dias (qualquer filial) ou repetido na lista
+    const lim=new Date();lim.setDate(lim.getDate()-8);
+    const lanc=await fbQuery('lancamentos','data',{startAt:lim.toISOString().slice(0,10)});
+    const existentes=new Set(Object.values(lanc||{}).filter(l=>l.isPedido&&l.numPedido).map(l=>String(l.numPedido)));
+    const vistos=new Set(),lote=[];
+    itens.forEach(it=>{if(existentes.has(it.num)||vistos.has(it.num))res.duplicados.push(it.num);else{vistos.add(it.num);lote.push(it);}});
+    if(!lote.length){res.ok=true;res.aviso='Todos os pedidos já estavam lançados';roboStatus('ok',res.aviso,res);btn.disabled=false;return res;}
+    const inicio=getBrasiliaTimestamp();
+    // finaliza lote aberto do mesmo colaborador (mesma regra da tela manual)
+    const abertos=await fbQuery('registros','status',{equalTo:'em_separacao'});
+    const meus=Object.entries(abertos||{}).filter(([k,r])=>r.status==='em_separacao'&&r.filial===filial&&r.colaborador===colab);
+    for(const [k,r] of meus){await fbPatch('registros/'+k,{fim:inicio,duracaoMin:Math.round((inicio-r.inicio)/60000),status:'finalizado',finalizadoAuto:true,finalizadoPor:'aro'});res.anteriorFinalizado=k;}
+    const totalPneus=lote.reduce((a,p)=>a+p.qt,0);
+    const reg=await fbPost('registros',{data,filial,colaborador:colab,inicio,status:'em_separacao',pedidos:lote.map(p=>({num:p.num,qt:p.qt})),totalPedidos:lote.length,totalPneus,origem:'aro'});
+    const registroId=reg&&reg.name;if(!registroId)throw new Error('registro não criado');
+    const base={data,filial,colaborador:colab,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:inicio,registroId,origem:'aro'};
+    await Promise.all([
+      ...lote.map(p=>fbPost('lancamentos',{...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,pedidos:0,pneus:0})),
+      fbPost('lancamentos',{...base,isPedido:false,numPedido:'',qtdPedido:0,pedidos:lote.length,pneus:totalPneus})
+    ]);
+    Object.assign(res,{ok:true,registroId,lancados:lote.map(p=>p.num),totalPneus});
+    roboStatus('ok','Aro lançou '+lote.length+' pedido(s), '+totalPneus+' pneus'+(res.duplicados.length?' | '+res.duplicados.length+' duplicado(s) ignorado(s)':''),res);
+    document.getElementById('robo-pedidos').value='';
+  }catch(e){console.error(e);res.erro='Falha ao gravar: '+e.message;roboStatus('erro',res.erro,res);}
+  btn.disabled=false;return res;
+}
+function initRobo(){
+  if(!MODO_ROBO)return;
+  document.querySelector('.tabs')&&(document.querySelector('.tabs').style.display='none');
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-robo').classList.add('active');
+  const tt=document.querySelector('.tb-title');if(tt)tt.textContent='Aro';const ts=document.querySelector('.tb-sub');if(ts)ts.textContent='Robô de lançamentos';document.title='Aro | Mauer';
+  const lib=filiais.map(f=>f.nome).filter(roboFilialLiberada);
+  document.getElementById('robo-liberadas').textContent=lib.length?lib.join(', '):ROBO_FILIAIS.join(', ')+' (não encontrada no cadastro)';
+  const fs=document.getElementById('robo-filial');
+  fs.innerHTML=lib.map(n=>'<option>'+n+'</option>').join('');
+  const pf=ROBO_PARAMS.get('filial');if(pf&&lib.some(n=>n.toUpperCase()===pf.toUpperCase()))fs.value=lib.find(n=>n.toUpperCase()===pf.toUpperCase());
+  roboCarregarColabs();
+  document.getElementById('robo-data').value=ROBO_PARAMS.get('data')||getBrasiliaDateStr();
+  const pc=ROBO_PARAMS.get('colab');
+  if(pc){const op=[...document.getElementById('robo-colab').options].find(o=>o.value.toUpperCase()===pc.toUpperCase());if(op)document.getElementById('robo-colab').value=op.value;}
+  const pp=ROBO_PARAMS.get('pedidos');if(pp)document.getElementById('robo-pedidos').value=pp.split(',').join('\n');
+  roboStatus('pronto','Aro pronto',{});
+  if(ROBO_PARAMS.get('auto')==='1'&&pp)roboEnviar();
 }
 
 function fmtDur(ms){
