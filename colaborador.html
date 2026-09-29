@@ -135,14 +135,22 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
 .card-sep .card-title{color:var(--orange)}
 .card-sep .card-title svg{stroke:var(--orange)}
 .reg-list{display:flex;flex-direction:column;gap:10px}
-.reg-item{display:grid;grid-template-columns:1fr auto;grid-template-areas:"info timer" "btn btn";gap:4px 12px;padding:0;background:transparent;border:none}
+.reg-item{display:grid;grid-template-columns:1fr auto;grid-template-areas:"info timer" "meta meta" "btn btn";gap:4px 12px;padding:0;background:transparent;border:none}
 .reg-item+.reg-item{padding-top:12px;border-top:1px solid #2A3A5E}
 .reg-info{grid-area:info;min-width:0}
 .reg-head{font-size:15px;font-weight:600;color:#fff}
 .reg-sub{font-size:13px;color:#C3C9D6;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
 .reg-timer{grid-area:timer;font-family:var(--mono);font-size:28px;font-weight:500;color:#fff;text-align:right;align-self:start;line-height:1.1}
 .reg-item.late .reg-timer{color:var(--orange)}
-.reg-item.late .reg-head::after{content:'Tempo acima do normal';display:inline-block;margin-left:8px;font-size:11px;font-weight:600;color:var(--navy);background:var(--orange);padding:2px 8px;border-radius:20px;vertical-align:2px}
+.reg-item.late .reg-head::after{content:'Atrasado';display:inline-block;margin-left:8px;font-size:11px;font-weight:700;color:#fff;background:#D64545;padding:2px 9px;border-radius:20px;vertical-align:2px;letter-spacing:.03em}
+.reg-meta{grid-area:meta;display:flex;align-items:center;gap:10px;margin-top:8px}
+.reg-bar{flex:1;height:8px;background:#2A3A5E;border-radius:6px;overflow:hidden}
+.reg-bar>div{height:100%;background:var(--teal);border-radius:6px;transition:width .6s}
+.reg-meta-txt{font-family:var(--mono);font-size:12px;color:#C3C9D6;white-space:nowrap;min-width:92px;text-align:right}
+.reg-item.late .reg-bar>div{background:#D64545}
+.reg-item.late .reg-meta-txt{color:#FF9B9B;font-weight:600}
+.reg-item.late .reg-timer{color:#FF9B9B}
+.card-sep:has(.reg-item.late){box-shadow:0 0 0 3px #D64545}
 .btn-fin{grid-area:btn;margin-top:10px;width:100%;min-height:50px;padding:12px;background:var(--orange);color:var(--navy);border:none;border-radius:var(--rsm);font-family:var(--font);font-size:16px;font-weight:600;cursor:pointer}
 .btn-fin:hover{background:#EC9A40}
 .btn-fin:disabled{opacity:.6;cursor:not-allowed}
@@ -192,7 +200,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
       <div class="card-title"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Pedidos separados</div>
       <p class="card-sub">Adicione os pedidos um a um para rastreamento individual</p>
       <div class="pedido-add-row">
-        <div class="form-group" style="margin:0"><label>Nº do pedido</label><input type="text" id="p-num" placeholder="Ex: 299226" autocomplete="off" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter'){event.preventDefault();addPedido()}"></div>
+        <div class="form-group" style="margin:0"><label>Nº do pedido</label><input type="text" id="p-num" placeholder="Ex: 299226" autocomplete="off" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter'){event.preventDefault();if(document.getElementById('p-qt').value)addPedido();else if(this.value)document.getElementById('p-qt').focus();}"></div>
         <div class="form-group" style="margin:0"><label>Qtd pneus</label><input type="number" id="p-qt" min="1" placeholder="0" onkeydown="if(event.key==='Enter'){event.preventDefault();addPedido()}"></div>
         <button class="btn-add" id="add-pedido-btn" onclick="addPedido()">+ Add</button>
       </div>
@@ -417,7 +425,7 @@ async function fbQuery(path,field,opts){
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 // Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-09-28-f';
+const APP_VERSAO='2026-09-29-b';
 async function checarVersao(){
   if(location.protocol==='file:')return false;
   try{
@@ -433,7 +441,9 @@ async function checarVersao(){
 }
 setInterval(checarVersao,5*60000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checarVersao();});
-let registrosAbertos=[], tempoAlertaMin=60, regTimerInt=null;
+let registrosAbertos=[], metaPneusHora=50, regTimerInt=null;
+// Tempo-meta do lote: pneus ÷ meta (pneus/hora-homem), mínimo de 5 minutos
+function metaMinRegistro(r){return Math.max(5,Math.ceil((Number(r.totalPneus)||0)/metaPneusHora*60));}
 
 
 
@@ -1104,8 +1114,8 @@ async function carregarRegistrosAbertos(){
   const el=document.getElementById('reg-abertos');
   if(!filial||!colab){registrosAbertos=[];renderRegistrosAbertos();return;}
   try{
-    const [data,cfg]=await Promise.all([fbQuery('registros','status',{equalTo:'em_separacao'}),fbGet('configuracoes/tempoAlertaRegistro')]);
-    if(cfg&&Number(cfg)>0)tempoAlertaMin=Number(cfg);
+    const [data,cfg]=await Promise.all([fbQuery('registros','status',{equalTo:'em_separacao'}),fbGet('configuracoes/metaPneusHora')]);
+    if(cfg&&Number(cfg)>0)metaPneusHora=Number(cfg);
     // confere se o usuário não trocou de colaborador enquanto carregava
     if(document.getElementById('p-colab').value!==colab)return;
     registrosAbertos=data?Object.entries(data).map(([k,v])=>({...v,_key:k}))
@@ -1154,13 +1164,16 @@ function renderRegistrosAbertos(){
     const hIni=new Date(r.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
     const dIni=r.data&&r.data!==hoje?r.data.split('-').reverse().slice(0,2).join('/')+' ':'';
     const nums=(r.pedidos||[]).map(p=>p.num).join(', ');
-    const late=(now-r.inicio)>tempoAlertaMin*60000;
+    const meta=metaMinRegistro(r);
+    const late=(now-r.inicio)>meta*60000;
+    const pct=Math.min(100,(now-r.inicio)/(meta*600));
     return `<div class="reg-item${late?' late':''}" id="reg-${r._key}">
       <div class="reg-info">
         <div class="reg-head">${r.totalPedidos} pedido${r.totalPedidos!==1?'s':''}, ${r.totalPneus} pneus</div>
         <div class="reg-sub">Início ${dIni}${hIni}${nums?' | '+nums:''}</div>
       </div>
-      <div class="reg-timer" data-ini="${r.inicio}">${fmtDur(now-r.inicio)}</div>
+      <div class="reg-timer" data-ini="${r.inicio}" data-meta="${meta}">${fmtDur(now-r.inicio)}</div>
+      <div class="reg-meta"><div class="reg-bar"><div style="width:${pct}%"></div></div><span class="reg-meta-txt">${late?'Atrasado '+fmtDur(now-r.inicio-meta*60000):'Meta '+meta+' min'}</span></div>
       <button class="btn-fin" onclick="finalizarRegistro('${r._key}',this)">Finalizar</button>
     </div>`;
   }).join('');
@@ -1182,7 +1195,10 @@ function atualizarTimers(){
   document.querySelectorAll('.reg-timer[data-ini]').forEach(t=>{
     const ini=Number(t.dataset.ini);
     t.textContent=fmtDur(now-ini);
-    t.closest('.reg-item').classList.toggle('late',(now-ini)>tempoAlertaMin*60000);
+    const meta=Number(t.dataset.meta)||60,it=t.closest('.reg-item'),late=(now-ini)>meta*60000;
+    it.classList.toggle('late',late);
+    const bar=it.querySelector('.reg-bar>div');if(bar)bar.style.width=Math.min(100,(now-ini)/(meta*600))+'%';
+    const tx=it.querySelector('.reg-meta-txt');if(tx)tx.textContent=late?'Atrasado '+fmtDur(now-ini-meta*60000):'Meta '+meta+' min';
   });
 }
 
