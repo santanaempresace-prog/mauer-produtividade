@@ -143,6 +143,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
 .reg-timer{grid-area:timer;font-family:var(--mono);font-size:28px;font-weight:500;color:#fff;text-align:right;align-self:start;line-height:1.1}
 .reg-item.late .reg-timer{color:var(--orange)}
 .reg-item.late .reg-head::after{content:'Atrasado';display:inline-block;margin-left:8px;font-size:11px;font-weight:700;color:#fff;background:#D64545;padding:2px 9px;border-radius:20px;vertical-align:2px;letter-spacing:.03em}
+.reg-conf{display:inline-block;margin-top:6px;font-size:12px;font-weight:600;color:#8FD1B0;background:rgba(47,125,91,.25);border-radius:20px;padding:2px 10px}
 .reg-meta{grid-area:meta;display:flex;align-items:center;gap:10px;margin-top:8px}
 .reg-bar{flex:1;height:8px;background:#2A3A5E;border-radius:6px;overflow:hidden}
 .reg-bar>div{height:100%;background:var(--teal);border-radius:6px;transition:width .6s}
@@ -425,7 +426,7 @@ async function fbQuery(path,field,opts){
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 // Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-09-29-b';
+const APP_VERSAO='2026-09-29-e';
 async function checarVersao(){
   if(location.protocol==='file:')return false;
   try{
@@ -440,6 +441,8 @@ async function checarVersao(){
   return false;
 }
 setInterval(checarVersao,5*60000);
+// Atualiza o card "Em separação" (ex.: lote finalizado pela conferência)
+setInterval(()=>{const b=document.getElementById('btn-salvar-pedidos');if(b&&b.dataset.busy==='1')return;if(document.querySelector('.reg-undo'))return;if(document.getElementById('p-colab')?.value)carregarRegistrosAbertos();},30000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checarVersao();});
 let registrosAbertos=[], metaPneusHora=50, regTimerInt=null;
 // Tempo-meta do lote: pneus ÷ meta (pneus/hora-homem), mínimo de 5 minutos
@@ -846,7 +849,7 @@ async function renderRankingConferentes() {
     const lancs = lancData ? Object.values(lancData) : [];
 
     // Conferências de hoje nesta filial
-    const confHoje = confs.filter(c => c.filial===filial && c.data===today && c.conferente);
+    const confHoje = confs.filter(c => c.filial===filial && c.data===today && c.conferente && !c.baixaMassa);
     // Erros de hoje nesta filial (sem identificar autor)
     const errosHoje = lancs.filter(l => l.filial===filial && l.data===today && l.motivo && l.isErro);
 
@@ -878,7 +881,7 @@ async function renderRankingConferentesGeral() {
     const confs = confData ? Object.values(confData) : [];
     const lancs = lancData ? Object.values(lancData) : [];
 
-    const confFilt = confs.filter(c => c.conferente && (!ini||c.data>=ini) && (!fim||c.data<=fim));
+    const confFilt = confs.filter(c => c.conferente && !c.baixaMassa && (!ini||c.data>=ini) && (!fim||c.data<=fim));
     const errosFilt = lancs.filter(l => l.motivo && l.isErro && l.conferente && (!ini||l.data>=ini) && (!fim||l.data<=fim));
 
     const ag = {};
@@ -1121,6 +1124,7 @@ async function carregarRegistrosAbertos(){
     registrosAbertos=data?Object.entries(data).map(([k,v])=>({...v,_key:k}))
       .filter(r=>r.status==='em_separacao'&&r.filial===filial&&r.colaborador===colab)
       .sort((a,b)=>b.inicio-a.inicio):[];
+    registrosAbertos=await fecharLotesJaConferidos(registrosAbertos);
     renderRegistrosAbertos();
   }catch(e){console.error(e);el.innerHTML='<div class="reg-empty">Erro ao carregar registros.</div>';}
 }
@@ -1140,6 +1144,37 @@ function trocarIdent(){
   document.getElementById('ident-resumo').classList.remove('show');
   document.getElementById('ident-form').style.display='';
   document.getElementById('p-colab').focus();
+}
+
+// Cada pedido conferido é finalizado individualmente dentro do lote.
+// O lote só encerra quando todos os pedidos dele estiverem conferidos (fim = última conferência).
+async function fecharLotesJaConferidos(lista){
+  if(!lista.length)return lista;
+  try{
+    const ini=lista.map(r=>r.data).sort()[0];
+    const cs=await fbQuery('confirmacoes','data',{startAt:ini});
+    const arr=cs?Object.values(cs).filter(c=>!c.baixaMassa&&c.timestamp):[];
+    const restantes=[];
+    for(const r of lista){
+      const nums=(r.pedidos||[]).map(p=>String(p.num));
+      const fin={...(r.pedidosFinalizados||{})};
+      const novos={};
+      nums.forEach(n=>{
+        if(fin[n])return;
+        const c=arr.filter(c=>c.filial===r.filial&&c.data===r.data&&String(c.numPedido)===n&&c.timestamp>=r.inicio).sort((a,b)=>a.timestamp-b.timestamp)[0];
+        if(c){fin[n]=c.timestamp;novos['pedidosFinalizados/'+n]=c.timestamp;}
+      });
+      const todos=nums.length>0&&nums.every(n=>fin[n]);
+      if(todos){
+        const fim=Math.max(...nums.map(n=>fin[n]));
+        Object.assign(novos,{fim,duracaoMin:Math.round((fim-r.inicio)/60000),status:'finalizado',finalizadoAuto:true,finalizadoPor:'conferencia'});
+      }
+      if(Object.keys(novos).length){try{await fbPatch('registros/'+r._key,novos);}catch(e){console.error(e);}}
+      r.pedidosFinalizados=fin;
+      if(!todos)restantes.push(r);
+    }
+    return restantes;
+  }catch(e){console.error(e);return lista;}
 }
 
 function fmtDur(ms){
@@ -1163,7 +1198,9 @@ function renderRegistrosAbertos(){
   el.innerHTML=registrosAbertos.map(r=>{
     const hIni=new Date(r.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
     const dIni=r.data&&r.data!==hoje?r.data.split('-').reverse().slice(0,2).join('/')+' ':'';
-    const nums=(r.pedidos||[]).map(p=>p.num).join(', ');
+    const finMap=r.pedidosFinalizados||{};
+    const nums=(r.pedidos||[]).map(p=>finMap[p.num]?p.num+' ✓':p.num).join(', ');
+    const nConf=(r.pedidos||[]).filter(p=>finMap[p.num]).length;
     const meta=metaMinRegistro(r);
     const late=(now-r.inicio)>meta*60000;
     const pct=Math.min(100,(now-r.inicio)/(meta*600));
@@ -1171,6 +1208,7 @@ function renderRegistrosAbertos(){
       <div class="reg-info">
         <div class="reg-head">${r.totalPedidos} pedido${r.totalPedidos!==1?'s':''}, ${r.totalPneus} pneus</div>
         <div class="reg-sub">Início ${dIni}${hIni}${nums?' | '+nums:''}</div>
+        ${nConf?`<div class="reg-conf">${nConf} de ${r.totalPedidos} já conferido${nConf!==1?'s':''}</div>`:''}
       </div>
       <div class="reg-timer" data-ini="${r.inicio}" data-meta="${meta}">${fmtDur(now-r.inicio)}</div>
       <div class="reg-meta"><div class="reg-bar"><div style="width:${pct}%"></div></div><span class="reg-meta-txt">${late?'Atrasado '+fmtDur(now-r.inicio-meta*60000):'Meta '+meta+' min'}</span></div>
