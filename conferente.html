@@ -92,6 +92,19 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 .it.velho .it-esp{color:var(--orange-t);font-weight:600}
 .tag{display:inline-block;font-size:12px;font-weight:600;border-radius:20px;padding:2px 9px;margin-top:4px}
 .tag.sep{background:var(--orange-bg);color:var(--orange-t);border:1px solid var(--orange-b)}
+.tag.dup{background:var(--red);color:#fff;border:1px solid var(--red)}
+.it.dup{border-left-color:var(--red)}
+.sel-dup{display:none;background:var(--red-bg);border:2px solid var(--red);color:var(--red);border-radius:var(--rs);padding:10px 12px;margin-bottom:12px;font-size:15px;font-weight:600}
+.sel-dup.show{display:block}
+.dup-ov{position:fixed;inset:0;z-index:60;background:rgba(179,38,30,.94);display:none;align-items:center;justify-content:center;padding:24px}
+.dup-ov.show{display:flex;animation:dupPisca .35s ease 3}
+@keyframes dupPisca{50%{background:rgba(120,15,10,.97)}}
+.dup-box{background:#fff;border-radius:var(--r);max-width:560px;width:100%;padding:24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dup-t{font-size:28px;font-weight:700;color:var(--red);letter-spacing:.02em}
+.dup-n{font-family:var(--mono);font-size:44px;font-weight:500;margin:6px 0 10px;color:var(--text)}
+.dup-l{text-align:left;font-size:16px;color:var(--text);background:var(--bg);border-radius:var(--rs);padding:10px 14px;margin:0 0 18px;list-style:none}
+.dup-l li{padding:6px 0;border-bottom:1px solid var(--border)}.dup-l li:last-child{border:none}
+.dup-b{width:100%;min-height:72px;border:none;border-radius:var(--r);background:var(--red);color:#fff;font-size:21px;font-weight:600}
 .tag.dt{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
 .vazio{padding:40px 20px;text-align:center;color:var(--muted);font-size:16px}
 .vazio b{display:block;font-size:18px;color:var(--green);margin-bottom:4px}
@@ -137,6 +150,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
   <div class="col">
     <div class="card sel" id="sel">
       <div id="sel-main">
+        <div class="sel-dup" id="sel-dup"></div>
         <div class="sel-top">
           <div class="sel-num" id="sel-num"></div>
           <div class="sel-sep">separado por <b id="sel-colab"></b></div>
@@ -184,6 +198,15 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
   </div>
 </div>
 
+<div class="dup-ov" id="dup-ov" role="alertdialog" aria-modal="true">
+  <div class="dup-box">
+    <div class="dup-t" id="dup-t">PEDIDO DUPLICADO</div>
+    <div class="dup-n" id="dup-n"></div>
+    <ul class="dup-l" id="dup-l"></ul>
+    <button class="dup-b" id="dup-b" onclick="fecharDup()">Entendi</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"><span id="toast-t"></span><button id="toast-undo">Desfazer</button></div>
 
 <div class="setup" id="setup">
@@ -198,15 +221,17 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-09-29-conf-3';
+const APP_VERSAO='2026-09-30-conf-dup-1';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
 const ESPERA_ALERTA_MIN=30; // pedido esperando mais que isso fica destacado
+const DIAS_DUP=30;          // quantos dias para trás o app procura pedido repetido
 
 let cfg={filial:'',conferente:''};
 let filiais=[], conferentesPorFilial={};
 let pedidos=[], confs=[], registrosMap={};
+let histLanc=[], histConfs=[], histCarregadoEm=0, dupAberto=false;
 let pendentes=[], selecionado=null, motivoSel='', ocupado=false, historico=[];
 
 // ---------- Firebase (REST) ----------
@@ -276,10 +301,51 @@ async function carregar(){
     pedidos=l?Object.entries(l).map(([k,v])=>({...v,_key:k})).filter(x=>x.isPedido&&x.numPedido):[];
     confs=c?Object.entries(c).map(([k,v])=>({...v,_key:k})):[];
     registrosMap={};if(r)Object.entries(r).forEach(([k,v])=>registrosMap[k]=v);
+    if(Date.now()-histCarregadoEm>5*60000)await carregarHist();
     montarFila();setDot('ok');
   }catch(e){console.error(e);setDot('err');}
 }
-function confDe(num,filial,data){return confs.find(c=>String(c.numPedido)===String(num)&&c.filial===filial&&c.data===data);}
+// ---------- anti-duplicado ----------
+function normPed(x){return String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');}
+async function carregarHist(){
+  const ini=hojeStr(DIAS_DUP);
+  const [l,c]=await Promise.all([fbQuery('lancamentos','data',{startAt:ini}),fbQuery('confirmacoes','data',{startAt:ini})]);
+  histLanc=l?Object.entries(l).map(([k,v])=>({...v,_key:k})).filter(x=>x.isPedido&&x.numPedido):[];
+  histConfs=c?Object.entries(c).map(([k,v])=>({...v,_key:k})):[];
+  histCarregadoEm=Date.now();
+}
+// Junta histórico + dados recentes sem repetir o mesmo registro
+function uniao(a,b){const m=new Map();[...a,...b].forEach(x=>m.set(x._key,x));return[...m.values()];}
+// Tudo que existe desse número: lançamentos dos separadores/Aro e baixas já dadas
+function analisarDup(num){
+  const n=normPed(num);
+  const lancs=uniao(histLanc,pedidos).filter(x=>normPed(x.numPedido)===n);
+  const bx=uniao(histConfs,confs).filter(c=>normPed(c.numPedido)===n).sort((a,b)=>a.timestamp-b.timestamp);
+  return{n,lancs,bx,lancDup:lancs.length>1,jaConf:bx.length>0,dup:lancs.length>1||bx.length>0};
+}
+function linhasDup(a){
+  const L=[];
+  if(a.lancDup)a.lancs.slice().sort((x,y)=>(x.timestamp||0)-(y.timestamp||0)).forEach((x,i)=>L.push(`${i+1}º lançamento: ${x.colaborador||'sem separador'}, ${fmtData(x.data)}${x.timestamp?' às '+hora(x.timestamp):''}${x.filial&&x.filial!==cfg.filial?' ('+x.filial+')':''}`));
+  a.bx.forEach(c=>L.push(`Já conferido por ${c.conferente||'?'} em ${fmtData(c.data)} às ${hora(c.timestamp)}${c.comErro?' (com erro)':''}`));
+  return L;
+}
+function alertaDup(titulo,num,linhas){
+  dupAberto=true;
+  document.getElementById('dup-t').textContent=titulo;
+  document.getElementById('dup-n').textContent=num;
+  document.getElementById('dup-l').innerHTML=linhas.map(t=>'<li>'+esc(t)+'</li>').join('');
+  document.getElementById('dup-ov').classList.add('show');
+  alarme();
+  setTimeout(()=>document.getElementById('dup-b').focus(),50);
+}
+function fecharDup(){dupAberto=false;document.getElementById('dup-ov').classList.remove('show');focar();}
+function alarme(){
+  try{navigator.vibrate&&navigator.vibrate([200,100,200,100,400]);}catch(e){}
+  try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();const t0=audioCtx.currentTime;
+    [0,.28,.56].forEach(d=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='square';o.frequency.value=220;g.gain.value=.12;o.connect(g);g.connect(audioCtx.destination);o.start(t0+d);o.stop(t0+d+.2);});}catch(e){}
+}
+// Pedido com baixa em qualquer dia sai da fila (evita conferir de novo uma cópia lançada em outro dia)
+function confDe(num,filial){return confs.find(c=>normPed(c.numPedido)===normPed(num)&&c.filial===filial);}
 function infoPedido(p){
   const reg=p.registroId&&registrosMap[p.registroId];
   const emSep=reg&&reg.status==='em_separacao';
@@ -288,7 +354,7 @@ function infoPedido(p){
 }
 function montarFila(){
   const vistos=new Set();
-  pendentes=pedidos.filter(p=>p.filial===cfg.filial).filter(p=>{const k=p.numPedido+'|'+p.data;if(vistos.has(k))return false;vistos.add(k);return !confDe(p.numPedido,p.filial,p.data);})
+  pendentes=pedidos.filter(p=>p.filial===cfg.filial).filter(p=>{const k=normPed(p.numPedido);if(vistos.has(k))return false;vistos.add(k);return !confDe(p.numPedido,p.filial,p.data);})
     .map(infoPedido).sort((a,b)=>(a.emSep-b.emSep)||(a.desde-b.desde));
   renderFila();
 }
@@ -299,9 +365,10 @@ function renderFila(){
   el.innerHTML=pendentes.map((p,i)=>{
     const esp=(now-p.desde)/60000,velho=!p.emSep&&esp>ESPERA_ALERTA_MIN;
     const on=selecionado&&selecionado.num===p.num&&selecionado.data===p.data;
-    return `<button class="it${on?' on':''}${velho?' velho':''}" data-i="${i}">
+    const d=analisarDup(p.num),tagDup=d.jaConf?'Já conferido':d.lancDup?'Lançado '+d.lancs.length+'x':'';
+    return `<button class="it${on?' on':''}${velho?' velho':''}${tagDup?' dup':''}" data-i="${i}">
       <div><div class="it-num">${esc(p.num)}</div><div class="it-sub">${esc(p.colaborador)}, ${p.qtd} pneu${p.qtd!==1?'s':''}</div></div>
-      <div class="it-r">${p.emSep?'<span class="tag sep">Em separação</span>':`<div class="it-esp">${fmtMin(esp)}</div>`}${p.data!==hoje?`<div><span class="tag dt">${fmtData(p.data)}</span></div>`:''}</div>
+      <div class="it-r">${p.emSep?'<span class="tag sep">Em separação</span>':`<div class="it-esp">${fmtMin(esp)}</div>`}${p.data!==hoje?`<div><span class="tag dt">${fmtData(p.data)}</span></div>`:''}${tagDup?`<div><span class="tag dup">${tagDup}</span></div>`:''}</div>
     </button>`;}).join('');
 }
 document.getElementById('fila').addEventListener('click',e=>{const b=e.target.closest('.it');if(!b)return;selecionar(pendentes[Number(b.dataset.i)]);});
@@ -311,12 +378,20 @@ async function buscar(){
   const num=document.getElementById('num').value.replace(/\D/g,'');
   document.getElementById('num').value=num;
   if(!num){msg('Digite ou bipe o número do pedido.','warn');focar();return;}
-  let p=pendentes.find(x=>x.num===num);
-  if(!p){await carregar();p=pendentes.find(x=>x.num===num);}
-  if(p){selecionar(p);return;}
-  const outro=pedidos.find(x=>String(x.numPedido)===num);
-  const jaConf=confs.filter(c=>String(c.numPedido)===num&&c.filial===cfg.filial).sort((a,b)=>b.timestamp-a.timestamp)[0];
-  if(jaConf){msg(`Pedido ${num} já foi conferido por ${jaConf.conferente} às ${hora(jaConf.timestamp)}.`,'ok');beep(true);}
+  let p=pendentes.find(x=>normPed(x.num)===normPed(num));
+  if(!p){await carregar();p=pendentes.find(x=>normPed(x.num)===normPed(num));}
+  const dup=analisarDup(num);
+  if(p){
+    selecionar(p);
+    if(dup.dup)alertaDup(dup.jaConf?'PEDIDO JÁ CONFERIDO':'PEDIDO LANÇADO '+dup.lancs.length+' VEZES',p.num,linhasDup(dup));
+    return;
+  }
+  const outro=pedidos.find(x=>normPed(x.numPedido)===normPed(num));
+  if(dup.jaConf){
+    alertaDup('PEDIDO JÁ CONFERIDO',num,linhasDup(dup));
+    msg(`Pedido ${num} já tem baixa. Não confira de novo.`,'err');
+    document.getElementById('num').value='';limparSel();return;
+  }
   else if(outro&&outro.filial!==cfg.filial){msg(`Pedido ${num} é da filial ${outro.filial}, não desta.`,'err');beep(false);}
   else{msg(`Pedido ${num} não foi registrado pelos separadores nos últimos ${DIAS_FILA} dias.`,'err');beep(false);}
   document.getElementById('num').value='';limparSel();focar();
@@ -328,6 +403,8 @@ function selecionar(p){
   document.getElementById('sel-colab').textContent=p.colaborador;
   const esp=(Date.now()-p.desde)/60000;
   document.getElementById('sel-info').textContent=`${p.qtd} pneu${p.qtd!==1?'s':''}`+(p.data!==hojeStr()?`, separado em ${fmtData(p.data)}`:'')+(p.emSep?', lote ainda em separação':`, aguardando há ${fmtMin(esp)}`);
+  const dp=analisarDup(p.num),fx=document.getElementById('sel-dup');
+  fx.innerHTML=dp.dup?'DUPLICADO: '+linhasDup(dp).map(esc).join('<br>'):'';fx.classList.toggle('show',dp.dup);
   document.getElementById('sel').classList.add('show');
   document.getElementById('sel-main').style.display='';document.getElementById('sel-erro').style.display='none';
   renderFila();
@@ -363,6 +440,7 @@ async function conferirOk(){
   if(!selecionado||ocupado)return;ocupado=true;
   const p=selecionado,btn=document.getElementById('btn-ok');btn.disabled=true;
   try{
+    if(await jaTemBaixaAgora(p)){btn.disabled=false;ocupado=false;return;}
     const now=Date.now();
     const r=await fbPost('confirmacoes',{numPedido:p.num,filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:p.qtd,conferente:cfg.conferente,timestamp:now,esperaMin:p.emSep?0:Math.round((now-p.desde)/60000),comErro:false,origem:'tablet'});
     confs.push({numPedido:p.num,filial:p.filial,data:p.data,conferente:cfg.conferente,timestamp:now,_key:r.name});
@@ -372,6 +450,16 @@ async function conferirOk(){
     limparSel();montarFila();
   }catch(e){console.error(e);msg('Não foi possível dar baixa. Confira a conexão e tente de novo.','err');beep(false);}
   btn.disabled=false;ocupado=false;focar();
+}
+// Consulta o servidor na hora da baixa: se outro tablet já conferiu esse pedido nesse dia, acusa e não grava de novo
+async function jaTemBaixaAgora(p){
+  let c=null;try{c=await fbQuery('confirmacoes','data',{equalTo:p.data});}catch(e){return false;}
+  const ex=Object.entries(c||{}).map(([k,v])=>({...v,_key:k})).filter(x=>normPed(x.numPedido)===normPed(p.num)&&x.filial===p.filial);
+  if(!ex.length)return false;
+  ex.forEach(x=>{if(!confs.some(y=>y._key===x._key))confs.push(x);});
+  const d=analisarDup(p.num);
+  alertaDup('PEDIDO JÁ CONFERIDO',p.num,linhasDup(d));
+  limparSel();montarFila();return true;
 }
 function abrirErro(){
   motivoSel='';document.getElementById('obs').value='';
@@ -386,6 +474,7 @@ async function salvarErro(){
   ocupado=true;const p=selecionado,btn=document.getElementById('btn-salvar-erro');btn.disabled=true;
   const obs=document.getElementById('obs').value.trim();
   try{
+    if(await jaTemBaixaAgora(p)){btn.disabled=false;ocupado=false;return;}
     const now=Date.now();
     const e1=await fbPost('lancamentos',{data:p.data,filial:p.filial,colaborador:p.colaborador,motivo:motivoSel,pedidoErro:p.num,obs,conferente:cfg.conferente.toUpperCase(),pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0,timestamp:now,origem:'tablet'});
     const c1=await fbPost('confirmacoes',{numPedido:p.num,filial:p.filial,data:p.data,colaborador:p.colaborador,qtd:p.qtd,conferente:cfg.conferente,timestamp:now,esperaMin:p.emSep?0:Math.round((now-p.desde)/60000),comErro:true,motivo:motivoSel,origem:'tablet'});
@@ -412,7 +501,7 @@ function toast(t,tipo,desfazer){
 
 // ---------- entrada: teclado na tela e leitor ----------
 const numEl=document.getElementById('num');
-function focar(){if(!document.getElementById('setup').classList.contains('show')&&document.activeElement!==document.getElementById('obs'))numEl.focus({preventScroll:true});}
+function focar(){if(dupAberto)return;if(!document.getElementById('setup').classList.contains('show')&&document.activeElement!==document.getElementById('obs'))numEl.focus({preventScroll:true});}
 document.getElementById('pad').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.k==='apagar')numEl.value=numEl.value.slice(0,-1);
@@ -422,7 +511,8 @@ document.getElementById('pad').addEventListener('click',e=>{
 });
 numEl.addEventListener('input',()=>{numEl.value=numEl.value.replace(/\D/g,'').slice(0,12);});
 numEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();buscar();}});
-document.addEventListener('click',e=>{if(!e.target.closest('textarea,.setup,.toast'))setTimeout(focar,0);});
+document.addEventListener('click',e=>{if(!e.target.closest('textarea,.setup,.toast,.dup-ov'))setTimeout(focar,0);});
+document.addEventListener('keydown',e=>{if(dupAberto&&(e.key==='Enter'||e.key==='Escape')){e.preventDefault();fecharDup();}},true);
 
 // ---------- tela ligada, relógio, versão ----------
 let wakeLock=null;
