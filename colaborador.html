@@ -1231,7 +1231,7 @@ async function fecharLotesJaConferidos(lista){
 
 // ===================== ROBÔ (aba oculta) =====================
 // Filiais liberadas para o robô. Para abrir para todas, coloque as outras aqui (ou use ['*']).
-const ROBO_FILIAIS=['MAUER SP','MAUER RP'];
+const ROBO_FILIAIS=['MAUER SP','MAUER RP','RIBEIRAO PRETO','RIBEIRÃO PRETO','RIB PRETO','R PRETO'];
 const ROBO_PARAMS=new URLSearchParams(location.search);
 const MODO_ROBO=ROBO_PARAMS.has('robo');
 // Compara sem acento, espaço extra e sem o prefixo MAUER ("Mauer  RP", "MAUER RP" e "RP" contam como a mesma filial)
@@ -1339,6 +1339,8 @@ function initRobo(){
   const tt=document.querySelector('.tb-title');if(tt)tt.textContent='Aro';const ts=document.querySelector('.tb-sub');if(ts)ts.textContent='Robô de lançamentos';document.title='Aro | Mauer';
   const lib=filiais.map(f=>f.nome).filter(roboFilialLiberada);
   document.getElementById('robo-liberadas').textContent=lib.length?lib.join(', '):ROBO_FILIAIS.join(', ')+' (não encontrada no cadastro)';
+  {const fora=filiais.map(f=>f.nome).filter(n=>!roboFilialLiberada(n));const el=document.getElementById('robo-liberadas');
+   if(fora.length){const d=document.createElement('div');d.style.cssText='margin-top:6px;font-size:12px;color:var(--hint);font-weight:400';d.textContent='Não liberadas: '+fora.join(', ');el.parentNode.appendChild(d);}}
   const fs=document.getElementById('robo-filial');
   fs.innerHTML=lib.map(n=>'<option>'+n+'</option>').join('');
   const pf=ROBO_PARAMS.get('filial');if(pf&&lib.some(n=>n.toUpperCase()===pf.toUpperCase()))fs.value=lib.find(n=>n.toUpperCase()===pf.toUpperCase());
