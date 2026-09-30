@@ -293,7 +293,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
     </div>
     <button class="btn-submit" id="robo-enviar" style="margin-top:14px" onclick="roboEnviar()">Enviar para a fila de separação</button>
     <div id="robo-status" data-state="pronto" style="margin-top:12px;padding:10px 12px;border-radius:var(--rsm);font-size:14px;font-weight:500;background:var(--bg);border:1px solid var(--border)">Aro pronto</div>
-    <div style="margin-top:14px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center">Fila atual da filial <button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="roboMostrarFila()">Atualizar</button></div>
+    <div style="margin-top:14px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center">Fila atual da filial <button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="roboMostrarFila()">Atualizar</button> <button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="roboLimparDuplicados()">Limpar duplicados</button></div>
     <div id="robo-fila" style="margin-top:6px;border:1px solid var(--border);border-radius:var(--rsm);max-height:220px;overflow:auto;font-size:13px"></div>
     <pre id="robo-resultado" style="margin-top:10px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;max-height:240px;overflow:auto">{}</pre>
   </div>
@@ -1256,9 +1256,18 @@ function roboParsePedidos(txt){
   });
   return{itens,erros};
 }
+// ===== Anti-duplicado do Aro =====
+// Quantos dias para trás o Aro olha nos lançamentos manuais para barrar pedido já separado
+const ROBO_DIAS_DUPLICADO=30;
+// Normaliza o número do pedido: só dígitos, sem zeros à esquerda ("0363582 " -> "363582")
+function normPed(x){const d=String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');return d;}
+// Chave fixa por pedido: o mesmo pedido cai sempre no mesmo lugar da fila, então nunca existem dois
+function roboChave(num){return 'aro_'+normPed(num);}
+function roboDataLimite(dias){return new Date(Date.now()-dias*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
+let roboTravado=false;
 async function roboEnviar(){
   const btn=document.getElementById('robo-enviar');
-  if(btn.disabled)return window.roboUltimoResultado;
+  if(roboTravado||btn.disabled)return window.roboUltimoResultado;
   const filial=document.getElementById('robo-filial').value;
   const data=document.getElementById('robo-data').value||getBrasiliaDateStr();
   const res={ok:false,filial,data,enfileirados:[],duplicados:[],invalidos:[]};
@@ -1266,26 +1275,49 @@ async function roboEnviar(){
   const {itens,erros}=roboParsePedidos(document.getElementById('robo-pedidos').value);
   res.invalidos=erros;
   if(!itens.length){res.erro='Nenhum pedido válido';roboStatus('erro',res.erro,res);return res;}
-  btn.disabled=true;roboStatus('processando','Enviando para a fila...');
+  roboTravado=true;btn.disabled=true;roboStatus('processando','Conferindo duplicados...');
   try{
-    // duplicado: já separado nos últimos 8 dias, já na fila, ou repetido na lista
-    const lim=new Date();lim.setDate(lim.getDate()-8);const limStr=lim.toISOString().slice(0,10);
-    const [lanc,fila]=await Promise.all([fbQuery('lancamentos','data',{startAt:limStr}),fbQuery('filaPedidos','data',{startAt:limStr})]);
+    // Tudo que já existe: lançamentos (separados à mão ou pelo Aro) e a fila inteira do Aro
+    const limStr=roboDataLimite(ROBO_DIAS_DUPLICADO);
+    const [lanc,fila]=await Promise.all([fbQuery('lancamentos','data',{startAt:limStr}),fbGet('filaPedidos')]);
     const existentes=new Set([
-      ...Object.values(lanc||{}).filter(l=>l.isPedido&&l.numPedido).map(l=>String(l.numPedido)),
-      ...Object.values(fila||{}).filter(f=>f.status!=='cancelado').map(f=>String(f.num))]);
-    const vistos=new Set(),novos=[];
-    itens.forEach(it=>{if(existentes.has(it.num)||vistos.has(it.num))res.duplicados.push(it.num);else{vistos.add(it.num);novos.push(it);}});
+      ...Object.values(lanc||{}).filter(l=>l&&l.isPedido&&l.numPedido).map(l=>normPed(l.numPedido)),
+      ...Object.values(fila||{}).filter(f=>f&&f.status!=='cancelado').map(f=>normPed(f.num))]);
+    const vistos=new Set(),candidatos=[];
+    itens.forEach(it=>{const n=normPed(it.num);
+      if(!n){res.invalidos.push({linha:it.num,erro:'número inválido'});return;}
+      if(existentes.has(n)||vistos.has(n))res.duplicados.push(n);else{vistos.add(n);candidatos.push({num:n,qt:it.qt});}});
+    // Última conferência, pedido a pedido, imediatamente antes de gravar (pega outro Aro rodando junto)
+    const novos=[];
+    if(candidatos.length){
+      roboStatus('processando','Enviando para a fila...');
+      const atuais=await Promise.all(candidatos.map(it=>fbGet('filaPedidos/'+roboChave(it.num)).catch(()=>null)));
+      candidatos.forEach((it,i)=>{const a=atuais[i];if(a&&a.status!=='cancelado')res.duplicados.push(it.num);else novos.push(it);});
+    }
     if(novos.length){
       const agora=getBrasiliaTimestamp(),upd={};
-      novos.forEach((it,i)=>{upd['aro'+agora+'_'+i]={num:it.num,qt:it.qt,filial,data,status:'disponivel',criadoEm:agora,origem:'aro'};});
+      novos.forEach(it=>{upd[roboChave(it.num)]={num:it.num,qt:it.qt,filial,data,status:'disponivel',criadoEm:agora,origem:'aro'};});
       await fbPatch('filaPedidos',upd);
     }
     Object.assign(res,{ok:true,enfileirados:novos.map(p=>p.num),totalPneus:novos.reduce((a,p)=>a+p.qt,0)});
-    roboStatus('ok',novos.length?'Aro colocou '+novos.length+' pedido(s) na fila, '+res.totalPneus+' pneus'+(res.duplicados.length?' | '+res.duplicados.length+' duplicado(s) ignorado(s)':''):'Todos os pedidos já estavam na fila ou separados',res);
+    roboStatus('ok',novos.length?'Aro colocou '+novos.length+' pedido(s) na fila, '+res.totalPneus+' pneus'+(res.duplicados.length?' | '+res.duplicados.length+' duplicado(s) barrado(s): '+res.duplicados.join(', '):''):'Nada lançado: todos os pedidos já estavam na fila ou já foram separados ('+res.duplicados.join(', ')+')',res);
     document.getElementById('robo-pedidos').value='';roboMostrarFila();
   }catch(e){console.error(e);res.erro='Falha ao gravar: '+e.message;roboStatus('erro',res.erro,res);}
-  btn.disabled=false;return res;
+  roboTravado=false;btn.disabled=false;return res;
+}
+// Cancela cópias repetidas que já estejam na fila (fica o registro mais antigo; só mexe no que está "Na fila")
+async function roboLimparDuplicados(){
+  const fila=await fbGet('filaPedidos')||{};
+  const porNum={};
+  Object.entries(fila).forEach(([k,v])=>{if(!v||v.status==='cancelado')return;const n=normPed(v.num);(porNum[n]=porNum[n]||[]).push({k,...v});});
+  const upd={};let n=0;
+  Object.values(porNum).forEach(lista=>{if(lista.length<2)return;
+    // mantém o que já está com separador; se nenhum, mantém o mais antigo
+    lista.sort((a,b)=>(a.status==='disponivel')-(b.status==='disponivel')||(a.criadoEm||0)-(b.criadoEm||0));
+    lista.slice(1).filter(x=>x.status==='disponivel').forEach(x=>{upd[x.k+'/status']='cancelado';upd[x.k+'/canceladoMotivo']='duplicado';n++;});});
+  if(n)await fbPatch('filaPedidos',upd);
+  roboStatus('ok',n?n+' cópia(s) duplicada(s) removida(s) da fila':'Nenhum duplicado na fila',{removidos:n});
+  roboMostrarFila();return n;
 }
 async function roboMostrarFila(){
   const el=document.getElementById('robo-fila');if(!el)return;
@@ -1325,6 +1357,7 @@ async function carregarFilaAro(){
   try{
     const d=await fbQuery('filaPedidos','status',{equalTo:'disponivel'});
     filaAro=Object.entries(d||{}).map(([k,v])=>({...v,_key:k})).filter(f=>f.status==='disponivel'&&String(f.filial||'').trim().toUpperCase()===String(filial).trim().toUpperCase()).sort((a,b)=>a.criadoEm-b.criadoEm);
+    {const vis=new Set();filaAro=filaAro.filter(f=>{const n=normPed(f.num);if(vis.has(n))return false;vis.add(n);return true;});}
   }catch(e){console.error(e);}
   if(!filaAro.length&&!roboFilialLiberada(filial)){card.style.display='none';return;}
   renderFilaAro();
@@ -1348,7 +1381,7 @@ function filaAdicionar(){
   if(!sel.length){showAlert('err','Marque pelo menos um pedido da fila.');return;}
   let n=0;
   sel.forEach(k=>{const f=filaAro.find(x=>x._key===k);if(!f||filaTemId(k))return;
-    if(pedidosTemp.some(p=>p.num===String(f.num)))return;
+    if(pedidosTemp.some(p=>normPed(p.num)===normPed(f.num)))return;
     pedidosTemp.push({num:String(f.num),qt:Number(f.qt),filaKey:k});n++;});
   renderPedidoTemp();renderFilaAro();
   if(n)showAlert('ok',n+' pedido'+(n!==1?'s':'')+' do Aro adicionado'+(n!==1?'s':'')+' ao lote.');
@@ -1357,7 +1390,7 @@ function filaAdicionar(){
 async function filaReservar(lote){
   const filial=document.getElementById('p-filial').value;
   // pedido digitado à mão que também está na fila conta como pego
-  lote.forEach(p=>{if(!p.filaKey){const f=filaAro.find(x=>String(x.num)===String(p.num));if(f)p.filaKey=f._key;}});
+  lote.forEach(p=>{if(!p.filaKey){const f=filaAro.find(x=>normPed(x.num)===normPed(p.num));if(f)p.filaKey=f._key;}});
   const tomados=[];
   for(const p of lote.filter(p=>p.filaKey)){
     try{const atual=await fbGet('filaPedidos/'+p.filaKey);if(!atual||atual.status!=='disponivel')tomados.push(p);}catch(e){}
