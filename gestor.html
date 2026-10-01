@@ -441,6 +441,7 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
     <div class="nav-item" onclick="setView('pedidos',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Rastreamento</div>
     <div class="nav-item" onclick="setView('tempos',this)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 15"/><line x1="10" y1="2" x2="14" y2="2"/></svg>Tempos</div>
     <div class="nav-item" onclick="setView('erros',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Erros</div>
+    <div class="nav-item" onclick="setView('duplicados',this)"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Duplicados</div>
     <div class="nav-item" onclick="setView('historico',this)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</div>
     <div class="nav-item" onclick="setView('descarga',this)"><svg class="ic" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Descarga</div>
     <div class="sb-divider"></div>
@@ -755,6 +756,19 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
       <div class="card">
         <div class="card-header"><div class="card-title">Registros</div><span id="tp-reg-count" class="badge badge-neu"></span></div>
         <div class="table-wrap"><table><thead><tr><th>Data</th><th>Filial</th><th>Colaborador</th><th>Início</th><th>Fim</th><th style="text-align:right">Meta</th><th style="text-align:right">Tempo</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Pneus</th><th>Nº pedidos</th><th>Status</th></tr></thead><tbody id="tp-reg-body"></tbody></table></div>
+      </div>
+    </div>
+    <div class="view" id="view-duplicados">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🚫 Tentativas de lançar pedido repetido</div>
+          <div style="display:flex;gap:8px;align-items:center"><span id="dup-count" class="badge badge-neu"></span><button class="btn btn-outline btn-sm" onclick="marcarDupVistos()">Marcar todos como vistos</button></div></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Registro automático do app do separador, do app do conferente e do Aro sempre que alguém tenta lançar ou conferir um pedido que já existe. Usa o filtro de filial e período do topo.</div>
+        <div class="table-wrap"><table><thead><tr><th>Quando</th><th>Filial</th><th>Pedido</th><th>Onde</th><th>Quem</th><th>O que aconteceu</th><th>Resultado</th><th></th></tr></thead><tbody id="dup-tbody"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">⚠ Pedidos que entraram mais de uma vez</div><span id="dup-lanc-count" class="badge badge-neu"></span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Pedidos com mais de um lançamento de separação no período (passaram pelas travas ou foram lançados antes delas).</div>
+        <div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Lançamentos</th></tr></thead><tbody id="dup-lanc-tbody"></tbody></table></div>
       </div>
     </div>
     <div class="view" id="view-erros">
@@ -1211,7 +1225,7 @@ async function carregarTudo(forcarCompleta){
     colaboradores={};
     if(colData)Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});
     if(filiaisSelecionadas.size===0)filiais.forEach(f=>filiaisSelecionadas.add(f.nome));
-    await Promise.all([completa?carregarMargem():null,completa?carregarDeducao():null,carregarGestores(),carregarConferentes(),(completa||!descargasCarregadas)?carregarDescargas():null]);
+    await Promise.all([carregarAlertasDup(),completa?carregarMargem():null,completa?carregarDeducao():null,carregarGestores(),carregarConferentes(),(completa||!descargasCarregadas)?carregarDescargas():null]);
     populateFiliaisSelect();
     render();
     setStatus('ok','Conectado ✓');
@@ -1309,12 +1323,14 @@ function filtrarPorGestor(key){
 // ============================================================
 function render(){
   try{atualizarBadgeTempos();}catch(e){}
+  try{atualizarBadgeDup();}catch(e){}
   const data=filterData();
   renderMetrics(data);
   if(currentView==='ranking')renderRanking(data);
   else if(currentView==='pedidos')renderPedidos();
   else if(currentView==='tempos')renderTempos();
   else if(currentView==='erros')renderErros();
+  else if(currentView==='duplicados')renderDuplicados();
   else if(currentView==='historico')renderHistorico(data);
   else if(currentView==='config'){renderFiliaisList();renderColabTabs();}
   const el=document.getElementById('sb-pneus');
@@ -1962,6 +1978,50 @@ function regAtrasado(r){
 }
 function corPnHora(v){return v==null?'var(--hint)':(v>=metaPneusHora?'var(--green-t)':'var(--red-t)');}
 function fmtPn(v){return v!=null?v.toFixed(1).replace('.',','):'—';}
+// ===== DUPLICADOS =====
+let alertasDup=[];
+async function carregarAlertasDup(){
+  try{const d=await fbGet('alertasDuplicado');alertasDup=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];}catch(e){console.error(e);}
+}
+const dupNorm=x=>String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');
+const dupEsc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function dupFiltrados(){
+  const{filiais:fs,ini,fim}=getFilter();
+  return alertasDup.filter(a=>(fs.size===0||fs.has(a.filial)||!a.filial)&&(!ini||a.data>=ini)&&(!fim||a.data<=fim)).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+}
+function atualizarBadgeDup(){
+  const n=alertasDup.filter(a=>!a.visto).length;
+  const nav=[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.trim().startsWith('Duplicados'));
+  if(!nav)return;let b=nav.querySelector('.nav-alert');
+  if(!n){if(b)b.remove();return;}
+  if(!b){b=document.createElement('span');b.className='nav-alert';nav.appendChild(b);}
+  b.textContent=n;b.title=n+' tentativa(s) de pedido repetido ainda não vista(s)';
+}
+function renderDuplicados(){
+  const ONDE={separador:'App separador',conferente:'App conferente',aro:'Aro (robô)'};
+  const lista=dupFiltrados(),tb=document.getElementById('dup-tbody');if(!tb)return;
+  document.getElementById('dup-count').textContent=lista.length+' no período · '+lista.filter(a=>!a.visto).length+' não vistas';
+  tb.innerHTML=lista.length?lista.map(a=>'<tr style="'+(a.visto?'opacity:.55':'font-weight:500')+'"><td style="white-space:nowrap">'+fmt(a.data)+' '+fmtHora(a.timestamp)+'</td><td>'+dupEsc(a.filial||'—')+'</td><td style="font-family:\'IBM Plex Mono\',monospace">'+dupEsc(a.numPedido)+'</td><td>'+(ONDE[a.origem]||dupEsc(a.origem))+'</td><td>'+dupEsc(a.quem||'—')+'</td><td style="font-size:12px;max-width:360px">'+dupEsc(a.detalhe||'')+'</td><td>'+(a.bloqueado?'<span class="badge" style="background:var(--green-bg);color:var(--green-t)">Bloqueado</span>':'<span class="badge" style="background:var(--amber-bg);color:var(--amber-t)">Só avisou</span>')+'</td><td>'+(a.visto?'<span style="font-size:11px;color:var(--hint)">visto</span>':'<button class="btn btn-outline btn-sm" onclick="marcarDupVisto(\''+a._key+'\')">Visto</button>')+'</td></tr>').join('')
+    :'<tr><td colspan="8" style="text-align:center;color:var(--hint);padding:18px">Nenhuma tentativa de duplicado no período 🎉</td></tr>';
+  // pedidos com mais de um lançamento
+  const{filiais:fs,ini,fim}=getFilter(),g={};
+  lancamentos.forEach(l=>{if(!l.isPedido||!l.numPedido)return;if(!((fs.size===0||fs.has(l.filial))&&(!ini||l.data>=ini)&&(!fim||l.data<=fim)))return;const n=dupNorm(l.numPedido);if(n)(g[n]=g[n]||[]).push(l);});
+  const rep=Object.entries(g).filter(([,v])=>v.length>1).sort((a,b)=>Math.max(...b[1].map(x=>x.timestamp||0))-Math.max(...a[1].map(x=>x.timestamp||0)));
+  document.getElementById('dup-lanc-count').textContent=rep.length+' pedido(s)';
+  document.getElementById('dup-lanc-tbody').innerHTML=rep.length?rep.map(([n,v])=>'<tr><td style="font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:var(--red-t)">'+dupEsc(n)+'<div style="font-size:11px;font-weight:400;color:var(--muted)">'+v.length+'x</div></td><td style="font-size:12px">'+v.sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)).map(l=>fmt(l.data)+' '+fmtHora(l.timestamp)+' · '+dupEsc(l.filial)+' · '+dupEsc(l.colaborador||'—')+(l.origem==='aro'?' · via Aro':'')).join('<br>')+'</td></tr>').join('')
+    :'<tr><td colspan="2" style="text-align:center;color:var(--hint);padding:18px">Nenhum pedido repetido no período</td></tr>';
+}
+async function marcarDupVisto(k){
+  const quem=(typeof gestorLogado==='object'&&gestorLogado)?(gestorLogado.nome||gestorLogado.usuario||''):'';
+  try{await fbPatch('alertasDuplicado/'+k,{visto:true,vistoPor:quem,vistoEm:Date.now()});const a=alertasDup.find(x=>x._key===k);if(a)a.visto=true;renderDuplicados();atualizarBadgeDup();}catch(e){showAlert('err','Não consegui marcar.');}
+}
+async function marcarDupVistos(){
+  const ab=dupFiltrados().filter(a=>!a.visto);if(!ab.length)return;
+  if(!confirm('Marcar '+ab.length+' tentativa(s) como vistas?'))return;
+  const quem=(typeof gestorLogado==='object'&&gestorLogado)?(gestorLogado.nome||gestorLogado.usuario||''):'',upd={},t=Date.now();
+  ab.forEach(a=>{upd[a._key+'/visto']=true;upd[a._key+'/vistoPor']=quem;upd[a._key+'/vistoEm']=t;});
+  try{await fbPatch('alertasDuplicado',upd);ab.forEach(a=>a.visto=true);renderDuplicados();atualizarBadgeDup();showAlert('ok','Marcadas como vistas.');}catch(e){showAlert('err','Não consegui marcar.');}
+}
 function atualizarBadgeTempos(){
   const n=registros.filter(r=>r.status==='em_separacao'&&regAtrasado(r)).length;
   const nav=[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.trim().startsWith('Tempos'));
