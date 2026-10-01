@@ -866,6 +866,12 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
         <div id="orfaos-list"></div>
       </div>
       <div class="card">
+        <div class="card-header"><div class="card-title">Importar colaboradores da planilha (Ahgora)</div></div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Escolha o relatório de colaboradores (.xls/.xlsx). Antes de gravar aparece uma prévia com novos, nomes diferentes, quem saiu e quem mudou de filial; nada é gravado sem você confirmar.</div>
+        <button class="btn btn-outline" onclick="abrirImportColab()">Escolher planilha e ver prévia</button>
+        <input type="file" id="imp-file" accept=".xls,.xlsx,.csv" style="display:none" onchange="lerArquivoImport(event)">
+      </div>
+      <div class="card">
         <div class="card-header"><div class="card-title">Colaboradores por filial</div><span id="colab-count" class="badge badge-neu"></span></div>
         <div class="field-row">
           <select id="colab-filial-sel"><option value="">Selecione a filial</option></select>
@@ -2779,5 +2785,173 @@ function renderChartComparativo(){destroyChart("comparativo");var d=getDashData(
 function renderChartEvolucao(pneus){destroyChart("evolucao");var CORES=["#131F3B","#669EA1","#2F7D5B","#E38A29","#8FB8BA","#C9A27A","#A9B4C8","#7E8CA8"];var f=getDashFilter(),filial=f.filial;var byDate={};pneus.forEach(function(l){byDate[l.data]=(byDate[l.data]||0)+Number(l.pneus||0);});var dates=Object.keys(byDate).sort();var ctx=document.getElementById("chart-evolucao");if(!ctx||!dates.length)return;var labels=dates.map(function(d){return d.split("-").slice(1).reverse().join("/");});if(filial){dashCharts["evolucao"]=new Chart(ctx,{type:"line",data:{labels:labels,datasets:[{label:filial,data:dates.map(function(d){return byDate[d]||0;}),borderColor:"#131F3B",backgroundColor:"rgba(26,25,23,.08)",fill:true,tension:.35,pointRadius:4,pointBackgroundColor:"#131F3B",pointBorderColor:"#fff",pointBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},sections:{x:{grid:{display:false},ticks:{color:"#9AA3B5",font:{size:10}}},y:{grid:{color:"rgba(0,0,0,.06)"},ticks:{color:"#9AA3B5",font:{size:10}},beginAtZero:true}}}});}else{var fD=[...new Set(pneus.map(function(l){return l.filial;}))].sort();var bFD={};pneus.forEach(function(l){if(!bFD[l.filial])bFD[l.filial]={};bFD[l.filial][l.data]=(bFD[l.filial][l.data]||0)+Number(l.pneus||0);});dashCharts["evolucao"]=new Chart(ctx,{type:"line",data:{labels:labels,datasets:fD.map(function(fn,i){return{label:fn.length>14?fn.slice(0,12)+"...":fn,data:dates.map(function(d){return bFD[fn]&&bFD[fn][d]?bFD[fn][d]:0;}),backgroundColor:CORES[i%CORES.length]+"22",borderColor:CORES[i%CORES.length],fill:false,tension:.35,pointRadius:3,borderWidth:2};})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"top",labels:{font:{family:"DM Sans",size:10},color:"#131F3B",boxWidth:10,padding:8}}},scales:{x:{grid:{display:false},ticks:{color:"#9AA3B5",font:{size:10}}},y:{grid:{color:"rgba(0,0,0,.06)"},ticks:{color:"#9AA3B5",font:{size:10}},beginAtZero:true}}}});}}
 
 </script>
+<div class="modal-overlay" id="imp-modal"><div class="modal" style="width:880px;max-height:90vh;overflow:auto">
+  <div class="modal-title">Prévia da importação de colaboradores</div>
+  <div style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:6px">Formato dos nomes novos:
+    <select id="imp-modo" onchange="montarPreviaImport()"><option value="curto">PRIMEIRO E ÚLTIMO NOME</option><option value="maiusc">NOME COMPLETO EM MAIÚSCULAS</option><option value="planilha">Como está na planilha</option></select></div>
+  <div id="imp-corpo"></div>
+  <div id="imp-res" style="margin-top:10px;font-size:13px;font-weight:600"></div>
+  <div class="modal-actions" style="margin-top:14px"><button class="btn btn-outline" onclick="document.getElementById('imp-modal').classList.remove('open')">Cancelar</button><button class="btn btn-green" id="imp-aplicar" onclick="aplicarImport()">Aplicar o que está marcado</button></div>
+</div></div>
+<script>
+// =====================================================================
+// IMPORTAR COLABORADORES DA PLANILHA DO AHGORA — COM PRÉVIA
+// Nada é gravado até clicar em "Aplicar". Só usa Nome, Cargo, Filial e Desligado da planilha.
+// =====================================================================
+const IMP_FB='https://mauer-produtividade-default-rtdb.firebaseio.com';
+let impDados=null; // {linhas:[...], arquivo}
+const impNorm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+const impEsc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function impChaveFilial(n){let k=impNorm(n).replace(/^MAUER /,'');return({ITAPEVI:'SP',BU:'BAURU',RP:'BAURU'})[k]||k;}
+function impFilialCadastro(nomePlanilha){
+  const k=impChaveFilial(nomePlanilha),c=filiais.filter(f=>impChaveFilial(f.nome)===k).map(f=>f.nome);
+  if(!c.length)return null;
+  return c.find(n=>impNorm(n)==='MAUER '+k)||c[0];
+}
+function impTipo(cargo){const c=impNorm(cargo);if(/CONFERENTE/.test(c))return'conferente';if(/ESTOQUISTA|SEPARADOR|AUXILIAR DE (ESTOQUE|LOGISTICA)/.test(c))return'separador';return'outro';}
+function impCurto(nome,n){
+  const p=String(nome||'').trim().split(/\s+/).filter(Boolean),lig=/^(da|de|do|das|dos|e)$/i,suf=/^(junior|júnior|jr|filho|neto|sobrinho)$/i;
+  const meio=p.slice(1).filter(x=>!lig.test(x)&&!suf.test(x));
+  if(p.length<2||!meio.length)return p.join(' ').toUpperCase();
+  const ult=meio[meio.length-1],extra=meio.slice(0,Math.max(0,n-2)).filter(x=>x!==ult);
+  return [p[0],...extra,ult].join(' ').toUpperCase();
+}
+function impFormatar(nome,modo){
+  const limpo=String(nome||'').trim().replace(/\s+/g,' ');
+  if(modo==='planilha')return limpo;
+  if(modo==='maiusc')return limpo.toUpperCase();
+  const p=limpo.split(' ').filter(Boolean);const lig=/^(da|de|do|das|dos|e)$/i;
+  const ult=[...p].reverse().find((x,i)=>i<p.length-1&&!lig.test(x)&&!/^(junior|júnior|filho|neto|sobrinho)$/i.test(x))||p[p.length-1];
+  return (p.length>1?p[0]+' '+ult:p[0]).toUpperCase();
+}
+function impModoPadrao(){
+  const nomes=Object.values(colaboradores).flat().map(c=>c.nome||'');
+  if(!nomes.length)return'maiusc';
+  const caps=nomes.filter(n=>n===n.toUpperCase()).length/nomes.length;
+  const curtos=nomes.filter(n=>n.trim().split(/\s+/).length<=2).length/nomes.length;
+  return curtos>=.7?'curto':caps>=.7?'maiusc':'planilha';
+}
+// "ALEX NERIS" é provavelmente "Alex Barbosa Neris": todas as palavras do nome atual aparecem no novo (primeiro nome igual)
+function impParecido(atual,novoCompleto){
+  const a=impNorm(atual).split(' ').filter(x=>x.length>1),b=impNorm(novoCompleto).split(' ');
+  if(!a.length||a[0]!==b[0])return false;
+  return a.every(x=>b.includes(x));
+}
+function abrirImportColab(){document.getElementById('imp-file').value='';document.getElementById('imp-file').click();}
+async function lerArquivoImport(ev){
+  const f=ev.target.files[0];if(!f)return;
+  try{
+    showAlert('ok','Atualizando os cadastros antes da prévia...');await carregarTudo(true);
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const hi=rows.findIndex(r=>r.some(c=>impNorm(c)==='COLABORADOR')&&r.some(c=>impNorm(c)==='FILIAL'));
+    if(hi<0)throw new Error('não achei as colunas "Colaborador" e "Filial"');
+    const h=rows[hi].map(impNorm),ix=n=>h.indexOf(n);
+    const iN=ix('COLABORADOR'),iC=ix('CARGO'),iF=ix('FILIAL'),iD=ix('DESLIGADO');
+    const linhas=rows.slice(hi+1).filter(r=>String(r[iN]||'').trim()).map(r=>({
+      nome:String(r[iN]).trim().replace(/\s+/g,' '),cargo:iC>=0?String(r[iC]).trim():'',filialPlanilha:String(r[iF]).trim(),
+      desligado:iD>=0&&/^S/i.test(impNorm(r[iD]))}));
+    impDados={linhas,arquivo:f.name};
+    document.getElementById('imp-modo').value=impModoPadrao();
+    montarPreviaImport();document.getElementById('imp-modal').classList.add('open');
+  }catch(e){showAlert('err','Não consegui ler a planilha: '+e.message);console.error(e);}
+}
+let impPlano=null;
+function impHistorico(filial,nomeAntigo,tipo){
+  const k=impChaveFilial(filial),mesma=x=>impChaveFilial(x.filial)===k;
+  const campo=tipo==='conferente'?'conferente':'colaborador';
+  const paths=[];
+  lancamentos.forEach(l=>{if(mesma(l)&&l[campo]===nomeAntigo)paths.push('lancamentos/'+l._key+'/'+campo);});
+  if(tipo==='separador'){registros.forEach(r=>{if(mesma(r)&&r.colaborador===nomeAntigo)paths.push('registros/'+r._key+'/colaborador');});
+    confirmacoes.forEach(c=>{if(mesma(c)&&c.colaborador===nomeAntigo)paths.push('confirmacoes/'+c._key+'/colaborador');});}
+  else confirmacoes.forEach(c=>{if(mesma(c)&&c.conferente===nomeAntigo)paths.push('confirmacoes/'+c._key+'/conferente');});
+  return paths;
+}
+function montarPreviaImport(){
+  const modo=document.getElementById('imp-modo').value;
+  const L=impDados.linhas;
+  const plano={novos:[],iguais:[],parecidos:[],outraFilial:[],ausentes:[],desligados:[],semFilial:[],ignorados:[]};
+  const cad={separador:Object.values(colaboradores).flat().map(c=>({...c,tipo:'separador',col:'colaboradores'})),
+             conferente:Object.values(conferentes).flat().map(c=>({...c,tipo:'conferente',col:'conferentes'}))};
+  const usados=new Set(),filiaisPlanilha=new Set();
+  if(modo==='curto'){
+    // mesmo nome curto para duas pessoas da mesma filial, ou igual a alguém já cadastrado que não é a mesma pessoa: acrescenta o 2º nome
+    const nomeDe=new Map();L.forEach((p,i)=>nomeDe.set(i,impCurto(p.nome,2)));
+    for(let r=3;r<=5;r++){const grupos={};L.forEach((p,i)=>{const k=impChaveFilial(p.filialPlanilha)+'|'+impNorm(nomeDe.get(i));(grupos[k]=grupos[k]||[]).push(i);});
+      let mudou=false;Object.values(grupos).forEach(g=>{if(g.length>1)g.forEach(i=>{const n=impCurto(L[i].nome,r);if(n!==nomeDe.get(i)){nomeDe.set(i,n);mudou=true;}});});if(!mudou)break;}
+    L.forEach((p,i)=>p._curto=nomeDe.get(i));
+  }
+  L.forEach((p,i)=>{
+    const tipo=impTipo(p.cargo),filial=impFilialCadastro(p.filialPlanilha);
+    const base={...p,i,tipo,filial,novoNome:modo==='curto'?p._curto:impFormatar(p.nome,modo)};
+    if(tipo==='outro'){plano.ignorados.push(base);return;}
+    if(!filial){plano.semFilial.push(base);return;}
+    filiaisPlanilha.add(impChaveFilial(filial));
+    const lista=cad[tipo],k=impChaveFilial(filial);
+    const naFilial=lista.filter(c=>impChaveFilial(c.filial)===k&&!usados.has(c._key));
+    const igual=naFilial.find(c=>impNorm(c.nome)===impNorm(base.novoNome)||impNorm(c.nome)===impNorm(p.nome));
+    if(igual){usados.add(igual._key);(p.desligado?plano.desligados:plano.iguais).push({...base,atual:igual});return;}
+    const par=naFilial.filter(c=>impParecido(c.nome,p.nome));
+    if(par.length===1){usados.add(par[0]._key);
+      if(p.desligado){plano.desligados.push({...base,atual:par[0]});return;}
+      plano.parecidos.push({...base,atual:par[0],hist:impHistorico(filial,par[0].nome,tipo).length});return;}
+    let fora=lista.find(c=>!usados.has(c._key)&&impChaveFilial(c.filial)!==k&&(impNorm(c.nome)===impNorm(base.novoNome)||impNorm(c.nome)===impNorm(p.nome)));
+    if(!fora){const pf=lista.filter(c=>!usados.has(c._key)&&impChaveFilial(c.filial)!==k&&impParecido(c.nome,p.nome));if(pf.length===1)fora=pf[0];}
+    if(fora&&!p.desligado){usados.add(fora._key);plano.outraFilial.push({...base,atual:fora});return;}
+    if(!p.desligado){
+      const dup=lista.find(c=>impChaveFilial(c.filial)===k&&impNorm(c.nome)===impNorm(base.novoNome));
+      if(dup)base.aviso='já existe "'+dup.nome+'" nesta filial';
+      plano.novos.push(base);}
+  });
+  ['separador','conferente'].forEach(t=>cad[t].forEach(c=>{if(!usados.has(c._key)&&filiaisPlanilha.has(impChaveFilial(c.filial)))plano.ausentes.push({...c});}));
+  impPlano=plano;
+  const tag=t=>t==='conferente'?'<span class="badge badge-neu">conferente</span>':'<span class="badge badge-neu">separador</span>';
+  const sec=(titulo,cor,itens,linha,dica)=>itens.length?`<div style="margin:14px 0 6px;font-weight:600;color:${cor}">${titulo} (${itens.length})</div>${dica?`<div style="font-size:12px;color:var(--muted);margin-bottom:6px">${dica}</div>`:''}<div style="border:1px solid var(--border);border-radius:var(--rsm);max-height:260px;overflow:auto">${itens.map(linha).join('')}</div>`:'';
+  const row=h=>`<div style="display:flex;gap:8px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap">${h}</div>`;
+  let html=`<div style="font-size:12px;color:var(--muted)">Arquivo: ${impEsc(impDados.arquivo)} · ${L.length} pessoas na planilha. <b>Nada foi gravado ainda.</b></div>`;
+  html+=sec('Novos para cadastrar','var(--green-t)',plano.novos,x=>row(`<input type="checkbox" class="imp-novo" data-i="${x.i}" checked> <b>${impEsc(x.novoNome)}</b> ${tag(x.tipo)} <span style="color:var(--muted)">${impEsc(x.filial)} · ${impEsc(x.nome)} · ${impEsc(x.cargo)}</span>${x.aviso?' <span style="color:var(--red-t);font-weight:600">⚠ '+impEsc(x.aviso)+'</span>':''}`),'Desmarque quem não deve entrar.');
+  html+=sec('Provável mesma pessoa com nome diferente','var(--amber-t)',plano.parecidos,x=>row(`<span style="min-width:200px">${impEsc(x.atual.nome)} → <b>${impEsc(x.novoNome)}</b> ${tag(x.tipo)} <span style="color:var(--muted)">${impEsc(x.filial)}</span></span>
+    <select class="imp-par" data-i="${x.i}" style="font-size:12px"><option value="">Não mexer</option><option value="cad">Trocar nome só no cadastro</option><option value="hist">Trocar no cadastro e no histórico (${x.hist} registro(s))</option></select>`),'Por padrão nada muda. Trocar "só no cadastro" faz o histórico antigo ficar com o nome velho (o ranking separa as duas pessoas).');
+  html+=sec('Cadastrado em outra filial','var(--amber-t)',plano.outraFilial,x=>row(`<b>${impEsc(x.atual.nome)}</b>${impNorm(x.atual.nome)!==impNorm(x.novoNome)?' (planilha: '+impEsc(x.nome)+')':''} ${tag(x.tipo)} hoje em ${impEsc(x.atual.filial)}, na planilha em <b>${impEsc(x.filial)}</b> <label style="margin-left:auto;font-size:12px"><input type="checkbox" class="imp-mover" data-i="${x.i}"> mover para ${impEsc(x.filial)}</label>`),'O histórico fica na filial antiga; só o cadastro muda.');
+  html+=sec('No sistema, mas não estão na planilha','var(--red-t)',plano.ausentes,x=>row(`<b>${impEsc(x.nome)}</b> ${tag(x.tipo)} <span style="color:var(--muted)">${impEsc(x.filial)}</span> <label style="margin-left:auto;font-size:12px"><input type="checkbox" class="imp-rem" data-k="${x._key}" data-col="${x.col}"> remover do cadastro</label>`),'Só filiais que vieram na planilha. Remover tira da lista de seleção; o histórico continua.');
+  html+=sec('Desligados na planilha','var(--red-t)',plano.desligados,x=>row(`<b>${impEsc(x.atual.nome)}</b> ${tag(x.tipo)} <span style="color:var(--muted)">${impEsc(x.filial)}</span> <label style="margin-left:auto;font-size:12px"><input type="checkbox" class="imp-rem" data-k="${x.atual._key}" data-col="${x.tipo==='conferente'?'conferentes':'colaboradores'}" checked> remover do cadastro</label>`));
+  html+=sec('Filial da planilha não existe no sistema (não entram)','var(--muted)',plano.semFilial,x=>row(`${impEsc(x.nome)} <span style="color:var(--muted)">${impEsc(x.filialPlanilha)} · ${impEsc(x.cargo)}</span>`),'Cadastre a filial em "Filiais" e abra a planilha de novo.');
+  html+=sec('Cargos que não são separador nem conferente (não entram)','var(--muted)',plano.ignorados,x=>row(`${impEsc(x.nome)} <span style="color:var(--muted)">${impEsc(x.filialPlanilha)} · ${impEsc(x.cargo)}</span>`));
+  html+=sec('Já cadastrados, sem mudança','var(--muted)',plano.iguais,x=>row(`${impEsc(x.atual.nome)} ${tag(x.tipo)} <span style="color:var(--muted)">${impEsc(x.filial)}</span>`));
+  document.getElementById('imp-corpo').innerHTML=html;
+  document.getElementById('imp-res').textContent='';
+}
+async function impPatchRaiz(upd){const r=await fetch(IMP_FB+'/.json',{method:'PATCH',body:JSON.stringify(upd)});if(!r.ok)throw new Error('PATCH '+r.status);}
+async function aplicarImport(){
+  const P=impPlano,byI=new Map([...P.novos,...P.parecidos,...P.outraFilial].map(x=>[x.i,x]));
+  const novos=[...document.querySelectorAll('.imp-novo:checked')].map(e=>byI.get(+e.dataset.i));
+  const renome=[...document.querySelectorAll('.imp-par')].filter(e=>e.value).map(e=>({...byI.get(+e.dataset.i),modo:e.value}));
+  const mover=[...document.querySelectorAll('.imp-mover:checked')].map(e=>byI.get(+e.dataset.i));
+  const rem=[...document.querySelectorAll('.imp-rem:checked')].map(e=>({k:e.dataset.k,col:e.dataset.col}));
+  const hist=renome.filter(r=>r.modo==='hist').reduce((a,r)=>a+r.hist,0);
+  if(!novos.length&&!renome.length&&!mover.length&&!rem.length){showAlert('err','Nada marcado para aplicar.');return;}
+  if(!confirm(`Confirmar?\n\n• ${novos.length} novo(s)\n• ${renome.length} troca(s) de nome${hist?` (+${hist} registro(s) de histórico)`:''}\n• ${mover.length} mudança(s) de filial\n• ${rem.length} remoção(ões) do cadastro`))return;
+  const btn=document.getElementById('imp-aplicar'),res=document.getElementById('imp-res');btn.disabled=true;
+  const log=[];
+  try{
+    for(const n of novos){await fbPost(n.tipo==='conferente'?'conferentes':'colaboradores',{filial:n.filial,nome:n.novoNome});log.push('+ '+n.novoNome);res.textContent='Gravando… '+log.length;}
+    for(const r of renome){
+      const col=r.tipo==='conferente'?'conferentes':'colaboradores',upd={};
+      upd[col+'/'+r.atual._key+'/nome']=r.novoNome;
+      if(r.modo==='hist')impHistorico(r.filial,r.atual.nome,r.tipo).forEach(p=>upd[p]=r.novoNome);
+      const ent=Object.entries(upd);for(let i=0;i<ent.length;i+=400)await impPatchRaiz(Object.fromEntries(ent.slice(i,i+400)));
+      log.push('~ '+r.atual.nome+' → '+r.novoNome);res.textContent='Gravando… '+log.length;
+    }
+    for(const m of mover){await fbPatch((m.tipo==='conferente'?'conferentes/':'colaboradores/')+m.atual._key,{filial:m.filial});log.push('↪ '+m.atual.nome);}
+    for(const r of rem){await fbDelete(r.col+'/'+r.k);log.push('- '+r.k);}
+    res.textContent='Pronto: '+novos.length+' novo(s), '+renome.length+' renomeado(s), '+mover.length+' movido(s), '+rem.length+' removido(s).';
+    showAlert('ok','Importação aplicada.');
+    await carregarTudo(true);try{renderColabTabs();renderConferentesTabs();}catch(e){}
+    document.getElementById('imp-modal').classList.remove('open');
+  }catch(e){console.error(e);res.textContent='Parou com erro depois de '+log.length+' passo(s): '+e.message+'. Abra a planilha de novo: a prévia mostra o que já entrou.';}
+  btn.disabled=false;
+}
+</script>
+
 </body>
 </html>
