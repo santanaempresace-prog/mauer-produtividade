@@ -1234,7 +1234,10 @@ async function fecharLotesJaConferidos(lista){
 // Nome que a extensão do Aro usa (igual ao ERP) -> nomes que a filial pode ter no cadastro do site
 const ROBO_APELIDOS={
   'MAUER SP':['MAUER SP','SP'],
-  'MAUER RP':['MAUER RP','RP','MAUER BAURU','BAURU'] // RP e Bauru são a mesma filial (no site ela se chama MAUER BAURU)
+  'MAUER RP':['MAUER RP','RP','MAUER BAURU','BAURU'], // RP e Bauru são a mesma filial (no site ela se chama MAUER BAURU)
+  'MAUER ES':['MAUER ES','ES'],
+  'MAUER MG':['MAUER MG','MG'],
+  'MAUER GO':['MAUER GO','GO']
 };
 const ROBO_FILIAIS=Object.keys(ROBO_APELIDOS);
 const ROBO_PARAMS=new URLSearchParams(location.search);
