@@ -221,7 +221,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-09-30-conf-dup-2';
+const APP_VERSAO='2026-10-01-conf-reabre-1';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
@@ -538,7 +538,20 @@ async function checarVersao(){
     if(m&&m[1]!==APP_VERSAO&&!ocupado&&!selecionado){location.reload();return true;}}catch(e){}
   return false;
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){manterTela();checarVersao();carregar();}});
+// ---------- reabertura automática a cada 30 min ----------
+// Recarrega a página do zero (sem cache) para pegar sempre a versão nova.
+// Só reabre com o app parado: sem pedido aberto, sem alerta, sem nada digitado e sem toque nos últimos 20 s.
+const REABRIR_MIN=30;
+const abertoEm=Date.now();let ultimaAcao=Date.now();
+['pointerdown','keydown','input'].forEach(ev=>document.addEventListener(ev,()=>{ultimaAcao=Date.now();},true));
+function podeReabrir(){
+  return !ocupado&&!selecionado&&!dupAberto&&!document.getElementById('setup').classList.contains('show')
+    &&!document.getElementById('num').value&&Date.now()-ultimaAcao>20000;
+}
+function reabrir(){const u=new URL(location.href);u.searchParams.set('r',Date.now());location.replace(u.toString());}
+function checarReabertura(){if(Date.now()-abertoEm>=REABRIR_MIN*60000&&podeReabrir())reabrir();}
+setInterval(checarReabertura,30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(Date.now()-abertoEm>=REABRIR_MIN*60000){ultimaAcao=0;checarReabertura();if(!podeReabrir())ultimaAcao=Date.now();else return;}manterTela();checarVersao();carregar();}});
 
 // ---------- início ----------
 async function init(){
