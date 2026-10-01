@@ -579,12 +579,21 @@ function onFilialChange(){
   panel.style.display='';
   carregarQuickStats(f);
 }
+// Junta a mesma filial escrita de jeitos diferentes: "PR" e "MAUER PR" -> MAUER PR;
+// Itapevi = SP; Bauru, BU e RP = MAUER BAURU.
+const FILIAL_APELIDO={'ITAPEVI':'SP','BU':'BAURU','RP':'BAURU'};
+function filialUnificada(f){
+  const raw=String(f||'').trim();if(!raw)return '—';
+  let k=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').replace(/^MAUER /,'').trim();
+  k=FILIAL_APELIDO[k]||k;
+  return 'MAUER '+k;
+}
 async function carregarQuickStats(filial){
   try{
     const data = await fbGet('descarregamentos');
     const todos = data ? Object.values(data) : [];
     const d = dataLocal();
-    const hoje = todos.filter(x=>x.filial===filial&&x.data===d);
+    const hoje = todos.filter(x=>filialUnificada(x.filial)===filialUnificada(filial)&&x.data===d);
     document.getElementById('qs-total').textContent = hoje.length;
     document.getElementById('qs-ok').textContent = hoje.filter(x=>x.realizado==='OK').length;
     document.getElementById('qs-fora').textContent = hoje.filter(x=>x.realizado==='FORA').length;
@@ -667,7 +676,7 @@ async function carregarHoje(){
     const todos = data ? Object.values(data) : [];
     const d = dataLocal();
     let hoje = todos.filter(x=>x.data===d);
-    if(filialF) hoje = hoje.filter(x=>x.filial===filialF);
+    if(filialF) hoje = hoje.filter(x=>filialUnificada(x.filial)===filialUnificada(filialF));
     hoje.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
 
     // Stats
@@ -787,8 +796,7 @@ async function carregarFiliais(){
     document.getElementById('f-fora').textContent = tot-oks;
 
     // Por filial (com normalização de nomes)
-    const FMAP2 = {'ES':'ES','MAUER ES':'ES','MG':'MG','MAUER MG':'MG','SP':'MAUER ITAPEVI','MAUER ITAPEVI':'MAUER ITAPEVI','BU':'MAUER BAURU','BU ':'MAUER BAURU','MAUER BAURU':'MAUER BAURU'};
-    const normF2 = f=>{ const k=(f||'').trim().toUpperCase(); return FMAP2[k]||(f||'?').trim(); };
+    const normF2 = filialUnificada;
     const byF = {};
     doMes.forEach(d=>{
       const f = normF2(d.filial);
@@ -869,14 +877,7 @@ async function carregarHistoricoFilial(){
       return;
     }
     // Agrupa por filial
-    // Normaliza nomes de filiais
-    const FILIAL_MAP = {
-      'ES': 'ES', 'MAUER ES': 'ES',
-      'MG': 'MG', 'MAUER MG': 'MG',
-      'SP': 'MAUER ITAPEVI', 'MAUER ITAPEVI': 'MAUER ITAPEVI',
-      'BU': 'MAUER BAURU', 'MAUER BAURU': 'MAUER BAURU', 'BU ': 'MAUER BAURU',
-    };
-    function normFilial(f){ const k=(f||'').trim().toUpperCase(); return FILIAL_MAP[k]||f.trim(); }
+    const normFilial = filialUnificada;
 
     const byF = {};
     todos.forEach(d=>{
@@ -967,7 +968,8 @@ async function init(){
       const el = document.getElementById(id);
       if(!el) return;
       const base = id==='hoje-filial'?'<option value="">Todas as filiais</option>':'<option value="">Selecione</option>';
-      el.innerHTML = base + filiais.map(f=>`<option>${f}</option>`).join('');
+      const lista = id==='hoje-filial' ? [...new Set(filiais.map(filialUnificada))].sort() : filiais;
+      el.innerHTML = base + lista.map(f=>`<option>${f}</option>`).join('');
     });
 
     badge.textContent='Conectado ✓'; badge.className='status-badge ok';
