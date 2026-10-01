@@ -580,8 +580,8 @@ function onFilialChange(){
   carregarQuickStats(f);
 }
 // Junta a mesma filial escrita de jeitos diferentes: "PR" e "MAUER PR" -> MAUER PR;
-// Itapevi = SP; Bauru, BU e RP = MAUER BAURU.
-const FILIAL_APELIDO={'ITAPEVI':'SP','BU':'BAURU','RP':'BAURU'};
+// Itapevi = SP; Bauru e BU = MAUER RP (nome atual no cadastro).
+const FILIAL_APELIDO={'ITAPEVI':'SP','BU':'RP','BAURU':'RP'};
 function filialUnificada(f){
   const raw=String(f||'').trim();if(!raw)return '—';
   let k=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').replace(/^MAUER /,'').trim();
