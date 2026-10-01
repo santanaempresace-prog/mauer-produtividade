@@ -1015,6 +1015,10 @@ function setTab(tab,btn){
 }
 
 // ---- PEDIDOS ----
+// Registra para o gestor toda tentativa de lançar pedido repetido (não trava nada se falhar)
+function registrarDuplicado(d){
+  try{fbPost('alertasDuplicado',{...d,numPedido:String(d.numPedido||''),data:getBrasiliaDateStr(),timestamp:getBrasiliaTimestamp(),visto:false}).catch(()=>{});}catch(e){}
+}
 async function addPedido(){
   const num=document.getElementById('p-num').value.trim();
   const qt=parseInt(document.getElementById('p-qt').value);
@@ -1051,6 +1055,8 @@ async function addPedido(){
     const jaExisteHoje = todos.find(l=>l.isPedido && l.numPedido===num && l.data===hoje);
     if(jaExisteHoje){
       showDuplicateAlert('🚫 Pedido '+num+' já foi registrado hoje por '+jaExisteHoje.colaborador+' ('+jaExisteHoje.filial+')!','err');
+      registrarDuplicado({origem:'separador',bloqueado:true,numPedido:num,filial:document.getElementById('p-filial').value,quem:document.getElementById('p-colab').value,
+        detalhe:'Já registrado hoje por '+(jaExisteHoje.colaborador||'?')+' ('+(jaExisteHoje.filial||'?')+')'});
       const _b1=document.getElementById('add-pedido-btn');if(_b1)_b1.dataset.processing='0';
       return;
     }
@@ -1060,6 +1066,8 @@ async function addPedido(){
     const jaExisteRecente = todos.find(l=>l.isPedido && l.numPedido===num && l.data>=limiteData && l.data!==hoje);
     if(jaExisteRecente){
       showDuplicateAlert('⚠ Pedido '+num+' já foi registrado em '+jaExisteRecente.data.split("-").reverse().join("/")+" por "+jaExisteRecente.colaborador+' ('+jaExisteRecente.filial+'). Tem certeza que é um pedido novo?','warn');
+      registrarDuplicado({origem:'separador',bloqueado:false,numPedido:num,filial:document.getElementById('p-filial').value,quem:document.getElementById('p-colab').value,
+        detalhe:'Já registrado em '+jaExisteRecente.data.split('-').reverse().join('/')+' por '+(jaExisteRecente.colaborador||'?')+' ('+(jaExisteRecente.filial||'?')+'). Separador foi avisado, mas pôde seguir.'});
       // Não bloqueia — só avisa para pedidos de outros dias
     }
 
@@ -1319,6 +1327,7 @@ async function roboEnviar(){
       await fbPatch('filaPedidos',upd);
     }
     Object.assign(res,{ok:true,enfileirados:novos.map(p=>p.num),totalPneus:novos.reduce((a,p)=>a+p.qt,0)});
+    res.duplicados.forEach(n=>registrarDuplicado({origem:'aro',bloqueado:true,numPedido:n,filial,quem:'Aro',detalhe:'O Aro tentou pôr na fila um pedido que já estava na fila ou já foi separado'}));
     roboStatus('ok',novos.length?'Aro colocou '+novos.length+' pedido(s) na fila, '+res.totalPneus+' pneus'+(res.duplicados.length?' | '+res.duplicados.length+' duplicado(s) barrado(s): '+res.duplicados.join(', '):''):'Nada lançado: todos os pedidos já estavam na fila ou já foram separados ('+res.duplicados.join(', ')+')',res);
     document.getElementById('robo-pedidos').value='';roboMostrarFila();
   }catch(e){console.error(e);res.erro='Falha ao gravar: '+e.message;roboStatus('erro',res.erro,res);}
