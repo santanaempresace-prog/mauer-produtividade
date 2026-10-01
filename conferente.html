@@ -221,7 +221,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-10-01-conf-reabre-1';
+const APP_VERSAO='2026-10-01-conf-dupalerta-1';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
@@ -345,6 +345,8 @@ function marcarDupSel(p){
   fx.innerHTML=dp.dup?'DUPLICADO: '+linhasDup(dp).map(esc).join('<br>'):'';fx.classList.toggle('show',dp.dup);
 }
 function alertaDup(titulo,num,linhas){
+  try{fbPost('alertasDuplicado',{origem:'conferente',bloqueado:/CONFERIDO/.test(titulo),numPedido:String(num),filial:cfg.filial||'',quem:cfg.conferente||'',
+    detalhe:titulo+': '+linhas.join(' | '),data:hojeStr(0),timestamp:Date.now(),visto:false}).catch(()=>{});}catch(e){}
   dupAberto=true;
   document.getElementById('dup-t').textContent=titulo;
   document.getElementById('dup-n').textContent=num;
