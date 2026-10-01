@@ -221,7 +221,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-09-30-conf-dup-1';
+const APP_VERSAO='2026-09-30-conf-dup-2';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
@@ -231,7 +231,7 @@ const DIAS_DUP=30;          // quantos dias para trás o app procura pedido repe
 let cfg={filial:'',conferente:''};
 let filiais=[], conferentesPorFilial={};
 let pedidos=[], confs=[], registrosMap={};
-let histLanc=[], histConfs=[], histCarregadoEm=0, dupAberto=false;
+let histLanc=[], histConfs=[], histCarregadoEm=0, histCarregando=false, dupAberto=false, idxDup=new Map();
 let pendentes=[], selecionado=null, motivoSel='', ocupado=false, historico=[];
 
 // ---------- Firebase (REST) ----------
@@ -301,9 +301,15 @@ async function carregar(){
     pedidos=l?Object.entries(l).map(([k,v])=>({...v,_key:k})).filter(x=>x.isPedido&&x.numPedido):[];
     confs=c?Object.entries(c).map(([k,v])=>({...v,_key:k})):[];
     registrosMap={};if(r)Object.entries(r).forEach(([k,v])=>registrosMap[k]=v);
-    if(Date.now()-histCarregadoEm>5*60000)await carregarHist();
-    montarFila();setDot('ok');
+    montarIndiceDup();montarFila();setDot('ok');
   }catch(e){console.error(e);setDot('err');}
+  // histórico de 30 dias roda por fora: se demorar ou falhar, a fila continua aparecendo
+  if(!histCarregando&&Date.now()-histCarregadoEm>5*60000){
+    histCarregando=true;
+    carregarHist().then(()=>{montarIndiceDup();renderFila();if(selecionado)marcarDupSel(selecionado);})
+      .catch(e=>{console.error('histórico',e);histCarregadoEm=Date.now()-4*60000;})
+      .finally(()=>{histCarregando=false;});
+  }
 }
 // ---------- anti-duplicado ----------
 function normPed(x){return String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');}
@@ -317,10 +323,15 @@ async function carregarHist(){
 // Junta histórico + dados recentes sem repetir o mesmo registro
 function uniao(a,b){const m=new Map();[...a,...b].forEach(x=>m.set(x._key,x));return[...m.values()];}
 // Tudo que existe desse número: lançamentos dos separadores/Aro e baixas já dadas
+function montarIndiceDup(){
+  const m=new Map(),pega=n=>{let e=m.get(n);if(!e){e={l:new Map(),c:new Map()};m.set(n,e);}return e;};
+  [...histLanc,...pedidos].forEach(x=>{const n=normPed(x.numPedido);if(n)pega(n).l.set(x._key,x);});
+  [...histConfs,...confs].forEach(x=>{const n=normPed(x.numPedido);if(n)pega(n).c.set(x._key,x);});
+  idxDup=m;
+}
 function analisarDup(num){
-  const n=normPed(num);
-  const lancs=uniao(histLanc,pedidos).filter(x=>normPed(x.numPedido)===n);
-  const bx=uniao(histConfs,confs).filter(c=>normPed(c.numPedido)===n).sort((a,b)=>a.timestamp-b.timestamp);
+  const n=normPed(num),e=idxDup.get(n);
+  const lancs=e?[...e.l.values()]:[],bx=e?[...e.c.values()].sort((a,b)=>a.timestamp-b.timestamp):[];
   return{n,lancs,bx,lancDup:lancs.length>1,jaConf:bx.length>0,dup:lancs.length>1||bx.length>0};
 }
 function linhasDup(a){
@@ -328,6 +339,10 @@ function linhasDup(a){
   if(a.lancDup)a.lancs.slice().sort((x,y)=>(x.timestamp||0)-(y.timestamp||0)).forEach((x,i)=>L.push(`${i+1}º lançamento: ${x.colaborador||'sem separador'}, ${fmtData(x.data)}${x.timestamp?' às '+hora(x.timestamp):''}${x.filial&&x.filial!==cfg.filial?' ('+x.filial+')':''}`));
   a.bx.forEach(c=>L.push(`Já conferido por ${c.conferente||'?'} em ${fmtData(c.data)} às ${hora(c.timestamp)}${c.comErro?' (com erro)':''}`));
   return L;
+}
+function marcarDupSel(p){
+  const dp=analisarDup(p.num),fx=document.getElementById('sel-dup');
+  fx.innerHTML=dp.dup?'DUPLICADO: '+linhasDup(dp).map(esc).join('<br>'):'';fx.classList.toggle('show',dp.dup);
 }
 function alertaDup(titulo,num,linhas){
   dupAberto=true;
@@ -403,8 +418,7 @@ function selecionar(p){
   document.getElementById('sel-colab').textContent=p.colaborador;
   const esp=(Date.now()-p.desde)/60000;
   document.getElementById('sel-info').textContent=`${p.qtd} pneu${p.qtd!==1?'s':''}`+(p.data!==hojeStr()?`, separado em ${fmtData(p.data)}`:'')+(p.emSep?', lote ainda em separação':`, aguardando há ${fmtMin(esp)}`);
-  const dp=analisarDup(p.num),fx=document.getElementById('sel-dup');
-  fx.innerHTML=dp.dup?'DUPLICADO: '+linhasDup(dp).map(esc).join('<br>'):'';fx.classList.toggle('show',dp.dup);
+  marcarDupSel(p);
   document.getElementById('sel').classList.add('show');
   document.getElementById('sel-main').style.display='';document.getElementById('sel-erro').style.display='none';
   renderFila();
@@ -456,7 +470,7 @@ async function jaTemBaixaAgora(p){
   let c=null;try{c=await fbQuery('confirmacoes','data',{equalTo:p.data});}catch(e){return false;}
   const ex=Object.entries(c||{}).map(([k,v])=>({...v,_key:k})).filter(x=>normPed(x.numPedido)===normPed(p.num)&&x.filial===p.filial);
   if(!ex.length)return false;
-  ex.forEach(x=>{if(!confs.some(y=>y._key===x._key))confs.push(x);});
+  ex.forEach(x=>{if(!confs.some(y=>y._key===x._key))confs.push(x);});montarIndiceDup();
   const d=analisarDup(p.num);
   alertaDup('PEDIDO JÁ CONFERIDO',p.num,linhasDup(d));
   limparSel();montarFila();return true;
