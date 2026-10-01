@@ -286,6 +286,8 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
   <div class="card">
     <div class="card-title"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/></svg>Aro | lançamento automático</div>
     <div class="card-sub">Uso exclusivo do Aro, o robô de lançamentos. Liberado para: <b id="robo-liberadas"></b></div>
+    <div style="margin:12px 0 4px;font-size:13px;font-weight:600">Filiais que o Aro pode lançar <span style="font-weight:400;color:var(--hint)">(toque para pausar ou voltar)</span></div>
+    <div id="robo-casas" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
     <div class="form-grid">
       <div class="form-group"><label>Filial</label><select id="robo-filial"></select></div>
       <div class="form-group"><label>Data</label><input type="date" id="robo-data"></div>
@@ -1232,13 +1234,12 @@ async function fecharLotesJaConferidos(lista){
 // ===================== ROBÔ (aba oculta) =====================
 // Filiais liberadas para o robô. Para abrir para todas, coloque as outras aqui (ou use ['*']).
 // Nome que a extensão do Aro usa (igual ao ERP) -> nomes que a filial pode ter no cadastro do site
-const ROBO_APELIDOS={
-  'MAUER SP':['MAUER SP','SP'],
-  'MAUER RP':['MAUER RP','RP','MAUER BAURU','BAURU'], // RP e Bauru são a mesma filial (no site ela se chama MAUER BAURU)
-  'MAUER ES':['MAUER ES','ES'],
-  'MAUER MG':['MAUER MG','MG'],
-  'MAUER GO':['MAUER GO','GO']
-};
+// Filiais MAUER do ERP que o Aro pode lançar. Cada uma só casa com a filial de MESMO nome no cadastro
+// ("MAUER ES" ou "ES"). Exceção: RP é a MAUER BAURU do site.
+// MAUER BU fica de fora até confirmar para onde vai (no ERP ela também é Bauru, CNPJ /0002).
+const ROBO_SIGLAS=['SP','RP','ES','MG','GO','BA','CE','DF','MS','MT','PE','PR','RS','SC'];
+const ROBO_APELIDOS=Object.fromEntries(ROBO_SIGLAS.map(sg=>['MAUER '+sg,['MAUER '+sg,sg]]));
+ROBO_APELIDOS['MAUER RP'].push('MAUER BAURU','BAURU'); // RP e Bauru são a mesma filial
 const ROBO_FILIAIS=Object.keys(ROBO_APELIDOS);
 const ROBO_PARAMS=new URLSearchParams(location.search);
 const MODO_ROBO=ROBO_PARAMS.has('robo');
@@ -1286,6 +1287,8 @@ async function roboEnviar(){
   const filialAro=document.getElementById('robo-filial').value,filial=roboFilialCad();
   const data=document.getElementById('robo-data').value||getBrasiliaDateStr();
   const res={ok:false,filial:filialAro,filialCadastro:filial,data,enfileirados:[],duplicados:[],invalidos:[]};
+  if(!(await roboLerPausas())){res.erro='Não consegui conferir as pausas. Nada foi lançado.';roboStatus('erro',res.erro,res);return res;}
+  if(roboPausada(filialAro)){roboMontarCasas();res.erro=filialAro+' está pausada. Nada foi lançado.';res.pausada=true;roboStatus('erro',res.erro,res);return res;}
   if(filial&&roboCanonica(filial)!==filialAro){res.erro='Filial não confere ('+filialAro+' x '+filial+'). Nada foi lançado.';roboStatus('erro',res.erro,res);return res;}
   if(!filial||!roboFilialLiberada(filial)){res.erro='Filial não liberada para o Aro';roboStatus('erro',res.erro,res);return res;}
   const {itens,erros}=roboParsePedidos(document.getElementById('robo-pedidos').value);
@@ -1345,7 +1348,37 @@ async function roboMostrarFila(){
     el.innerHTML=itens.length?itens.slice(0,100).map(f=>'<div style="display:flex;gap:10px;padding:7px 10px;border-top:1px solid var(--border)"><span style="font-family:var(--mono);font-weight:500">'+f.num+'</span><span style="color:var(--muted)">'+f.qt+' pneus</span><span style="margin-left:auto">'+(f.status==='disponivel'?'<span class="badge badge-warn">Na fila</span>':'<span style="color:var(--green-t);font-weight:600">Com '+(f.colaborador||'separador')+'</span>')+'</span></div>').join(''):'<div style="padding:10px;color:var(--hint)">Fila vazia</div>';
   }catch(e){console.error(e);el.innerHTML='<div style="padding:10px;color:var(--red-t)">Erro ao ler a fila</div>';}
 }
-function initRobo(){
+// ===== Pausa por filial =====
+// Fica em roboConfig/pausadas no Firebase: {'MAUER SP':true}. Filial pausada some da lista Filial,
+// então a extensão não acha e não lança; o envio também confere de novo antes de gravar.
+let roboPausadas={},roboPausaOk=false,roboLib=[];
+const roboChavePausa=k=>k.replace(/[.#$\[\]\/]/g,'_');
+async function roboLerPausas(){
+  for(let t=0;t<3;t++){try{const r=await fetch(`${FB_URL}/roboConfig/pausadas.json?x=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(r.status);roboPausadas=(await r.json())||{};roboPausaOk=true;return true;}catch(e){await new Promise(r=>setTimeout(r,800));}}
+  roboPausaOk=false;return false;
+}
+const roboPausada=k=>!!roboPausadas[roboChavePausa(k)];
+function roboMontarCasas(){
+  const box=document.getElementById('robo-casas'),fs=document.getElementById('robo-filial'),antes=fs.value;
+  if(!roboPausaOk){box.innerHTML='<span style="color:var(--red-t);font-size:13px">Não consegui ler as pausas. Por segurança o Aro não lança em nenhuma filial agora. Recarregue a página.</span>';fs.innerHTML='';return;}
+  box.innerHTML=roboLib.map(n=>{const k=roboCanonica(n),p=roboPausada(k);
+    return '<button type="button" onclick="roboAlternarPausa(\''+k.replace(/'/g,"\\'")+'\')" style="min-height:34px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid '+(p?'var(--red-t)':'var(--green-t,#1a7f37)')+';background:'+(p?'var(--red-bg,#fdecea)':'var(--green-bg,#e9f7ee)')+';color:'+(p?'var(--red-t)':'var(--green-t,#1a7f37)')+'">'+(p?'⏸ ':'✓ ')+n+(p?' · pausada':'')+'</button>';}).join('')||'<span style="color:var(--hint);font-size:13px">Nenhuma filial liberada</span>';
+  // só as que estão lançando entram na lista Filial (é ela que a extensão lê)
+  const ativas=roboLib.filter(n=>!roboPausada(roboCanonica(n)));
+  fs.innerHTML=ativas.map(n=>{const k=roboCanonica(n),e=x=>String(x).replace(/"/g,'&quot;');return '<option value="'+e(k)+'" data-cad="'+e(n)+'">'+n+(roboNomeFilial(k)!==roboNomeFilial(n)?' ('+k+')':'')+'</option>';}).join('');
+  if([...fs.options].some(o=>o.value===antes))fs.value=antes;
+}
+async function roboAlternarPausa(k){
+  const p=!roboPausada(k),ch=roboChavePausa(k);
+  if(p&&!confirm('Pausar '+k+'? O Aro para de lançar pedidos dessa filial até você voltar.'))return;
+  try{
+    const r=await fetch(`${FB_URL}/roboConfig/pausadas/${encodeURIComponent(ch)}.json`,{method:p?'PUT':'DELETE',body:p?'true':undefined});
+    if(!r.ok)throw new Error(r.status);
+    await roboLerPausas();roboMontarCasas();roboMostrarFila();
+    roboStatus('ok',k+(p?' pausada: o Aro não lança nela.':' voltou: o Aro lança nela de novo.'),{filial:k,pausada:p});
+  }catch(e){roboStatus('erro','Não consegui gravar a pausa de '+k+': '+e.message,{});}
+}
+async function initRobo(){
   if(!MODO_ROBO)return;
   document.querySelector('.tabs')&&(document.querySelector('.tabs').style.display='none');
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
@@ -1361,7 +1394,7 @@ function initRobo(){
    if(fora.length){const d=document.createElement('div');d.style.cssText='margin-top:6px;font-size:12px;color:var(--hint);font-weight:400';d.textContent='Não liberadas: '+fora.join(', ');el.parentNode.appendChild(d);}}
   const fs=document.getElementById('robo-filial');
   // value = nome do Aro (o que a extensão procura); texto e data-cad = nome do cadastro
-  fs.innerHTML=lib.map(n=>{const k=roboCanonica(n),e=x=>String(x).replace(/"/g,'&quot;');return '<option value="'+e(k)+'" data-cad="'+e(n)+'">'+n+(roboNomeFilial(k)!==roboNomeFilial(n)?' ('+k+')':'')+'</option>';}).join('');
+  roboLib=lib;await roboLerPausas();roboMontarCasas();
   const pf=roboCanonica(ROBO_PARAMS.get('filial'));if(pf&&[...fs.options].some(o=>o.value===pf))fs.value=pf;
   document.getElementById('robo-data').value=ROBO_PARAMS.get('data')||getBrasiliaDateStr();
   const pp=ROBO_PARAMS.get('pedidos');if(pp)document.getElementById('robo-pedidos').value=pp.split(',').join('\n');
