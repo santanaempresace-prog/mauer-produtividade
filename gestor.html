@@ -427,7 +427,7 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
   <div><div class="tb-title">Painel do gestor</div><div class="tb-sub" id="tb-mes">Mauer — Produtividade</div></div>
   <div class="tb-actions">
     <div class="tb-status loading" id="status-badge">Conectando...</div>
-    <button class="btn btn-outline btn-sm" onclick="carregarTudo()"><svg class="ic" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>Atualizar</button>
+    <button class="btn btn-outline btn-sm" onclick="carregarTudo(true)"><svg class="ic" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>Atualizar</button>
     <button class="btn btn-green" onclick="exportarMes()"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
     <button class="btn btn-red" onclick="openModal()">Fechar mês</button>
   </div>
@@ -1144,33 +1144,75 @@ async function fbPatch(path,data){const r=await fetch('https://mauer-produtivida
 // ============================================================
 // LOAD DATA
 // ============================================================
-async function carregarTudo(){
-  setStatus('loading','Carregando...');
+// ---- Carga leve ----
+// Antes: a cada 30 s baixava TODO o histórico (lançamentos, conferências, registros, descargas).
+// Agora: carga completa ao abrir e a cada 10 min; nos outros ciclos busca só os últimos dias e junta.
+const RECARGA_COMPLETA_MIN=10, JANELA_DIAS=3;
+let carregando=false, ultimaCargaCompleta=0;
+async function fbQueryData(path,ini){
+  // Lê só os registros com data >= ini. Se o Firebase não tiver índice, devolve null (cai na carga completa).
+  const r=await fetch('https://mauer-produtividade-default-rtdb.firebaseio.com/'+path+'.json?orderBy='+encodeURIComponent('"data"')+'&startAt='+encodeURIComponent(JSON.stringify(ini)));
+  const d=await r.json();
+  if(!r.ok||(d&&typeof d==='object'&&typeof d.error==='string'))return null;
+  return d||{};
+}
+function juntarRecentes(lista,novos,ini){
+  const m=new Map();lista.forEach(x=>{if(!(x.data>=ini))m.set(x._key,x);});
+  Object.entries(novos).forEach(([k,v])=>m.set(k,{...v,_key:k}));
+  return[...m.values()];
+}
+function dataLimiteRecente(){return new Date(Date.now()-JANELA_DIAS*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
+async function carregarTudo(forcarCompleta){
+  if(carregando){if(forcarCompleta===true)setTimeout(()=>carregarTudo(true),1500);return;}carregando=true;
+  const completa=forcarCompleta===true||!ultimaCargaCompleta||Date.now()-ultimaCargaCompleta>RECARGA_COMPLETA_MIN*60000;
+  if(completa)setStatus('loading','Carregando...');
   try{
-    const[lancData,filData,colData,confData,regData,tmaxData,metaData]=await Promise.all([fbGet('lancamentos'),fbGet('filiais'),fbGet('colaboradores'),fbGet('confirmacoes'),fbGet('registros'),fbGet('configuracoes/tempoMaxRegistro'),fbGet('configuracoes/metaPneusHora')]);
-    registros=regData?Object.entries(regData).map(([k,v])=>({...v,_key:k})):[];
+    let lancData,confData,regData,recentes=false;
+    const ini=dataLimiteRecente();
+    if(!completa){
+      const [l,c,r]=await Promise.all([fbQueryData('lancamentos',ini),fbQueryData('confirmacoes',ini),fbQueryData('registros',ini)]);
+      if(l&&c&&r){
+        lancamentos=juntarRecentes(lancamentos,l,ini);confirmacoes=juntarRecentes(confirmacoes,c,ini);registros=juntarRecentes(registros,r,ini);
+        // registro aberto de dia anterior pode ter sido fechado: atualiza os abertos e, se algum sumiu, faz carga completa no próximo ciclo
+        try{const ab=await fetch('https://mauer-produtividade-default-rtdb.firebaseio.com/registros.json?orderBy='+encodeURIComponent('"status"')+'&equalTo='+encodeURIComponent('"em_separacao"'));
+          const d=await ab.json();
+          if(ab.ok&&!(d&&typeof d.error==='string')){
+            const vivos=d||{};
+            registros=registros.map(x=>vivos[x._key]?{...vivos[x._key],_key:x._key}:x);
+            if(registros.some(x=>x.status==='em_separacao'&&!(x.data>=ini)&&!vivos[x._key]))ultimaCargaCompleta=0;
+          }}catch(e){}
+        recentes=true;
+      }
+    }
+
+    const extras=await Promise.all([
+      recentes?null:fbGet('lancamentos'),fbGet('filiais'),fbGet('colaboradores'),recentes?null:fbGet('confirmacoes'),recentes?null:fbGet('registros'),
+      fbGet('configuracoes/tempoMaxRegistro'),fbGet('configuracoes/metaPneusHora')]);
+    const filData=extras[1],colData=extras[2],tmaxData=extras[5],metaData=extras[6];
+    if(!recentes){
+      lancData=extras[0];confData=extras[3];regData=extras[4];
+      lancamentos=lancData?Object.entries(lancData).map(([k,v])=>({...v,_key:k})):[];
+      confirmacoes=confData?Object.entries(confData).map(([k,v])=>({...v,_key:k})):[];
+      registros=regData?Object.entries(regData).map(([k,v])=>({...v,_key:k})):[];
+      ultimaCargaCompleta=Date.now();
+    }
     registrosMap={};registros.forEach(r=>registrosMap[r._key]=r);
     if(tmaxData&&Number(tmaxData)>0)tempoMaxMin=Number(tmaxData);
     if(metaData&&Number(metaData)>0)metaPneusHora=Number(metaData);
-    lancamentos=lancData?Object.entries(lancData).map(([k,v])=>({...v,_key:k})):[];
-    confirmacoes=confData?Object.entries(confData).map(([k,v])=>({...v,_key:k})):[];
     fecharLotesConferidos();
     lancamentos.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
     filiais=filData?Object.entries(filData).map(([k,v])=>({...v,_key:k})):[];
     colaboradores={};
     if(colData)Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});
     if(filiaisSelecionadas.size===0)filiais.forEach(f=>filiaisSelecionadas.add(f.nome));
-    await carregarMargem();
-    await carregarDeducao();
-    await carregarGestores();
-    await carregarConferentes();
-    await carregarDescargas();
+    await Promise.all([completa?carregarMargem():null,completa?carregarDeducao():null,carregarGestores(),carregarConferentes(),(completa||!descargasCarregadas)?carregarDescargas():null]);
     populateFiliaisSelect();
     render();
     setStatus('ok','Conectado ✓');
     const m=new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
     document.getElementById('tb-mes').textContent='Mauer — '+m.charAt(0).toUpperCase()+m.slice(1);
   }catch(e){setStatus('err','Erro de conexão');showAlert('err','Erro ao conectar.');console.error(e);}
+  finally{carregando=false;}
 }
 
 function setStatus(type,msg){const el=document.getElementById('status-badge');if(!el)return;el.className='tb-status '+type;el.textContent=msg;}
@@ -1547,19 +1589,20 @@ async function carregarDescargas(){
 function popularDescargaFilial(){
   const sel=document.getElementById('desc-filial');if(!sel)return;
   const cur=sel.value;
-  sel.innerHTML='<option value="">Todas as filiais</option>'+filiais.map(f=>'<option'+(f.nome===cur?' selected':'')+'>'+f.nome+'</option>').join('');
+  const nomes=[...new Set([...filiais.map(f=>filialUnificada(f.nome)),...descargas.map(d=>filialUnificada(d.filial))])].filter(n=>n!=='—').sort();
+  sel.innerHTML='<option value="">Todas as filiais</option>'+nomes.map(n=>'<option'+(n===cur?' selected':'')+'>'+n+'</option>').join('');
 }
 
-// descarga.html historicamente salvou algumas filiais com códigos curtos (ES, MG, SP, BU) —
-// normaliza para o nome completo cadastrado em "Filiais e colaboradores".
-const DESC_FILIAL_MAP={'ES':'MAUER ES','MG':'MAUER MG','SP':'MAUER ITAPEVI','BU':'MAUER BAURU'};
-function normalizarFilialDescarga(f){
-  const raw=(f||'').trim();
-  const k=raw.toUpperCase();
-  if(DESC_FILIAL_MAP[k])return DESC_FILIAL_MAP[k];
-  const match=filiais.find(fl=>fl.nome.toUpperCase()===k);
-  return match?match.nome:(raw||'—');
+// Junta a mesma filial escrita de jeitos diferentes: "PR" e "MAUER PR" -> MAUER PR;
+// Itapevi = SP; Bauru, BU e RP = MAUER BAURU.
+const FILIAL_APELIDO={'ITAPEVI':'SP','BU':'BAURU','RP':'BAURU'};
+function filialUnificada(f){
+  const raw=String(f||'').trim();if(!raw)return '—';
+  let k=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').replace(/^MAUER /,'').trim();
+  k=FILIAL_APELIDO[k]||k;
+  return 'MAUER '+k;
 }
+function normalizarFilialDescarga(f){return filialUnificada(f);}
 
 function clearDescargaFilters(){
   const sel=document.getElementById('desc-filial');if(sel)sel.value='';
@@ -1710,10 +1753,19 @@ function renderPedidos(){
 // TEMPOS DE SEPARAÇÃO (registros)
 // ============================================================
 // Pedido conferido é finalizado individualmente no lote; o lote só encerra quando todos estiverem conferidos
+// Índice das conferências por pedido|filial|data (evita varrer todas as conferências para cada pedido)
+let _ci={ref:null,len:-1,map:null};
+function confIdx(){
+  if(_ci.ref!==confirmacoes||_ci.len!==confirmacoes.length){
+    const m=new Map();confirmacoes.forEach(c=>{const k=String(c.numPedido)+'|'+c.filial+'|'+c.data;const a=m.get(k);if(a)a.push(c);else m.set(k,[c]);});
+    _ci={ref:confirmacoes,len:confirmacoes.length,map:m};
+  }
+  return _ci.map;
+}
 function confsDoLote(r){
   const fin={...(r.pedidosFinalizados||{})};
   (r.pedidos||[]).forEach(p=>{const n=String(p.num);if(fin[n])return;
-    const c=confirmacoes.filter(c=>!c.baixaMassa&&c.timestamp&&c.filial===r.filial&&c.data===r.data&&String(c.numPedido)===n&&c.timestamp>=r.inicio).sort((a,b)=>a.timestamp-b.timestamp)[0];
+    const c=(confIdx().get(n+'|'+r.filial+'|'+r.data)||[]).filter(c=>!c.baixaMassa&&c.timestamp&&c.timestamp>=r.inicio).sort((a,b)=>a.timestamp-b.timestamp)[0];
     if(c)fin[n]=c.timestamp;});
   return fin;
 }
@@ -1735,7 +1787,7 @@ function pendentesAntesDe(dataLimite){
   const vistos=new Set();
   return lancamentos.filter(l=>l.isPedido&&l.numPedido&&l.data&&l.data<dataLimite).filter(l=>{
     const k=l.numPedido+'|'+l.filial+'|'+l.data;if(vistos.has(k))return false;vistos.add(k);
-    return !confirmacoes.some(c=>String(c.numPedido)===String(l.numPedido)&&c.filial===l.filial&&c.data===l.data);
+    return !confIdx().has(String(l.numPedido)+'|'+l.filial+'|'+l.data);
   });
 }
 function abrirBaixaMassa(){
@@ -1769,8 +1821,8 @@ async function executarBaixaMassa(){
       if(!r.ok)throw new Error('PATCH '+r.status);
     }
     showAlert('ok',pend.length+' pedidos marcados como conferidos.');
-    fecharBaixaMassa();await carregarTudo();
-  }catch(e){console.error(e);showAlert('err','Erro na baixa em massa. Parte pode ter sido gravada; abra de novo para conferir.');await carregarTudo();}
+    fecharBaixaMassa();await carregarTudo(true);
+  }catch(e){console.error(e);showAlert('err','Erro na baixa em massa. Parte pode ter sido gravada; abra de novo para conferir.');await carregarTudo(true);}
   btn.disabled=false;
 }
 async function desfazerBaixaMassa(lote){
@@ -1779,13 +1831,13 @@ async function desfazerBaixaMassa(lote){
   try{
     for(let i=0;i<alvo.length;i+=300){const upd={};alvo.slice(i,i+300).forEach(c=>upd[c._key]=null);
       const r=await fetch('https://mauer-produtividade-default-rtdb.firebaseio.com/confirmacoes.json',{method:'PATCH',body:JSON.stringify(upd)});if(!r.ok)throw new Error('PATCH '+r.status);}
-    showAlert('ok','Baixa em massa desfeita.');await carregarTudo();previaBaixaMassa();
+    showAlert('ok','Baixa em massa desfeita.');await carregarTudo(true);previaBaixaMassa();
   }catch(e){console.error(e);showAlert('err','Erro ao desfazer.');}
 }
 // Ciclo completo do pedido: início da separação -> baixa da conferência
 function cicloPedido(l){
   const reg=l.registroId&&registrosMap[l.registroId];
-  const conf=confirmacoes.find(c=>String(c.numPedido)===String(l.numPedido)&&c.filial===l.filial&&c.data===l.data);
+  const conf=(confIdx().get(String(l.numPedido)+'|'+l.filial+'|'+l.data)||[])[0];
   const ini=reg&&reg.inicio?reg.inicio:(l.timestamp||null);
   let status;
   if(conf)status='finalizado';
@@ -2141,7 +2193,7 @@ async function saveFilial(i){
   if(!confirm('Renomear "'+antigo+'" para "'+novo+'"?\n\nColaboradores, conferentes e todo o histórico da filial serão atualizados para o novo nome.'))return;
   try{await fbPatch('filiais/'+filiais[i]._key,{nome:novo});showAlert('ok','Renomeando... atualizando cadastros e histórico.');
     const n=await migrarNomeFilial(antigo,novo);
-    showAlert('ok','Filial renomeada. '+n+' registro(s) atualizados.');await carregarTudo();renderFiliaisList();renderOrfaos();}
+    showAlert('ok','Filial renomeada. '+n+' registro(s) atualizados.');await carregarTudo(true);renderFiliaisList();renderOrfaos();}
   catch(e){showAlert('err','Erro ao salvar.');}
 }
 async function addFilial(){
@@ -2491,7 +2543,8 @@ function passesColFilter(filterId,value){if(!colFilters[filterId]||colFilters[fi
 // ============================================================
 // INIT
 // ============================================================
-setInterval(()=>{if(gestorLogado)carregarTudo();},30000);
+setInterval(()=>{if(gestorLogado&&!document.hidden)carregarTudo();},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&gestorLogado)carregarTudo();});
 
 // ============================================================
 // FILTER ENGINE — simples e funcional
