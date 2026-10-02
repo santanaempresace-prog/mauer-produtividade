@@ -197,6 +197,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
 
   <!-- TAB 1: PEDIDOS -->
   <div class="tab-content active" id="tab-pedido">
+    <button type="button" onclick="abrirTutorial()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 12px;padding:12px 16px;border:2px dashed #E38A29;border-radius:12px;background:#FFF6EC;color:#9C5A12;font-weight:700;font-size:15px;cursor:pointer">❓ Dúvida? Veja como lançar pedidos (passo a passo com imagens)</button>
     <div class="card">
       <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Identificação</div>
       <div class="ident-resumo" id="ident-resumo"><div><div class="ident-nome" id="ident-nome"></div><div class="ident-sub" id="ident-sub"></div></div><button type="button" class="btn-trocar" onclick="trocarIdent()">Trocar</button></div>
@@ -1277,6 +1278,20 @@ async function carregarAbertosConferencia(){
   }catch(e){console.error(e);el.innerHTML='<div style="text-align:center;color:var(--red-t);padding:16px">Não consegui carregar agora. Tentando de novo…</div>';}
   if(!abTimer)abTimer=setInterval(()=>{const t=document.getElementById('tab-confirmar');if(t&&t.classList.contains('active')&&document.visibilityState==='visible')carregarAbertosConferencia();},30000);
 }
+
+// ---- TUTORIAL DO SEPARADOR (tutorial-separador.html, aberto por cima do app) ----
+function abrirTutorial(){
+  let ov=document.getElementById('tutorial-ov');
+  if(!ov){ov=document.createElement('div');ov.id='tutorial-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:9000;background:#131F3B;display:flex;flex-direction:column';
+    ov.innerHTML='<iframe src="tutorial-separador.html?v='+Date.now()+'" title="Como lançar pedidos" style="flex:1;border:0;width:100%;background:#F3F2EE"></iframe>';
+    document.body.appendChild(ov);}
+  else ov.style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function fecharTutorial(){const ov=document.getElementById('tutorial-ov');if(ov)ov.style.display='none';document.body.style.overflow='';}
+window.addEventListener('message',e=>{if(e.data==='fechar-tutorial')fecharTutorial();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharTutorial();});
 
 // ---- PEDIDO COM REGISTRO DUPLICADO ----
 const DUP_DIAS=30;
