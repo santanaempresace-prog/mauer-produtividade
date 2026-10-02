@@ -301,6 +301,20 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
   </div>
 </div>
 <div class="tab-content" id="tab-confirmar">
+    <div class="card" style="margin-bottom:12px;background:var(--orange);border:none;text-align:center;padding:28px 18px">
+      <div style="font-size:44px;line-height:1">📲</div>
+      <div style="color:#fff;font-size:clamp(24px,6vw,40px);font-weight:800;line-height:1.15;letter-spacing:.01em;margin-top:10px;text-transform:uppercase">Use o tablet Mauer pra conferir os pedidos da sua filial</div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:4px;justify-content:space-between;display:flex;align-items:center">
+        <span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Pedidos aguardando conferência</span>
+        <span id="ab-total" class="badge badge-warn"></span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Pedidos separados nos últimos 3 dias que ainda não foram conferidos. Atualiza sozinho.</div>
+      <div id="ab-lista"><div style="text-align:center;color:var(--hint);padding:16px">Carregando…</div></div>
+      <div id="ab-hora" style="font-size:11px;color:var(--hint);margin-top:10px;text-align:right"></div>
+    </div>
+    <div style="display:none" aria-hidden="true">
     <div class="card" style="margin-bottom:12px">
       <div class="card-title" style="margin-bottom:12px">
         <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -348,6 +362,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
       </div>
     </div>
   </div>
+</div>
 
   <!-- TAB 4: GRÁFICO -->
   <div class="tab-content" id="tab-grafico">
@@ -1009,7 +1024,7 @@ function setTab(tab,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
   if(tab==='grafico'){renderRankingCorrida();renderChart();}
-  if(tab==='confirmar'){carregarConferentesParaConfirmar();}
+  if(tab==='confirmar'){carregarAbertosConferencia();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente')renderErroHistory();
 }
@@ -1188,6 +1203,32 @@ async function salvarPedidos(){
     carregarHoje();
   }catch(e){showAlert('err','Erro ao salvar. Tente de novo.');console.error(e);}
   btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();
+}
+
+// ---- ABA CONFIRMAR: só a quantidade de pedidos aguardando conferência por filial ----
+let abTimer=null;
+async function carregarAbertosConferencia(){
+  const el=document.getElementById('ab-lista');if(!el)return;
+  const dia=n=>new Date(Date.now()-n*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
+  try{
+    const [l,c]=await Promise.all([fbQuery('lancamentos','data',{startAt:dia(3)}),fbQuery('confirmacoes','data',{startAt:dia(30)})]);
+    const conf=new Set(Object.values(c||{}).map(x=>normPed(x.numPedido)+'|'+x.filial));
+    const vistos=new Set(),porFilial={};
+    Object.values(l||{}).forEach(x=>{if(!x||!x.isPedido||!x.numPedido)return;const k=normPed(x.numPedido)+'|'+x.filial;
+      if(vistos.has(k)||conf.has(k))return;vistos.add(k);porFilial[x.filial]=(porFilial[x.filial]||0)+1;});
+    const minha=(document.getElementById('p-filial')||{}).value||'';
+    const nomes=[...new Set([...filiais.map(f=>f.nome||f),...Object.keys(porFilial)])].filter(Boolean)
+      .sort((a,b)=>(b===minha)-(a===minha)||(porFilial[b]||0)-(porFilial[a]||0)||a.localeCompare(b));
+    const total=Object.values(porFilial).reduce((a,b)=>a+b,0);
+    document.getElementById('ab-total').textContent=total+' no total';
+    el.innerHTML=nomes.map(n=>{const q=porFilial[n]||0,eu=n===minha;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1px solid '+(eu?'var(--orange)':'var(--border)')+';border-radius:var(--rsm);margin-bottom:8px;background:'+(eu?'var(--orange-bg)':'var(--surface)')+'">'
+        +'<span style="font-weight:'+(eu?'700':'500')+';font-size:15px">'+n+(eu?' <span style="font-size:11px;color:var(--orange-t)">(sua filial)</span>':'')+'</span>'
+        +'<span style="font-family:var(--mono);font-size:22px;font-weight:600;color:'+(q?'var(--orange-t)':'var(--hint)')+'">'+q+'</span></div>';}).join('')
+      ||'<div style="text-align:center;color:var(--hint);padding:16px">Nenhuma filial cadastrada</div>';
+    document.getElementById('ab-hora').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+  }catch(e){console.error(e);el.innerHTML='<div style="text-align:center;color:var(--red-t);padding:16px">Não consegui carregar agora. Tentando de novo…</div>';}
+  if(!abTimer)abTimer=setInterval(()=>{const t=document.getElementById('tab-confirmar');if(t&&t.classList.contains('active')&&document.visibilityState==='visible')carregarAbertosConferencia();},30000);
 }
 
 // ---- PEDIDO COM REGISTRO DUPLICADO ----
