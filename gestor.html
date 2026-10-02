@@ -763,14 +763,23 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
         <div class="card-header"><div class="card-title">🔒 Separadores bloqueados</div><span id="bloq-count" class="badge badge-neu"></span></div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Quem tenta lançar pedido duplicado fica bloqueado no app até o responsável digitar a senha no celular dele, ou até ser liberado aqui.</div>
         <div class="table-wrap"><table><thead><tr><th>Desde</th><th>Filial</th><th>Separador</th><th>Pedido(s)</th><th>Detalhe</th><th></th></tr></thead><tbody id="bloq-tbody"></tbody></table></div>
-        <div id="senha-dup-box" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:6px">Senha de liberação <span id="senha-dup-status" style="font-weight:400;color:var(--muted)"></span></div>
-          <div class="field-row" style="flex-wrap:wrap;gap:8px">
-            <input type="password" id="senha-dup-1" placeholder="Nova senha (mín. 4)" autocomplete="new-password" style="flex:1;min-width:150px">
-            <input type="password" id="senha-dup-2" placeholder="Repita a senha" autocomplete="new-password" style="flex:1;min-width:150px">
-            <button class="btn btn-primary" onclick="salvarSenhaDup()">Salvar senha</button>
+        <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">Palavra-chave da semana <span id="senha-dup-nova"></span></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <span id="senha-dup-ver" style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;letter-spacing:.08em;padding:6px 14px;border:1px dashed var(--border);border-radius:var(--rsm);min-width:120px;text-align:center">••••••</span>
+            <button class="btn btn-outline btn-sm" id="senha-dup-olho" onclick="alternarVerSenhaDup()">Mostrar</button>
+            <span id="senha-dup-quem" style="font-size:12px;color:var(--muted)"></span>
           </div>
-          <div style="font-size:11px;color:var(--hint);margin-top:4px">A senha não fica guardada em texto; o sistema guarda só um código dela. Passe a senha só para os responsáveis.</div>
+        </div>
+        <div id="senha-dup-box" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">Trocar agora <span style="font-weight:400;color:var(--muted)">(só você vê esta parte; toda segunda-feira ela troca sozinha)</span></div>
+          <div class="field-row" style="flex-wrap:wrap;gap:8px">
+            <input type="text" id="senha-dup-1" placeholder="Nova palavra" autocomplete="off" style="flex:1;min-width:150px">
+            <button class="btn btn-outline" onclick="gerarSenhaDup()">Sortear palavra</button>
+            <button class="btn btn-primary" onclick="salvarSenhaDup()">Salvar</button>
+          </div>
+          <div style="font-size:11px;color:var(--hint);margin-top:4px">Palavras comuns do dia a dia (ex.: carro, banana, cachorro). Acento e maiúscula não importam na hora de digitar. Ao salvar, todos os gestores veem a palavra nova aqui.</div>
+        </div>
         </div>
       </div>
       <div class="card">
@@ -1993,9 +2002,11 @@ function regAtrasado(r){
 function corPnHora(v){return v==null?'var(--hint)':(v>=metaPneusHora?'var(--green-t)':'var(--red-t)');}
 function fmtPn(v){return v!=null?v.toFixed(1).replace('.',','):'—';}
 // ===== DUPLICADOS =====
-let alertasDup=[],bloqueiosDup=[],senhaDupDefinida=false;
+let alertasDup=[],bloqueiosDup=[],senhaDupDefinida=false,senhaDupInfo=null,verSenhaDup=false;
 async function carregarAlertasDup(){
-  try{const[d,b,h]=await Promise.all([fbGet('alertasDuplicado'),fbGet('bloqueiosDup'),fbGet('configuracoes/senhaLiberacaoDup')]);
+  try{await garantirSenhaDaSemana();}catch(e){console.error('palavra da semana',e);}
+  try{const[d,b,h,inf]=await Promise.all([fbGet('alertasDuplicado'),fbGet('bloqueiosDup'),fbGet('configuracoes/senhaLiberacaoDup'),fbGet('configuracoes/senhaLiberacaoDupInfo')]);
+    senhaDupInfo=inf||null;
     alertasDup=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];
     bloqueiosDup=b?Object.entries(b).map(([k,v])=>({...v,_key:k})).sort((x,y)=>(y.desde||0)-(x.desde||0)):[];
     senhaDupDefinida=!!h;}catch(e){console.error(e);}
@@ -2014,17 +2025,57 @@ function atualizarBadgeDup(){
   if(!b){b=document.createElement('span');b.className='nav-alert';nav.appendChild(b);}
   b.textContent=n;b.title=bloqueiosDup.length+' separador(es) bloqueado(s) e '+alertasDup.filter(a=>!a.visto).length+' tentativa(s) não vista(s)';
 }
-async function hashSenhaDup(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mauer-dup|'+String(t).trim()));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+// ===== PALAVRA-CHAVE DA SEMANA =====
+// Troca sozinha toda segunda-feira (horário de Brasília): o primeiro app aberto na semana sorteia uma
+// palavra comum e grava. Acento e maiúscula/minúscula não importam na hora de digitar.
+const PALAVRAS_SENHA=['maçã','carro','faca','árvore','pneu','cachorro','gato','banana','cadeira','mesa','janela','porta','escada','caneta','livro','relógio','sapato','camisa','chapéu','bolsa','garrafa','copo','prato','panela','colher','garfo','fogão','geladeira','sofá','cama','travesseiro','toalha','sabonete','escova','espelho','vassoura','balde','martelo','chave','cadeado','bicicleta','ônibus','caminhão','moto','avião','barco','trem','estrada','ponte','praia','areia','montanha','rio','lago','chuva','nuvem','vento','estrela','lua','sol','flor','folha','grama','jardim','laranja','limão','uva','morango','abacaxi','melancia','tomate','cebola','batata','cenoura','arroz','feijão','pão','queijo','leite','café','bolo','pipoca','sorvete','chocolate','biscoito','galinha','cavalo','vaca','porco','coelho','peixe','tartaruga','macaco','leão','girafa','elefante','pato','abelha','borboleta','formiga','papagaio','coruja','violão','tambor','bola','pipa','boneca','foguete','lápis','caderno','mochila','tesoura','régua','apito','lanterna','vela','sino','tijolo','telhado','parede','quintal','varanda','calçada','buzina','volante','farol','motor','roda','gaveta','armário','tapete','cortina','almofada','pente','anel','colar','óculos','luva','meia','casaco','guarda-chuva','carteira','moeda','envelope','jornal','revista','rádio','tesouro','castelo','navio','sereia','dragão','pirata','palhaço'];
+const normSenha=t=>String(t==null?'':t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+async function hashPalavra(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mauer-dup|'+normSenha(t)));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+// Segunda-feira da semana atual (Brasília), ex. "2026-09-28"
+function segundaDaSemana(ts){
+  const d=new Date(new Date(ts||Date.now()).toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));
+  d.setDate(d.getDate()-((d.getDay()+6)%7));
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function sortearPalavra(evitar){
+  const ev=normSenha(evitar),r=n=>crypto.getRandomValues(new Uint32Array(1))[0]%n;
+  let p;do{p=PALAVRAS_SENHA[r(PALAVRAS_SENHA.length)];}while(normSenha(p)===ev);return p;
+}
+let _garantindoSenha=null;
+async function garantirSenhaDaSemana(){
+  if(_garantindoSenha)return _garantindoSenha;
+  _garantindoSenha=(async()=>{
+    const FBU='https://mauer-produtividade-default-rtdb.firebaseio.com/configuracoes/';
+    const ler=async p=>{const r=await fetch(FBU+p+'.json?x='+Date.now(),{cache:'no-store'});return r.ok?await r.json():null;};
+    const grava=async(p,v)=>{const r=await fetch(FBU+p+'.json',{method:'PUT',body:JSON.stringify(v)});if(!r.ok)throw new Error('PUT '+r.status);};
+    const sem=segundaDaSemana();let info=await ler('senhaLiberacaoDupInfo');
+    if(!info||info.semana!==sem){
+      const texto=sortearPalavra(info&&info.texto);
+      info={texto,semana:sem,alteradoPor:'Troca automática (segunda-feira)',alteradoEm:Date.now(),automatica:true};
+      await grava('senhaLiberacaoDup',await hashPalavra(texto));await grava('senhaLiberacaoDupInfo',info);
+      await new Promise(r=>setTimeout(r,600));               // se dois aparelhos sortearem juntos, vale o último gravado
+      info=await ler('senhaLiberacaoDupInfo')||info;
+      const h=await ler('senhaLiberacaoDup');if(h!==await hashPalavra(info.texto))await grava('senhaLiberacaoDup',await hashPalavra(info.texto));
+    }
+    return info;
+  })().finally(()=>{setTimeout(()=>{_garantindoSenha=null;},5000);});
+  return _garantindoSenha;
+}
+const hashSenhaDup=hashPalavra;
 // Só este usuário vê e troca a senha de liberação
 const DONO_SENHA_DUP='caio.mauer';
 const podeTrocarSenhaDup=()=>!!(gestorLogado&&String(gestorLogado.usuario||'').toLowerCase()===DONO_SENHA_DUP);
+function gerarSenhaDup(){document.getElementById('senha-dup-1').value=sortearPalavra(senhaDupInfo&&senhaDupInfo.texto);}
+function alternarVerSenhaDup(){verSenhaDup=!verSenhaDup;renderDuplicados();}
 async function salvarSenhaDup(){
   if(!podeTrocarSenhaDup()){showAlert('err','Só o usuário responsável pode trocar a senha de liberação.');return;}
-  const a=document.getElementById('senha-dup-1').value.trim(),b=document.getElementById('senha-dup-2').value.trim();
-  if(a.length<4){showAlert('err','A senha precisa ter pelo menos 4 caracteres.');return;}
-  if(a!==b){showAlert('err','As duas senhas não conferem.');return;}
-  try{await fbPut('configuracoes/senhaLiberacaoDup',await hashSenhaDup(a));senhaDupDefinida=true;
-    document.getElementById('senha-dup-1').value='';document.getElementById('senha-dup-2').value='';renderDuplicados();showAlert('ok','Senha de liberação salva.');}
+  const a=document.getElementById('senha-dup-1').value.trim();
+  if(normSenha(a).replace(/[^A-Z]/g,'').length<4){showAlert('err','Use uma palavra com pelo menos 4 letras.');return;}
+  if(senhaDupInfo&&normSenha(senhaDupInfo.texto)===normSenha(a)){showAlert('err','Essa já é a palavra-chave atual.');return;}
+  if(!confirm('Trocar a palavra-chave para "'+a+'"? A anterior deixa de funcionar na hora. Na próxima segunda-feira ela troca sozinha de novo.'))return;
+  const info={texto:a,semana:segundaDaSemana(),alteradoPor:gestorLogado.nome||gestorLogado.usuario,alteradoEm:Date.now()};
+  try{await fbPut('configuracoes/senhaLiberacaoDup',await hashSenhaDup(a));await fbPut('configuracoes/senhaLiberacaoDupInfo',info);
+    senhaDupDefinida=true;senhaDupInfo=info;document.getElementById('senha-dup-1').value='';renderDuplicados();showAlert('ok','Palavra-chave trocada.');}
   catch(e){console.error(e);showAlert('err','Não consegui salvar a senha.');}
 }
 async function liberarBloqueioDup(k){
@@ -2042,7 +2093,17 @@ function renderDuplicados(){
     tb.innerHTML=bloqueiosDup.length?bloqueiosDup.map(b=>'<tr><td style="white-space:nowrap">'+fmt(b.data)+' '+fmtHora(b.desde)+'</td><td>'+dupEsc(b.filial)+'</td><td style="font-weight:600">'+dupEsc(b.colaborador)+'</td><td style="font-family:\'IBM Plex Mono\',monospace">'+dupEsc((b.pedidos||[]).join(', '))+'</td><td style="font-size:12px;max-width:340px">'+dupEsc(b.detalhe||'')+'</td><td><button class="btn btn-primary btn-sm" onclick="liberarBloqueioDup(\''+b._key+'\')">Liberar</button></td></tr>').join('')
       :'<tr><td colspan="6" style="text-align:center;color:var(--hint);padding:14px">Ninguém bloqueado agora</td></tr>';
     document.getElementById('senha-dup-box').style.display=podeTrocarSenhaDup()?'':'none';
-    document.getElementById('senha-dup-status').textContent=senhaDupDefinida?'(cadastrada ✓, pode trocar abaixo)':'(⚠ ainda não cadastrada: sem ela, só dá para liberar por aqui)';}}
+    const ver=document.getElementById('senha-dup-ver'),quem=document.getElementById('senha-dup-quem'),nova=document.getElementById('senha-dup-nova');
+    if(senhaDupInfo&&senhaDupInfo.texto){
+      ver.textContent=verSenhaDup?senhaDupInfo.texto:'•'.repeat(Math.max(6,senhaDupInfo.texto.length));
+      document.getElementById('senha-dup-olho').textContent=verSenhaDup?'Ocultar':'Mostrar';document.getElementById('senha-dup-olho').style.display='';
+      const prox=new Date(segundaDaSemana()+'T12:00:00');prox.setDate(prox.getDate()+7);
+      quem.textContent=(senhaDupInfo.automatica?'Sorteada automaticamente':'Alterada por '+(senhaDupInfo.alteradoPor||'?'))+' em '+new Date(senhaDupInfo.alteradoEm).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+' · próxima troca: segunda '+prox.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+      nova.innerHTML=Date.now()-(senhaDupInfo.alteradoEm||0)<864e5?'<span class="badge" style="background:var(--amber-bg);color:var(--amber-t)">alterada nas últimas 24 h</span>':'';
+    }else{
+      ver.textContent=senhaDupDefinida?'(antiga, sem registro)':'não cadastrada';document.getElementById('senha-dup-olho').style.display='none';nova.innerHTML='';
+      quem.textContent=senhaDupDefinida?'Cadastre uma nova para ela aparecer aqui.':'Sem senha, o separador bloqueado só é liberado pelo botão Liberar acima.';
+    }}}
   const ONDE={separador:'App separador',conferente:'App conferente',aro:'Aro (robô)'};
   const lista=dupFiltrados(),tb=document.getElementById('dup-tbody');if(!tb)return;
   document.getElementById('dup-count').textContent=lista.length+' no período · '+lista.filter(a=>!a.visto).length+' não vistas';
