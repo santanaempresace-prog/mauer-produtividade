@@ -1040,6 +1040,7 @@ async function addPedido(){
   if(addBtn) { if(addBtn.dataset.processing==='1') return; addBtn.dataset.processing='1'; }
 
   // Verifica margem e duplicata no Firebase
+  var autorizadoPor='';
   try {
     const hoje = getBrasiliaDateStr();
     const _lim=new Date();_lim.setDate(_lim.getDate()-8);
@@ -1051,24 +1052,21 @@ async function addPedido(){
     const margem = margemData ? Number(margemData) : 1000;
     const todos = lancData ? Object.values(lancData) : [];
 
-    // Verifica duplicata — mesmo número em qualquer data/filial
-    const jaExisteHoje = todos.find(l=>l.isPedido && normPed(l.numPedido)===normPed(num) && l.data===hoje);
-    if(jaExisteHoje){
-      showDuplicateAlert('🚫 Pedido '+num+' já foi registrado hoje por '+jaExisteHoje.colaborador+' ('+jaExisteHoje.filial+')!','err');
-      registrarDuplicado({origem:'separador',bloqueado:true,numPedido:num,filial:document.getElementById('p-filial').value,quem:document.getElementById('p-colab').value,
-        detalhe:'Já registrado hoje por '+(jaExisteHoje.colaborador||'?')+' ('+(jaExisteHoje.filial||'?')+')'});
-      const _b1=document.getElementById('add-pedido-btn');if(_b1)_b1.dataset.processing='0';
-      return;
-    }
-    // Verifica duplicata em outras datas (últimos 7 dias)
-    const seteDiasAtras = new Date(); seteDiasAtras.setDate(seteDiasAtras.getDate()-7);
-    const limiteData = seteDiasAtras.toISOString().slice(0,10);
-    const jaExisteRecente = todos.find(l=>l.isPedido && normPed(l.numPedido)===normPed(num) && l.data>=limiteData && l.data!==hoje);
-    if(jaExisteRecente){
-      showDuplicateAlert('⚠ Pedido '+num+' já foi registrado em '+jaExisteRecente.data.split("-").reverse().join("/")+" por "+jaExisteRecente.colaborador+' ('+jaExisteRecente.filial+'). Tem certeza que é um pedido novo?','warn');
-      registrarDuplicado({origem:'separador',bloqueado:false,numPedido:num,filial:document.getElementById('p-filial').value,quem:document.getElementById('p-colab').value,
-        detalhe:'Já registrado em '+jaExisteRecente.data.split('-').reverse().join('/')+' por '+(jaExisteRecente.colaborador||'?')+' ('+(jaExisteRecente.filial||'?')+'). Separador foi avisado, mas pôde seguir.'});
-      // Não bloqueia — só avisa para pedidos de outros dias
+    // Pedido já registrado (qualquer data nos últimos 30 dias, qualquer filial): BLOQUEIA e pede para avisar o responsável
+    let jaReg=[];try{jaReg=(await lancamentosRecentesPorPedido()).get(normPed(num))||[];}catch(e){console.error(e);}
+    if(jaReg.length){
+      const filialAtual=document.getElementById('p-filial').value,colabAtual=document.getElementById('p-colab').value;
+      const r=await modalPedidoDuplicado([{p:{num},existentes:jaReg}],{tirar:'Não adicionar este pedido'});
+      const texto='já separado por '+jaReg.map(dupDescrever).join('; ');
+      if(r.acao!=='autorizado'){
+        registrarDuplicado({origem:'separador',bloqueado:true,numPedido:num,filial:filialAtual,quem:colabAtual,detalhe:'Tentou adicionar pedido que já tinha registro ('+texto+')'});
+        showDuplicateAlert('🚫 Pedido '+num+' já tem registro ('+jaReg.map(dupDescrever).join('; ')+'). Não foi adicionado. Avise o responsável.','err');
+        document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
+        const _b1=document.getElementById('add-pedido-btn');if(_b1)_b1.dataset.processing='0';
+        return;
+      }
+      autorizadoPor=r.nome;
+      registrarDuplicado({origem:'separador',bloqueado:false,numPedido:num,filial:filialAtual,quem:colabAtual,autorizadoPor,detalhe:'Adicionou pedido que já tinha registro ('+texto+'). Liberado por: '+autorizadoPor});
     }
 
     // Verifica margem — pega o último pedido registrado em qualquer dia (globalmente)
@@ -1093,7 +1091,7 @@ async function addPedido(){
     }
   } catch(e){ console.error(e); const _be=document.getElementById('add-pedido-btn');if(_be)_be.dataset.processing='0'; }
 
-  pedidosTemp.push({num,qt});
+  pedidosTemp.push(autorizadoPor?{num,qt,dupAutorizadoPor:autorizadoPor}:{num,qt});
   const _addBtnOk = document.getElementById('add-pedido-btn');
   if(_addBtnOk) _addBtnOk.dataset.processing='0';
   document.getElementById('p-num').value='';
@@ -1142,7 +1140,7 @@ async function salvarPedidos(){
     btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;
   }
   // TRAVA FINAL: confere no servidor se algum pedido do lote já tem lançamento (qualquer filial, últimos 30 dias)
-  const dups=await conferirDuplicadosLote(pedidosTemp);
+  const dups=await conferirDuplicadosLote(pedidosTemp.filter(p=>!p.dupAutorizadoPor));
   if(dups.length){
     const r=await modalPedidoDuplicado(dups);
     const quem={filial,colab};
@@ -1204,7 +1202,8 @@ async function conferirDuplicadosLote(lote){
   let m;try{m=await lancamentosRecentesPorPedido();}catch(e){console.error(e);return[];}
   return lote.map(p=>{const ex=m.get(normPed(p.num))||[];return ex.length?{p,existentes:ex,texto:'já separado por '+ex.map(dupDescrever).join('; ')}:null;}).filter(Boolean);
 }
-function modalPedidoDuplicado(dups){
+function modalPedidoDuplicado(dups,txt){
+  txt=txt||{};
   return new Promise(res=>{
     try{navigator.vibrate&&navigator.vibrate([200,100,200,100,400]);}catch(e){}
     const ov=document.createElement('div');
@@ -1214,7 +1213,7 @@ function modalPedidoDuplicado(dups){
       <div style="font-size:24px;font-weight:700;color:#B3261E">PEDIDO COM REGISTRO DUPLICADO</div>
       <div style="font-size:15px;color:#333;margin:8px 0 12px">Não separe este pedido. <b>Avise o responsável agora.</b></div>
       <div style="text-align:left;background:#f5f4f0;border-radius:8px;padding:10px 14px;margin-bottom:14px">${dups.map(d=>`<div style="padding:6px 0;border-bottom:1px solid #e2e0d8"><div style="font-family:monospace;font-size:22px;font-weight:600">${esc(d.p.num)}</div><div style="font-size:14px">${d.existentes.map(l=>'Já separado por '+esc(dupDescrever(l))).join('<br>')}</div></div>`).join('')}</div>
-      <button data-a="tirar" style="width:100%;min-height:58px;border:none;border-radius:10px;background:#B3261E;color:#fff;font-size:18px;font-weight:600;margin-bottom:8px">Tirar do meu lote</button>
+      <button data-a="tirar" style="width:100%;min-height:58px;border:none;border-radius:10px;background:#B3261E;color:#fff;font-size:18px;font-weight:600;margin-bottom:8px">${txt.tirar||'Tirar do meu lote'}</button>
       <details style="text-align:left;margin-top:6px"><summary style="cursor:pointer;font-size:13px;color:#555">O responsável autorizou separar mesmo assim</summary>
         <input data-n placeholder="Nome do responsável que autorizou" style="width:100%;box-sizing:border-box;margin-top:8px;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px">
         <button data-a="autorizado" style="width:100%;min-height:46px;margin-top:8px;border:1px solid #c8c5ba;border-radius:10px;background:#fff;font-size:15px;font-weight:600">Iniciar com autorização</button></details>
