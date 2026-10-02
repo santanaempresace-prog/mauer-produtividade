@@ -451,11 +451,58 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
 </div>
 
 <script>
+// Data AAAA-MM-DD no fuso de Brasília (toISOString usa UTC e vira o dia seguinte depois das 21h)
+function dataBR(d){return (d||new Date()).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
+
 const FB_URL = 'https://mauer-produtividade-default-rtdb.firebaseio.com';
 
 async function fbGet(path){const r=await fetch(`${FB_URL}/${path}.json`);return await r.json();}
-async function fbPost(path,data){const r=await fetch(`${FB_URL}/${path}.json`,{method:'POST',body:JSON.stringify(data)});return await r.json();}
-async function fbPatch(path,data){const r=await fetch(`${FB_URL}/${path}.json`,{method:'PATCH',body:JSON.stringify(data)});if(!r.ok)throw new Error('PATCH '+r.status);return await r.json();}
+// ===== MODO SEM INTERNET =====
+// Gravações que falham por falta de rede ficam guardadas neste aparelho (na ordem) e são enviadas sozinhas
+// quando a conexão volta. Cada registro novo já nasce com a chave definitiva, então reenviar nunca duplica.
+const OFF_KEY='mauerFilaOffline';
+const PUSH_CHARS='-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';let _pushT=0,_pushR=[];
+function gerarPushId(){let now=Date.now();const dup=now===_pushT;_pushT=now;const ts=[];for(let i=7;i>=0;i--){ts[i]=PUSH_CHARS.charAt(now%64);now=Math.floor(now/64);}
+  let id=ts.join('');if(!dup){for(let i=0;i<12;i++)_pushR[i]=Math.floor(Math.random()*64);}else{let i;for(i=11;i>=0&&_pushR[i]===63;i--)_pushR[i]=0;_pushR[i]++;}
+  for(let i=0;i<12;i++)id+=PUSH_CHARS.charAt(_pushR[i]);return id;}
+function offLer(){try{return JSON.parse(localStorage.getItem(OFF_KEY)||'[]');}catch(e){return[];}}
+function offSalvar(q){try{localStorage.setItem(OFF_KEY,JSON.stringify(q));}catch(e){}}
+function ehErroRede(e){return !!e&&(e.name==='TypeError'||/failed to fetch|networkerror|load failed|network/i.test(String(e.message||'')));}
+async function fbEscrever(metodo,path,data){
+  const q=offLer();
+  if(q.length){q.push({metodo,path,data,em:Date.now()});offSalvar(q);offAviso();offEnviar();return null;} // mantém a ordem do que já está esperando
+  try{const r=await fetch(`${FB_URL}/${path}.json`,{method:metodo,body:JSON.stringify(data)});if(!r.ok)throw new Error(metodo+' '+r.status);return await r.json();}
+  catch(e){if(!ehErroRede(e))throw e;q.push({metodo,path,data,em:Date.now()});offSalvar(q);offAviso();return null;}
+}
+async function fbPost(path,data){const k=gerarPushId();await fbEscrever('PUT',path+'/'+k,data);return{name:k};}
+async function fbPatch(path,data){return fbEscrever('PATCH',path,data);}
+let offEnviando=false,offTinha=false;
+async function offEnviar(){
+  if(offEnviando)return;offEnviando=true;
+  try{
+    let q=offLer();
+    while(q.length){
+      const it=q[0];let ok=false;
+      try{const r=await fetch(`${FB_URL}/${it.path}.json`,{method:it.metodo,body:JSON.stringify(it.data)});
+        if(r.ok)ok=true;else if(r.status>=400&&r.status<500){ok=true;try{const er=JSON.parse(localStorage.getItem(OFF_KEY+'Erros')||'[]');er.push({...it,status:r.status});localStorage.setItem(OFF_KEY+'Erros',JSON.stringify(er.slice(-50)));}catch(e){}}}
+      catch(e){break;}
+      if(!ok)break;
+      q=offLer();q.shift();offSalvar(q);
+    }
+  }finally{offEnviando=false;offAviso();}
+}
+function offAviso(){
+  const n=offLer().length;let el=document.getElementById('aviso-offline');
+  if(!el){el=document.createElement('div');el.id='aviso-offline';el.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9990;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));font:600 14px/1.35 system-ui,sans-serif;text-align:center;display:none;box-shadow:0 -4px 16px rgba(0,0,0,.18)';document.body.appendChild(el);}
+  if(n){offTinha=true;el.style.display='';el.style.background='#E38A29';el.style.color='#fff';
+    el.textContent='📶 Sem internet: '+n+' lançamento(s) guardado(s) neste aparelho. Eles vão ser enviados sozinhos quando a conexão voltar. Não limpe os dados do navegador.';}
+  else if(offTinha){offTinha=false;el.style.display='';el.style.background='#2F7D5B';el.style.color='#fff';el.textContent='✓ Conexão voltou: tudo que estava guardado foi enviado.';
+    setTimeout(()=>{if(!offLer().length)el.style.display='none';},5000);}
+  else el.style.display='none';
+}
+window.addEventListener('online',()=>offEnviar());
+setInterval(()=>{if(offLer().length)offEnviar();},15000);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{offAviso();offEnviar();});else setTimeout(()=>{offAviso();offEnviar();},0);
 // Consulta filtrada por campo (precisa de ".indexOn" nas regras do Firebase).
 // Se o índice não existir, cai para o download completo — nunca quebra.
 async function fbQuery(path,field,opts){
@@ -845,7 +892,7 @@ async function confirmarPedido(btn) {
 
 function setRcPeriodo(tipo) {
   const hoje = new Date();
-  const f = d => d.toISOString().slice(0,10);
+  const f = d => dataBR(d);
   const ini = document.getElementById('rc-date-ini');
   const fim = document.getElementById('rc-date-fim');
   if(!ini||!fim) return;
@@ -963,10 +1010,10 @@ async function renderRankingConferentesGeral() {
 async function init() {
   if(await checarVersao())return;
   setStatus('loading','Conectando...');
-  const today=new Date().toISOString().slice(0,10);
+  const today=dataBR();
   const _gIni=new Date();_gIni.setDate(1);
-  const _gIniStr=_gIni.toISOString().slice(0,10);
-  const _gFimStr=new Date(_gIni.getFullYear(),_gIni.getMonth()+1,0).toISOString().slice(0,10);
+  const _gIniStr=dataBR(_gIni);
+  const _gFimStr=dataBR(new Date(_gIni.getFullYear(),_gIni.getMonth()+1,0));
   const elIni=document.getElementById('geral-date-ini');if(elIni){elIni.value=_gIniStr;}
   const elFim=document.getElementById('geral-date-fim');if(elFim){elFim.value=_gFimStr;}
   ['p-date','cf-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
@@ -996,7 +1043,7 @@ async function init() {
 async function carregarHoje() {
   try {
     const data = await fbGet('lancamentos');
-    const today=new Date().toISOString().slice(0,10);
+    const today=dataBR();
     allLancamentos = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
     lancamentosHoje = allLancamentos.filter(l=>l.data===today);
     renderPedidoHistory();renderErroHistory();
@@ -1060,7 +1107,7 @@ async function addPedido(){
   try {
     const hoje = getBrasiliaDateStr();
     const _lim=new Date();_lim.setDate(_lim.getDate()-8);
-    const _limStr=_lim.toISOString().slice(0,10);
+    const _limStr=dataBR(_lim);
     const [lancData, margemData] = await Promise.all([
       fbQuery('lancamentos','data',{startAt:_limStr}),
       fbGet('configuracoes/margemPedidos')
@@ -1575,7 +1622,7 @@ async function roboMostrarFila(){
   const filial=roboFilialCad();
   try{
     const lim=new Date();lim.setDate(lim.getDate()-3);
-    const d=await fbQuery('filaPedidos','data',{startAt:lim.toISOString().slice(0,10)});
+    const d=await fbQuery('filaPedidos','data',{startAt:dataBR(lim)});
     const itens=Object.values(d||{}).filter(f=>f.filial===filial).sort((a,b)=>b.criadoEm-a.criadoEm);
     el.innerHTML=itens.length?itens.slice(0,100).map(f=>'<div style="display:flex;gap:10px;padding:7px 10px;border-top:1px solid var(--border)"><span style="font-family:var(--mono);font-weight:500">'+f.num+'</span><span style="color:var(--muted)">'+f.qt+' pneus</span><span style="margin-left:auto">'+(f.status==='disponivel'?'<span class="badge badge-warn">Na fila</span>':'<span style="color:var(--green-t);font-weight:600">Com '+(f.colaborador||'separador')+'</span>')+'</span></div>').join(''):'<div style="padding:10px;color:var(--hint)">Fila vazia</div>';
   }catch(e){console.error(e);el.innerHTML='<div style="padding:10px;color:var(--red-t)">Erro ao ler a fila</div>';}
@@ -1796,7 +1843,7 @@ async function desfazerFinalizacao(reg,div){
 }
 
 function renderPedidoHistory(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=dataBR();
   const items=lancamentosHoje.filter(l=>l.isPedido&&l.data===today);
   const el=document.getElementById('pedido-history');
   if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum pedido registrado hoje</div>';return;}
@@ -1831,7 +1878,7 @@ async function salvarErro(){
 }
 
 function renderErroHistory(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=dataBR();
   const items=lancamentosHoje.filter(l=>l.isErro&&l.data===today);
   const el=document.getElementById('erro-history');
   if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum erro hoje</div>';return;}
@@ -1842,11 +1889,11 @@ function renderErroHistory(){
 
 
 function setGeralPeriodo(tipo) {
-  const hoje = new Date().toISOString().slice(0,10);
+  const hoje = dataBR();
   const ini = new Date();
   ini.setDate(1);
-  const iniMes = ini.toISOString().slice(0,10);
-  const fim = new Date(ini.getFullYear(), ini.getMonth()+1, 0).toISOString().slice(0,10);
+  const iniMes = dataBR(ini);
+  const fim = dataBR(new Date(ini.getFullYear(), ini.getMonth()+1, 0));
   if(tipo==='hoje') {
     document.getElementById('geral-date-ini').value = hoje;
     document.getElementById('geral-date-fim').value = hoje;
@@ -1861,7 +1908,7 @@ async function renderRankingGeral() {
   const wrap = document.getElementById('ranking-geral-wrap');
   const ini = document.getElementById('geral-date-ini').value;
   const fim = document.getElementById('geral-date-fim').value;
-  const today = new Date().toISOString().slice(0,10);
+  const today = dataBR();
   const dataIni = ini || today;
   const dataFim = fim || today;
   wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando ranking geral... 🛞</div>';
@@ -1928,7 +1975,7 @@ async function renderRankingCorrida() {
   if(!filial){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>';return;}
   wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando corrida... 🛞</div>';
   try {
-    const today = new Date().toISOString().slice(0,10);
+    const today = dataBR();
     const data = await fbGet('lancamentos');
     const todos = data ? Object.values(data) : [];
     const hoje = todos.filter(l=>l.filial===filial&&l.data===today&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
