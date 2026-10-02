@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Avisos do Sistema Mauer no WhatsApp (Z-API ou CallMeBot) ou no Telegram.
+"""Avisos do Sistema Mauer no WhatsApp (Z-API ou CallMeBot) ou no Telegram,
+e fechamento automático das separações que ficaram abertas depois das 18h.
 
 Roda no GitHub Actions a cada 5 minutos. Lê o banco (Firebase), vê o que está atrasado
 ou precisa do responsável e manda UMA mensagem por filial no grupo (ou nos números) dela.
@@ -14,7 +15,7 @@ TG = os.environ.get('TELEGRAM_API', 'https://api.telegram.org').rstrip('/')
 ZAPI = os.environ.get('ZAPI_API', 'https://api.z-api.io').rstrip('/')
 CMB = os.environ.get('CALLMEBOT_API', 'https://api.callmebot.com').rstrip('/')
 BR = timezone(timedelta(hours=-3))
-AGORA = time.time() * 1000
+AGORA = float(os.environ.get('AGORA_TESTE_MS') or time.time() * 1000)   # AGORA_TESTE_MS só para testes
 MIN = 60000
 
 
@@ -34,8 +35,10 @@ def fb(path, **q):
     except urllib.error.HTTPError as e:
         if q and e.code == 400:      # sem índice no Firebase: lê tudo e filtra aqui
             todos = req(f'{FB}/{path}.json') or {}
-            campo, ini = q.get('orderBy'), q.get('startAt')
-            return {k: v for k, v in todos.items() if isinstance(v, dict) and str(v.get(campo, '')) >= str(ini)}
+            campo = q.get('orderBy')
+            if 'equalTo' in q:
+                return {k: v for k, v in todos.items() if isinstance(v, dict) and v.get(campo) == q['equalTo']}
+            return {k: v for k, v in todos.items() if isinstance(v, dict) and str(v.get(campo, '')) >= str(q.get('startAt'))}
         raise
 
 
@@ -133,7 +136,45 @@ def pedidos_do_painel(cfg):
         req(f'{FB}/configuracoes/avisos.json', 'PATCH', upd)
 
 
+def fechar_separacoes():
+    """Fecha sozinho as separações que ficaram abertas depois do horário de corte (padrão 18h).
+    Só mexe em lotes "em separação" iniciados por separadores; não toca na fila do Aro nem na conferência.
+    Lote iniciado antes do corte: fim = horário do corte daquele dia.
+    Lote iniciado depois do corte (turno da noite): fica aberto e é fechado às 23:59 do mesmo dia."""
+    cfg = fb('configuracoes/fechamentoAuto') or {}
+    if cfg.get('ativo') is False:
+        return 0
+    hora = int(cfg.get('hora', 18))
+    agora = datetime.fromtimestamp(AGORA / 1000, BR)
+    abertos = fb('registros', orderBy='status', equalTo='em_separacao')
+    upd = {}
+    for k, r in (abertos or {}).items():
+        if not isinstance(r, dict) or r.get('status') != 'em_separacao' or not r.get('inicio'):
+            continue
+        ini = datetime.fromtimestamp(r['inicio'] / 1000, BR)
+        corte = ini.replace(hour=hora, minute=0, second=0, microsecond=0)
+        if ini < corte:
+            fim = corte
+        else:
+            fim = ini.replace(hour=23, minute=59, second=0, microsecond=0)
+        if agora < fim:
+            continue
+        fim_ms = int(fim.timestamp() * 1000)
+        for campo, valor in {'fim': fim_ms, 'duracaoMin': round((fim_ms - r['inicio']) / MIN), 'status': 'finalizado', 'finalizadoAuto': True,
+                             'finalizadoPor': f'fechamento automático {hora}h' if ini < corte else 'fechamento automático 23h59'}.items():
+            upd[f'{k}/{campo}'] = valor
+    if upd:
+        req(f'{FB}/registros.json', 'PATCH', upd)
+    n = len({c.split('/')[0] for c in upd})
+    print(f'Separações fechadas automaticamente: {n}')
+    return n
+
+
 def main():
+    try:
+        fechar_separacoes()
+    except Exception as e:
+        print('Fechamento automático falhou:', type(e).__name__)
     cfg = fb('configuracoes/avisos') or {}
     if pronto(cfg):
         pedidos_do_painel(cfg)
