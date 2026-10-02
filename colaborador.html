@@ -1052,7 +1052,7 @@ async function addPedido(){
     const todos = lancData ? Object.values(lancData) : [];
 
     // Verifica duplicata — mesmo número em qualquer data/filial
-    const jaExisteHoje = todos.find(l=>l.isPedido && l.numPedido===num && l.data===hoje);
+    const jaExisteHoje = todos.find(l=>l.isPedido && normPed(l.numPedido)===normPed(num) && l.data===hoje);
     if(jaExisteHoje){
       showDuplicateAlert('🚫 Pedido '+num+' já foi registrado hoje por '+jaExisteHoje.colaborador+' ('+jaExisteHoje.filial+')!','err');
       registrarDuplicado({origem:'separador',bloqueado:true,numPedido:num,filial:document.getElementById('p-filial').value,quem:document.getElementById('p-colab').value,
@@ -1063,7 +1063,7 @@ async function addPedido(){
     // Verifica duplicata em outras datas (últimos 7 dias)
     const seteDiasAtras = new Date(); seteDiasAtras.setDate(seteDiasAtras.getDate()-7);
     const limiteData = seteDiasAtras.toISOString().slice(0,10);
-    const jaExisteRecente = todos.find(l=>l.isPedido && l.numPedido===num && l.data>=limiteData && l.data!==hoje);
+    const jaExisteRecente = todos.find(l=>l.isPedido && normPed(l.numPedido)===normPed(num) && l.data>=limiteData && l.data!==hoje);
     if(jaExisteRecente){
       showDuplicateAlert('⚠ Pedido '+num+' já foi registrado em '+jaExisteRecente.data.split("-").reverse().join("/")+" por "+jaExisteRecente.colaborador+' ('+jaExisteRecente.filial+'). Tem certeza que é um pedido novo?','warn');
       registrarDuplicado({origem:'separador',bloqueado:false,numPedido:num,filial:document.getElementById('p-filial').value,quem:document.getElementById('p-colab').value,
@@ -1141,6 +1141,26 @@ async function salvarPedidos(){
     showAlert('err','Pedido(s) '+tomados.map(p=>p.num).join(', ')+' já foram pegos por outro separador e saíram do seu lote. Confira e clique em Iniciar de novo.');
     btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;
   }
+  // TRAVA FINAL: confere no servidor se algum pedido do lote já tem lançamento (qualquer filial, últimos 30 dias)
+  const dups=await conferirDuplicadosLote(pedidosTemp);
+  if(dups.length){
+    const r=await modalPedidoDuplicado(dups);
+    const quem={filial,colab};
+    if(r.acao==='autorizado'){
+      dups.forEach(d=>{d.p.dupAutorizadoPor=r.nome;registrarDuplicado({origem:'separador',bloqueado:false,numPedido:d.p.num,filial,quem:colab,autorizadoPor:r.nome,
+        detalhe:'Iniciou separação de pedido que já tinha registro ('+d.texto+'). Liberado por: '+r.nome});});
+    }else{
+      dups.forEach(d=>registrarDuplicado({origem:'separador',bloqueado:true,numPedido:d.p.num,filial,quem:colab,detalhe:'Tentou iniciar separação de pedido que já tinha registro ('+d.texto+')'+(r.acao==='tirar'?'. Pedido retirado do lote.':'')}));
+      if(r.acao==='tirar'){
+        const fora=new Set(dups.map(d=>d.p));
+        const cancelar={};dups.forEach(d=>{if(d.p.filaKey){cancelar[d.p.filaKey+'/status']='cancelado';cancelar[d.p.filaKey+'/canceladoMotivo']='duplicado';}});
+        if(Object.keys(cancelar).length)try{await fbPatch('filaPedidos',cancelar);}catch(e){console.error(e);}
+        pedidosTemp=pedidosTemp.filter(p=>!fora.has(p));renderPedidoTemp();carregarFilaAro();
+        showAlert('err','Pedido(s) duplicado(s) retirado(s) do lote. O responsável já foi avisado no painel do gestor.');
+      }
+      btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;
+    }
+  }
   const lote=pedidosTemp.slice();
   const totalPneus=lote.reduce((a,p)=>a+p.qt,0);
   const inicio=getBrasiliaTimestamp();
@@ -1151,13 +1171,13 @@ async function salvarPedidos(){
     await Promise.all(finalizados.map(r=>fbPatch('registros/'+r._key,{fim:inicio,duracaoMin:Math.round((inicio-r.inicio)/60000),status:'finalizado',finalizadoAuto:true})));
     registrosAbertos=[];
     // 1) Cria o registro (lote) com horário de início
-    const reg=await fbPost('registros',{data:date,filial,colaborador:colab,inicio,fim:null,duracaoMin:null,status:'em_separacao',pedidos:lote.map(p=>({num:p.num,qt:p.qt})),totalPedidos:lote.length,totalPneus});
+    const reg=await fbPost('registros',{data:date,filial,colaborador:colab,inicio,fim:null,duracaoMin:null,status:'em_separacao',pedidos:lote.map(p=>({num:p.num,qt:p.qt,...(p.dupAutorizadoPor?{dupAutorizadoPor:p.dupAutorizadoPor}:{})})),totalPedidos:lote.length,totalPneus});
     const registroId=reg&&reg.name;
     if(!registroId)throw new Error('Registro não criado');
     // 2) Lançamentos (mesmo formato de antes + registroId), enviados em paralelo
     const base={data:date,filial,colaborador:colab,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:inicio,registroId};
     await Promise.all([
-      ...lote.map(p=>fbPost('lancamentos',{...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,pedidos:0,pneus:0,...(p.filaKey?{origem:'aro',filaKey:p.filaKey}:{})})),
+      ...lote.map(p=>fbPost('lancamentos',{...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,pedidos:0,pneus:0,...(p.filaKey?{origem:'aro',filaKey:p.filaKey}:{}),...(p.dupAutorizadoPor?{dupAutorizadoPor:p.dupAutorizadoPor}:{})})),
       fbPost('lancamentos',{...base,isPedido:false,numPedido:'',qtdPedido:0,pedidos:lote.length,pneus:totalPneus})
     ]);
     try{await filaMarcarPegos(lote,colab,registroId,inicio);}catch(e){console.error(e);}
@@ -1168,6 +1188,62 @@ async function salvarPedidos(){
     carregarHoje();
   }catch(e){showAlert('err','Erro ao salvar. Tente de novo.');console.error(e);}
   btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();
+}
+
+// ---- PEDIDO COM REGISTRO DUPLICADO ----
+const DUP_DIAS=30;
+function dupDataLimite(){return new Date(Date.now()-DUP_DIAS*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
+function dupDescrever(l){const h=l.timestamp?new Date(l.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'';
+  return (l.colaborador||'sem separador')+' em '+String(l.data||'').split('-').reverse().slice(0,2).join('/')+(h?' às '+h:'')+(l.filial?' ('+l.filial+')':'');}
+async function lancamentosRecentesPorPedido(){
+  const d=await fbQuery('lancamentos','data',{startAt:dupDataLimite()});const m=new Map();
+  Object.entries(d||{}).forEach(([k,l])=>{if(!l||!l.isPedido||!l.numPedido)return;const n=normPed(l.numPedido);if(!n)return;(m.get(n)||m.set(n,[]).get(n)).push({...l,_key:k});});
+  return m;
+}
+async function conferirDuplicadosLote(lote){
+  let m;try{m=await lancamentosRecentesPorPedido();}catch(e){console.error(e);return[];}
+  return lote.map(p=>{const ex=m.get(normPed(p.num))||[];return ex.length?{p,existentes:ex,texto:'já separado por '+ex.map(dupDescrever).join('; ')}:null;}).filter(Boolean);
+}
+function modalPedidoDuplicado(dups){
+  return new Promise(res=>{
+    try{navigator.vibrate&&navigator.vibrate([200,100,200,100,400]);}catch(e){}
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(179,38,30,.94);display:flex;align-items:center;justify-content:center;padding:18px';
+    const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    ov.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:22px;text-align:center;font-family:inherit;max-height:92vh;overflow:auto">
+      <div style="font-size:24px;font-weight:700;color:#B3261E">PEDIDO COM REGISTRO DUPLICADO</div>
+      <div style="font-size:15px;color:#333;margin:8px 0 12px">Não separe este pedido. <b>Avise o responsável agora.</b></div>
+      <div style="text-align:left;background:#f5f4f0;border-radius:8px;padding:10px 14px;margin-bottom:14px">${dups.map(d=>`<div style="padding:6px 0;border-bottom:1px solid #e2e0d8"><div style="font-family:monospace;font-size:22px;font-weight:600">${esc(d.p.num)}</div><div style="font-size:14px">${d.existentes.map(l=>'Já separado por '+esc(dupDescrever(l))).join('<br>')}</div></div>`).join('')}</div>
+      <button data-a="tirar" style="width:100%;min-height:58px;border:none;border-radius:10px;background:#B3261E;color:#fff;font-size:18px;font-weight:600;margin-bottom:8px">Tirar do meu lote</button>
+      <details style="text-align:left;margin-top:6px"><summary style="cursor:pointer;font-size:13px;color:#555">O responsável autorizou separar mesmo assim</summary>
+        <input data-n placeholder="Nome do responsável que autorizou" style="width:100%;box-sizing:border-box;margin-top:8px;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px">
+        <button data-a="autorizado" style="width:100%;min-height:46px;margin-top:8px;border:1px solid #c8c5ba;border-radius:10px;background:#fff;font-size:15px;font-weight:600">Iniciar com autorização</button></details>
+      <button data-a="voltar" style="width:100%;min-height:40px;margin-top:10px;border:none;background:none;color:#666;font-size:14px">Voltar sem iniciar</button></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b)return;const a=b.dataset.a;
+      if(a==='autorizado'){const n=ov.querySelector('[data-n]').value.trim();if(n.length<3){ov.querySelector('[data-n]').style.borderColor='#B3261E';ov.querySelector('[data-n]').focus();return;}ov.remove();res({acao:a,nome:n});return;}
+      ov.remove();res({acao:a});});
+  });
+}
+// Aviso dentro do cartão "Em separação" quando um pedido aberto também foi lançado em outro lote
+let dupAbertosCache={em:0,map:new Map()};const dupAvisados=new Set((()=>{try{return JSON.parse(localStorage.getItem('dupAvisados')||'[]');}catch(e){return[];}})());
+function dupGuardarAvisados(){try{localStorage.setItem('dupAvisados',JSON.stringify([...dupAvisados].slice(-200)));}catch(e){}}
+async function verificarDupAbertos(){
+  if(!registrosAbertos.length)return;
+  if(Date.now()-dupAbertosCache.em>60000){
+    try{dupAbertosCache={em:Date.now(),map:await lancamentosRecentesPorPedido()};}catch(e){return;}
+  }
+  registrosAbertos.forEach(r=>{
+    const el=document.getElementById('reg-'+r._key);if(!el)return;
+    const achados=(r.pedidos||[]).map(p=>({p,outros:(dupAbertosCache.map.get(normPed(p.num))||[]).filter(l=>l.registroId!==r._key)})).filter(x=>x.outros.length);
+    let box=el.querySelector('.reg-dup');
+    if(!achados.length){if(box)box.remove();return;}
+    if(!box){box=document.createElement('div');box.className='reg-dup';box.style.cssText='margin:8px 0;padding:10px 12px;border-radius:8px;background:#B3261E;color:#fff;font-size:14px;font-weight:600;line-height:1.4';el.querySelector('.reg-info').appendChild(box);}
+    box.innerHTML='⚠ REGISTRO DUPLICADO: '+achados.map(x=>'pedido '+x.p.num+' também separado por '+dupDescrever(x.outros[0])+(x.p.dupAutorizadoPor?' (liberado por '+String(x.p.dupAutorizadoPor).replace(/[<>&]/g,'')+')':'')).join('; ')+'.'+(achados.every(x=>x.p.dupAutorizadoPor)?'':'<br>Avise o responsável.');
+    achados.forEach(x=>{const k=r._key+'|'+x.p.num;if(dupAvisados.has(k))return;dupAvisados.add(k);dupGuardarAvisados();
+      if(x.p.dupAutorizadoPor||x.outros.some(l=>(l.timestamp||0)>(r.inicio||0)))return; // já registrado na liberação, ou quem lançou depois é que registra
+      registrarDuplicado({origem:'separador',bloqueado:false,numPedido:x.p.num,filial:r.filial,quem:r.colaborador,detalhe:'Separação em andamento de pedido com registro duplicado (também por '+dupDescrever(x.outros[0])+')'});});
+  });
 }
 
 // ---- REGISTROS EM SEPARAÇÃO ----
@@ -1506,7 +1582,8 @@ function renderRegistrosAbertos(){
       <button class="btn-fin" onclick="finalizarRegistro('${r._key}',this)">Finalizar</button>
     </div>`;
   }).join('');
-  if(!regTimerInt)regTimerInt=setInterval(atualizarTimers,15000);
+  if(!regTimerInt)regTimerInt=setInterval(()=>{atualizarTimers();verificarDupAbertos();},15000);
+  verificarDupAbertos();
 }
 
 function atualizarBotaoIniciar(){
