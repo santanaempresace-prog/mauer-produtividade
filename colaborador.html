@@ -203,7 +203,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
       <div class="form-grid" id="ident-form">
         <div class="form-group"><label>Filial <span class="req">*</span></label><select id="p-filial" onchange="loadColabs('p-filial','p-colab');carregarRegistrosAbertos();atualizarIdent()"><option value="">Selecione</option></select></div>
         <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="p-date" onchange="atualizarIdent()"></div>
-        <div class="form-group full"><label>Colaborador <span class="req">*</span></label><select id="p-colab" onchange="carregarRegistrosAbertos();atualizarIdent()"><option value="">Selecione a filial primeiro</option></select></div>
+        <div class="form-group full"><label>Colaborador <span class="req">*</span></label><select id="p-colab" onchange="carregarRegistrosAbertos();atualizarIdent();verificarBloqueio()"><option value="">Selecione a filial primeiro</option></select></div>
       </div>
     </div>
     <div class="card card-sep" id="card-em-separacao" style="display:none">
@@ -1020,6 +1020,7 @@ function registrarDuplicado(d){
   try{fbPost('alertasDuplicado',{...d,numPedido:String(d.numPedido||''),data:getBrasiliaDateStr(),timestamp:getBrasiliaTimestamp(),visto:false}).catch(()=>{});}catch(e){}
 }
 async function addPedido(){
+  if(await verificarBloqueio())return;
   const num=document.getElementById('p-num').value.trim();
   const qt=parseInt(document.getElementById('p-qt').value);
   if(!num||!qt||qt<1)return;
@@ -1129,6 +1130,7 @@ async function salvarPedidos(){
   [['p-filial',filial],['p-date',date],['p-colab',colab]].forEach(([id,val])=>{document.getElementById(id).classList.toggle('err',!val);if(!val)ok=false;});
   if(!ok){showAlert('err','Preencha filial, data e colaborador.');return;}
   if(!pedidosTemp.length){showAlert('err','Adicione pelo menos um pedido.');return;}
+  if(await verificarBloqueio())return;
   const btn=document.getElementById('btn-salvar-pedidos');
   btn.disabled=true;btn.dataset.busy='1';btn.innerHTML='<span class="spinner"></span> Iniciando...';
   // confere no servidor (pode ter sido aberto em outro aparelho)
@@ -1202,26 +1204,131 @@ async function conferirDuplicadosLote(lote){
   let m;try{m=await lancamentosRecentesPorPedido();}catch(e){console.error(e);return[];}
   return lote.map(p=>{const ex=m.get(normPed(p.num))||[];return ex.length?{p,existentes:ex,texto:'já separado por '+ex.map(dupDescrever).join('; ')}:null;}).filter(Boolean);
 }
+// ===== BLOQUEIO DO SEPARADOR ATÉ A SENHA DO RESPONSÁVEL =====
+// Quem tenta lançar pedido duplicado fica bloqueado (gravado no Firebase em bloqueiosDup) até o responsável
+// digitar a senha de liberação (cadastrada no gestor, guardada só como hash) ou liberar pelo painel do gestor.
+const fbDel=async p=>{const r=await fetch(`${FB_URL}/${p}.json`,{method:'DELETE'});if(!r.ok)throw new Error('DELETE '+r.status);};
+const fbPutC=async(p,d)=>{const r=await fetch(`${FB_URL}/${p}.json`,{method:'PUT',body:JSON.stringify(d)});if(!r.ok)throw new Error('PUT '+r.status);};
+function chaveBloqueio(filial,colab){return (String(filial||'')+'__'+String(colab||'')).toUpperCase().replace(/[.#$\[\]\/]/g,'_').replace(/\s+/g,'_');}
+// ===== PALAVRA-CHAVE DA SEMANA =====
+// Troca sozinha toda segunda-feira (horário de Brasília): o primeiro app aberto na semana sorteia uma
+// palavra comum e grava. Acento e maiúscula/minúscula não importam na hora de digitar.
+const PALAVRAS_SENHA=['maçã','carro','faca','árvore','pneu','cachorro','gato','banana','cadeira','mesa','janela','porta','escada','caneta','livro','relógio','sapato','camisa','chapéu','bolsa','garrafa','copo','prato','panela','colher','garfo','fogão','geladeira','sofá','cama','travesseiro','toalha','sabonete','escova','espelho','vassoura','balde','martelo','chave','cadeado','bicicleta','ônibus','caminhão','moto','avião','barco','trem','estrada','ponte','praia','areia','montanha','rio','lago','chuva','nuvem','vento','estrela','lua','sol','flor','folha','grama','jardim','laranja','limão','uva','morango','abacaxi','melancia','tomate','cebola','batata','cenoura','arroz','feijão','pão','queijo','leite','café','bolo','pipoca','sorvete','chocolate','biscoito','galinha','cavalo','vaca','porco','coelho','peixe','tartaruga','macaco','leão','girafa','elefante','pato','abelha','borboleta','formiga','papagaio','coruja','violão','tambor','bola','pipa','boneca','foguete','lápis','caderno','mochila','tesoura','régua','apito','lanterna','vela','sino','tijolo','telhado','parede','quintal','varanda','calçada','buzina','volante','farol','motor','roda','gaveta','armário','tapete','cortina','almofada','pente','anel','colar','óculos','luva','meia','casaco','guarda-chuva','carteira','moeda','envelope','jornal','revista','rádio','tesouro','castelo','navio','sereia','dragão','pirata','palhaço'];
+const normSenha=t=>String(t==null?'':t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+async function hashPalavra(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mauer-dup|'+normSenha(t)));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+// Segunda-feira da semana atual (Brasília), ex. "2026-09-28"
+function segundaDaSemana(ts){
+  const d=new Date(new Date(ts||Date.now()).toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));
+  d.setDate(d.getDate()-((d.getDay()+6)%7));
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function sortearPalavra(evitar){
+  const ev=normSenha(evitar),r=n=>crypto.getRandomValues(new Uint32Array(1))[0]%n;
+  let p;do{p=PALAVRAS_SENHA[r(PALAVRAS_SENHA.length)];}while(normSenha(p)===ev);return p;
+}
+let _garantindoSenha=null;
+async function garantirSenhaDaSemana(){
+  if(_garantindoSenha)return _garantindoSenha;
+  _garantindoSenha=(async()=>{
+    const FBU='https://mauer-produtividade-default-rtdb.firebaseio.com/configuracoes/';
+    const ler=async p=>{const r=await fetch(FBU+p+'.json?x='+Date.now(),{cache:'no-store'});return r.ok?await r.json():null;};
+    const grava=async(p,v)=>{const r=await fetch(FBU+p+'.json',{method:'PUT',body:JSON.stringify(v)});if(!r.ok)throw new Error('PUT '+r.status);};
+    const sem=segundaDaSemana();let info=await ler('senhaLiberacaoDupInfo');
+    if(!info||info.semana!==sem){
+      const texto=sortearPalavra(info&&info.texto);
+      info={texto,semana:sem,alteradoPor:'Troca automática (segunda-feira)',alteradoEm:Date.now(),automatica:true};
+      await grava('senhaLiberacaoDup',await hashPalavra(texto));await grava('senhaLiberacaoDupInfo',info);
+      await new Promise(r=>setTimeout(r,600));               // se dois aparelhos sortearem juntos, vale o último gravado
+      info=await ler('senhaLiberacaoDupInfo')||info;
+      const h=await ler('senhaLiberacaoDup');if(h!==await hashPalavra(info.texto))await grava('senhaLiberacaoDup',await hashPalavra(info.texto));
+    }
+    return info;
+  })().finally(()=>{setTimeout(()=>{_garantindoSenha=null;},5000);});
+  return _garantindoSenha;
+}
+const hashSenha=hashPalavra;
+async function conferirSenha(t){
+  try{await garantirSenhaDaSemana();}catch(e){console.error(e);}
+  const h=await fbGet('configuracoes/senhaLiberacaoDup');
+  if(!h)return{ok:false,erro:'Não consegui ler a palavra-chave. O responsável pode liberar pelo painel do gestor (Duplicados).'};
+  return (await hashSenha(t))===h?{ok:true}:{ok:false,erro:'Senha incorreta.'};
+}
+async function bloquearSeparador(filial,colab,dups){
+  if(!filial||!colab)return;
+  try{await fbPutC('bloqueiosDup/'+chaveBloqueio(filial,colab),{filial,colaborador:colab,pedidos:dups.map(d=>String(d.p.num)),
+    detalhe:dups.map(d=>d.p.num+': já separado por '+d.existentes.map(dupDescrever).join('; ')).join(' | '),desde:Date.now(),data:getBrasiliaDateStr()});}catch(e){console.error(e);}
+}
+async function liberarSeparador(filial,colab,como){
+  try{await fbDel('bloqueiosDup/'+chaveBloqueio(filial,colab));}catch(e){console.error(e);}
+  registrarDuplicado({origem:'separador',bloqueado:false,liberacao:true,numPedido:'',filial,quem:colab,autorizadoPor:como,detalhe:'Separador liberado ('+como+')'});
+}
+async function bloqueioAtual(){
+  const f=document.getElementById('p-filial').value,c=document.getElementById('p-colab').value;
+  if(!f||!c)return null;
+  try{return await fbGet('bloqueiosDup/'+chaveBloqueio(f,c));}catch(e){return null;}
+}
+const escH=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// Tela que trava o app enquanto o separador estiver bloqueado
+let telaBloqAberta=false,telaBloqTimer=null;
+async function verificarBloqueio(){
+  const b=await bloqueioAtual();
+  if(b&&!telaBloqAberta)abrirTelaBloqueio(b);
+  if(!b&&telaBloqAberta)fecharTelaBloqueio();
+  return !!b;
+}
+function fecharTelaBloqueio(){const o=document.getElementById('tela-bloq');if(o)o.remove();telaBloqAberta=false;}
+function abrirTelaBloqueio(b){
+  telaBloqAberta=true;try{navigator.vibrate&&navigator.vibrate([300,150,300]);}catch(e){}
+  const ov=document.createElement('div');ov.id='tela-bloq';
+  ov.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(179,38,30,.96);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:480px;width:100%;padding:22px;text-align:center">
+    <div style="font-size:40px">🔒</div>
+    <div style="font-size:22px;font-weight:700;color:#B3261E">SEPARADOR BLOQUEADO</div>
+    <div style="font-size:17px;font-weight:600;margin:6px 0">${escH(b.colaborador)}</div>
+    <div style="font-size:14px;color:#333;margin-bottom:12px">Tentou registrar pedido duplicado (${escH((b.pedidos||[]).join(', '))}).<br><b>Chame o responsável para liberar.</b></div>
+    <div style="font-size:12px;color:#666;text-align:left;background:#f5f4f0;border-radius:8px;padding:8px 12px;margin-bottom:12px">${escH(b.detalhe||'')}</div>
+    <input type="password" data-s placeholder="Palavra-chave do responsável" autocapitalize="characters" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #c8c5ba;border-radius:8px;font-size:17px;text-align:center">
+    <div data-e style="color:#B3261E;font-size:13px;min-height:18px;margin:6px 0"></div>
+    <button data-a="liberar" style="width:100%;min-height:54px;border:none;border-radius:10px;background:#1E2B4A;color:#fff;font-size:17px;font-weight:600">Liberar</button>
+    <button data-a="trocar" style="width:100%;min-height:40px;margin-top:10px;border:none;background:none;color:#666;font-size:13px">Sou outro separador (trocar)</button></div>`;
+  document.body.appendChild(ov);
+  const inp=ov.querySelector('[data-s]'),err=ov.querySelector('[data-e]');setTimeout(()=>inp.focus(),50);
+  ov.addEventListener('click',async e=>{const a=e.target.closest('button[data-a]');if(!a)return;
+    if(a.dataset.a==='trocar'){fecharTelaBloqueio();trocarIdent();return;}
+    a.disabled=true;const r=await conferirSenha(inp.value);a.disabled=false;
+    if(!r.ok){err.textContent=r.erro==='Senha incorreta.'?'Palavra-chave incorreta.':r.erro;inp.value='';inp.focus();return;}
+    await liberarSeparador(b.filial,b.colaborador,'senha do responsável');fecharTelaBloqueio();showAlert('ok','Separador liberado.');});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')ov.querySelector('[data-a="liberar"]').click();});
+}
+setInterval(()=>{if(document.visibilityState==='visible')verificarBloqueio();},20000);
+
+// Tela do pedido duplicado: já bloqueia o separador; só segue com a senha do responsável
 function modalPedidoDuplicado(dups,txt){
   txt=txt||{};
+  const filial=document.getElementById('p-filial').value,colab=document.getElementById('p-colab').value;
+  bloquearSeparador(filial,colab,dups);
   return new Promise(res=>{
     try{navigator.vibrate&&navigator.vibrate([200,100,200,100,400]);}catch(e){}
+    telaBloqAberta=true; // o modal faz o papel da tela de bloqueio
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(179,38,30,.94);display:flex;align-items:center;justify-content:center;padding:18px';
-    const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     ov.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:22px;text-align:center;font-family:inherit;max-height:92vh;overflow:auto">
       <div style="font-size:24px;font-weight:700;color:#B3261E">PEDIDO COM REGISTRO DUPLICADO</div>
-      <div style="font-size:15px;color:#333;margin:8px 0 12px">Não separe este pedido. <b>Avise o responsável agora.</b></div>
-      <div style="text-align:left;background:#f5f4f0;border-radius:8px;padding:10px 14px;margin-bottom:14px">${dups.map(d=>`<div style="padding:6px 0;border-bottom:1px solid #e2e0d8"><div style="font-family:monospace;font-size:22px;font-weight:600">${esc(d.p.num)}</div><div style="font-size:14px">${d.existentes.map(l=>'Já separado por '+esc(dupDescrever(l))).join('<br>')}</div></div>`).join('')}</div>
-      <button data-a="tirar" style="width:100%;min-height:58px;border:none;border-radius:10px;background:#B3261E;color:#fff;font-size:18px;font-weight:600;margin-bottom:8px">${txt.tirar||'Tirar do meu lote'}</button>
-      <details style="text-align:left;margin-top:6px"><summary style="cursor:pointer;font-size:13px;color:#555">O responsável autorizou separar mesmo assim</summary>
-        <input data-n placeholder="Nome do responsável que autorizou" style="width:100%;box-sizing:border-box;margin-top:8px;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px">
-        <button data-a="autorizado" style="width:100%;min-height:46px;margin-top:8px;border:1px solid #c8c5ba;border-radius:10px;background:#fff;font-size:15px;font-weight:600">Iniciar com autorização</button></details>
-      <button data-a="voltar" style="width:100%;min-height:40px;margin-top:10px;border:none;background:none;color:#666;font-size:14px">Voltar sem iniciar</button></div>`;
+      <div style="font-size:15px;color:#333;margin:8px 0 12px">Não separe este pedido. <b>Você está bloqueado até o responsável digitar a palavra-chave.</b></div>
+      <div style="text-align:left;background:#f5f4f0;border-radius:8px;padding:10px 14px;margin-bottom:14px">${dups.map(d=>`<div style="padding:6px 0;border-bottom:1px solid #e2e0d8"><div style="font-family:monospace;font-size:22px;font-weight:600">${escH(d.p.num)}</div><div style="font-size:14px">${d.existentes.map(l=>'Já separado por '+escH(dupDescrever(l))).join('<br>')}</div></div>`).join('')}</div>
+      <input type="password" data-s placeholder="Palavra-chave do responsável" autocapitalize="characters" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #c8c5ba;border-radius:8px;font-size:17px;text-align:center">
+      <div data-e style="color:#B3261E;font-size:13px;min-height:18px;margin:6px 0"></div>
+      <button data-a="tirar" style="width:100%;min-height:54px;border:none;border-radius:10px;background:#B3261E;color:#fff;font-size:17px;font-weight:600;margin-bottom:8px">Liberar sem este pedido</button>
+      <button data-a="autorizado" style="width:100%;min-height:46px;border:1px solid #c8c5ba;border-radius:10px;background:#fff;font-size:15px;font-weight:600">Liberar e separar mesmo assim</button>
+      <button data-a="fechar" style="width:100%;min-height:40px;margin-top:10px;border:none;background:none;color:#666;font-size:13px">Fechar (continua bloqueado)</button></div>`;
     document.body.appendChild(ov);
-    ov.addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b)return;const a=b.dataset.a;
-      if(a==='autorizado'){const n=ov.querySelector('[data-n]').value.trim();if(n.length<3){ov.querySelector('[data-n]').style.borderColor='#B3261E';ov.querySelector('[data-n]').focus();return;}ov.remove();res({acao:a,nome:n});return;}
-      ov.remove();res({acao:a});});
+    const inp=ov.querySelector('[data-s]'),err=ov.querySelector('[data-e]');setTimeout(()=>inp.focus(),50);
+    ov.addEventListener('click',async e=>{const b=e.target.closest('button[data-a]');if(!b)return;const a=b.dataset.a;
+      if(a==='fechar'){ov.remove();telaBloqAberta=false;res({acao:'bloqueado'});setTimeout(verificarBloqueio,300);return;}
+      b.disabled=true;const r=await conferirSenha(inp.value);b.disabled=false;
+      if(!r.ok){err.textContent=r.erro==='Senha incorreta.'?'Palavra-chave incorreta.':r.erro;inp.value='';inp.focus();return;}
+      await liberarSeparador(filial,colab,'senha do responsável');
+      ov.remove();telaBloqAberta=false;res({acao:a,nome:'senha do responsável'});});
   });
 }
 // Aviso dentro do cartão "Em separação" quando um pedido aberto também foi lançado em outro lote
@@ -1516,7 +1623,8 @@ function filaMarcarTodos(){
   const cbs=[...document.querySelectorAll('#fila-lista input:not(:disabled)')];
   const todos=cbs.every(c=>c.checked);cbs.forEach(c=>c.checked=!todos);
 }
-function filaAdicionar(){
+async function filaAdicionar(){
+  if(await verificarBloqueio())return;
   const sel=[...document.querySelectorAll('#fila-lista input:checked:not(:disabled)')].map(i=>i.value);
   if(!sel.length){showAlert('err','Marque pelo menos um pedido da fila.');return;}
   let n=0;
