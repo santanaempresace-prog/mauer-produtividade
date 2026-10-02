@@ -755,6 +755,13 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
         <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">Desconsiderar acima de
           <input type="number" id="tp-max" min="10" step="10" style="width:70px;padding:5px 8px;border:1px solid var(--border-strong);border-radius:var(--rsm);font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--surface);color:var(--text)" onchange="salvarTempoMax()"> min</label>
       </div>
+      <div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 20px">
+        <div style="font-weight:600">Fechamento automático</div>
+        <label style="display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="fa-ativo" style="width:18px;height:18px;min-height:0;margin:0;accent-color:#E38A29"> Fechar sozinho às</label>
+        <input type="number" id="fa-hora" min="1" max="23" style="width:64px;padding:6px 8px;border:1px solid var(--border-strong);border-radius:var(--rsm)"> h
+        <button class="btn btn-outline btn-sm" onclick="salvarFechamentoAuto()">Salvar</button>
+        <div style="font-size:12px;color:var(--hint);flex:1;min-width:260px">Separações iniciadas e não finalizadas pelo separador são fechadas nesse horário (fim = horário de corte). As iniciadas depois do horário fecham às 23:59. Esses lotes ficam como <b>Fora do padrão</b> e não entram nas médias de tempo. Feito pelo robô a cada 5 min, mesmo com tudo fechado.</div>
+      </div>
       <div class="card" id="tp-abertos-card">
         <div class="card-header"><div class="card-title">Em separação agora</div><span id="tp-abertos-count" class="badge badge-neu"></span></div>
         <div class="table-wrap"><table><thead><tr><th>Filial</th><th>Colaborador</th><th>Início</th><th style="text-align:right">Pedidos</th><th style="text-align:right">Pneus</th><th style="text-align:right">Meta</th><th style="text-align:right">Tempo</th><th>Situação</th></tr></thead><tbody id="tp-abertos-body"></tbody></table></div>
@@ -2100,6 +2107,7 @@ function dataBrasilia(ts){return new Date(ts).toLocaleDateString('pt-BR',{timeZo
 // Fora do padrão: finalizado em outro dia ou acima do limite configurado
 function regForaPadrao(r){
   if(r.status!=='finalizado')return false;
+  if(String(r.finalizadoPor||'').startsWith('fechamento automático'))return true; // horário não é real: não entra nas médias
   const d=durRegistro(r);
   if(d!=null&&d>tempoMaxMin)return true;
   return r.fim&&r.inicio&&dataBrasilia(r.fim)!==dataBrasilia(r.inicio);
@@ -2437,7 +2445,7 @@ async function salvarAvisos(){
 }
 
 // ===== LINHA DO TEMPO DO PEDIDO + ATRASADOS =====
-let filaGestor=[],prazos={fila:60,conferencia:30};
+let filaGestor=[],prazos={fila:60,conferencia:30},fechamentoAuto={ativo:true,hora:18};
 const normP=x=>String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');
 async function carregarFilaGestor(){
   try{
@@ -2445,8 +2453,15 @@ async function carregarFilaGestor(){
     let r=await fetch(FB_RAIZ+'filaPedidos.json?orderBy='+encodeURIComponent('"data"')+'&startAt='+encodeURIComponent(JSON.stringify(ini)));let d=await r.json();
     if(d&&typeof d.error==='string')d=await fbGet('filaPedidos');
     filaGestor=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];
-    const pz=await fbGet('configuracoes/prazosEtapas');if(pz)prazos={...prazos,...pz};
+    const [pz,fa]=await Promise.all([fbGet('configuracoes/prazosEtapas'),fbGet('configuracoes/fechamentoAuto')]);if(pz)prazos={...prazos,...pz};if(fa)fechamentoAuto={...fechamentoAuto,...fa};
+    const ia=document.getElementById('fa-ativo'),ih=document.getElementById('fa-hora');if(ia&&document.activeElement!==ih){ia.checked=fechamentoAuto.ativo!==false;ih.value=fechamentoAuto.hora;}
   }catch(e){console.error('fila',e);}
+}
+async function salvarFechamentoAuto(){
+  const ativo=document.getElementById('fa-ativo').checked,hora=Number(document.getElementById('fa-hora').value);
+  if(!(hora>=1&&hora<=23)){showAlert('err','Hora inválida (1 a 23).');return;}
+  try{await fbPut('configuracoes/fechamentoAuto',{ativo,hora,alteradoPor:quemGestor(),alteradoEm:Date.now()});fechamentoAuto={ativo,hora};
+    showAlert('ok',ativo?'Separações abertas serão fechadas às '+hora+'h.':'Fechamento automático desligado.');}catch(e){showAlert('err','Não consegui salvar.');}
 }
 async function salvarPrazos(){
   const f=Number(document.getElementById('prz-fila').value),c=Number(document.getElementById('prz-conf').value);
@@ -2491,7 +2506,7 @@ async function abrirLinhaTempo(key){
   if(fila&&fila.criadoEm)passo(fila.criadoEm,'Entrou na fila do Aro','Lançado pelo robô na fila da '+(fila.filial||l.filial));
   const ini=reg&&reg.inicio?reg.inicio:l.timestamp;
   if(ini)passo(ini,'Separação iniciada',(l.colaborador||'?')+(l.origem==='aro'?' pegou da fila do Aro':' digitou o pedido')+(l.dupAutorizadoPor?' · liberado com '+l.dupAutorizadoPor:''),fila&&fila.criadoEm?prazos.fila:null);
-  if(reg&&reg.fim)passo(reg.fim,'Separação finalizada','Lote de '+(reg.totalPedidos||'?')+' pedido(s), '+(reg.totalPneus||'?')+' pneus'+(reg.finalizadoAuto?' (fechado ao iniciar o próximo)':''),metaMinReg(reg));
+  if(reg&&reg.fim)passo(reg.fim,'Separação finalizada','Lote de '+(reg.totalPedidos||'?')+' pedido(s), '+(reg.totalPneus||'?')+' pneus'+(reg.finalizadoPor?' ('+reg.finalizadoPor+')':reg.finalizadoAuto?' (fechado ao iniciar o próximo)':''),metaMinReg(reg));
   if(c.conf)passo(c.conf.timestamp,c.conf.comErro?'Conferido com erro':'Conferido',(c.conf.conferente||'?')+(c.conf.baixaMassa?' · baixa em massa':'')+(c.conf.motivo?' · '+c.conf.motivo:''),prazos.conferencia);
   lancamentos.filter(x=>x.isErro&&normP(x.pedidoErro)===n).forEach(x=>passo(x.timestamp,'Erro registrado',(x.motivo||'')+' · '+(x.colaborador||'')+(x.conferente?' · conferente '+x.conferente:''),null,null,'red'));
   alertasDup.filter(a=>normP(a.numPedido)===n).forEach(a=>passo(a.timestamp,'Tentativa de duplicado',(a.quem||'')+': '+(a.detalhe||''),null,null,'red'));
