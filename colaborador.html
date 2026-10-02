@@ -206,6 +206,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
         <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="p-date" onchange="atualizarIdent()"></div>
         <div class="form-group full"><label>Colaborador <span class="req">*</span></label><select id="p-colab" onchange="carregarRegistrosAbertos();atualizarIdent();verificarBloqueio()"><option value="">Selecione a filial primeiro</option></select></div>
       </div>
+      <div id="trava-filial" style="margin-top:10px;font-size:13px"></div>
     </div>
     <div class="card card-sep" id="card-em-separacao" style="display:none">
       <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 15"/><line x1="10" y1="2" x2="14" y2="2"/></svg>Em separação</div>
@@ -1056,6 +1057,67 @@ function setStatus(type,msg){const el=document.getElementById('status-badge');el
 function populateFilialSelects(){
   const opts='<option value="">Selecione</option>'+filiais.map(f=>`<option>${f.nome}</option>`).join('');
   ['p-filial','cf-filial','g-filial'].forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=opts;if(v)el.value=v;}});
+  aplicarTravaFilial();
+}
+// ===== COMPUTADOR TRAVADO NA FILIAL =====
+// O encarregado define uma vez (com a palavra-chave da semana) de qual filial é este computador.
+// Depois disso a filial fica fixa e o separador não consegue lançar em outra.
+const TRAVA_KEY='mauerFilialComputador';
+function travaFilial(){try{return JSON.parse(localStorage.getItem(TRAVA_KEY)||'null');}catch(e){return null;}}
+function mesmaFilial(a,b){return String(a||'').trim().toUpperCase()===String(b||'').trim().toUpperCase();}
+function aplicarTravaFilial(){
+  const sel=document.getElementById('p-filial'),box=document.getElementById('trava-filial');if(!sel||!box)return;
+  const t=travaFilial(),existe=t&&filiais.some(f=>mesmaFilial(f.nome,t.filial));
+  if(t&&existe){
+    const nome=filiais.find(f=>mesmaFilial(f.nome,t.filial)).nome;
+    if(sel.value!==nome){sel.value=nome;loadColabs('p-filial','p-colab');carregarRegistrosAbertos();atualizarIdent();}
+    sel.disabled=true;sel.title='Este computador está travado na '+nome;
+    box.innerHTML='<span style="display:inline-flex;align-items:center;gap:6px;background:#E9F7EE;color:#1A6B45;border-radius:8px;padding:6px 10px;font-weight:600">🔒 Computador da '+nome+'</span> <a href="#" onclick="abrirTravaFilial();return false" style="color:var(--muted,#5C6478);margin-left:8px">trocar (só o encarregado)</a>';
+  }else{
+    sel.disabled=false;sel.title='';
+    box.innerHTML='<div style="background:#FFF6EC;border:1px solid #E38A29;color:#9C5A12;border-radius:8px;padding:8px 12px">⚠ Este computador ainda não tem filial fixa. <a href="#" onclick="abrirTravaFilial();return false" style="color:#9C5A12;font-weight:700">Encarregado: travar na filial</a></div>';
+  }
+}
+function abrirTravaFilial(){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:9997;background:rgba(19,31,59,.85);display:flex;align-items:center;justify-content:center;padding:18px';
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const t=travaFilial();
+  ov.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:22px">
+    <div style="font-size:20px;font-weight:700;color:#131F3B;margin-bottom:6px">🔒 Filial deste computador</div>
+    <div style="font-size:14px;color:#5C6478;margin-bottom:14px">Só o encarregado faz isso. Depois de travado, todos os lançamentos deste computador vão para essa filial.</div>
+    <select data-f style="width:100%;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px;margin-bottom:10px"><option value="">Escolha a filial</option>${filiais.map(f=>`<option ${t&&mesmaFilial(t.filial,f.nome)?'selected':''}>${esc(f.nome)}</option>`).join('')}</select>
+    <input type="password" data-s placeholder="Palavra-chave do encarregado" autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px">
+    <div data-e style="color:#B3261E;font-size:13px;min-height:18px;margin:6px 0"></div>
+    <div style="display:flex;gap:8px"><button data-a="cancelar" style="flex:1;min-height:46px;border:1px solid #c8c5ba;border-radius:10px;background:#fff;font-weight:600">Cancelar</button>
+    <button data-a="travar" style="flex:2;min-height:46px;border:none;border-radius:10px;background:#131F3B;color:#fff;font-weight:700">Travar nesta filial</button></div></div>`;
+  document.body.appendChild(ov);
+  const err=ov.querySelector('[data-e]');
+  ov.addEventListener('click',async e=>{const b=e.target.closest('button[data-a]');if(!b)return;
+    if(b.dataset.a==='cancelar'){ov.remove();return;}
+    const f=ov.querySelector('[data-f]').value;if(!f){err.textContent='Escolha a filial.';return;}
+    b.disabled=true;const r=await conferirSenha(ov.querySelector('[data-s]').value);b.disabled=false;
+    if(!r.ok){err.textContent=r.erro==='Senha incorreta.'?'Palavra-chave incorreta.':r.erro;return;}
+    try{localStorage.setItem(TRAVA_KEY,JSON.stringify({filial:f,em:Date.now()}));}catch(x){}
+    ov.remove();document.getElementById('p-filial').value='';aplicarTravaFilial();showAlert('ok','Computador travado na '+f+'.');});
+}
+// ===== PEDIDO DE OUTRA FILIAL =====
+// Se o pedido está na fila do Aro de outra filial, não deixa lançar nesta.
+async function filialDoPedidoAro(num){try{const d=await fbGet('filaPedidos/aro_'+normPed(num));return d&&d.filial?d.filial:null;}catch(e){return null;}}
+function avisoOutraFilial(itens,filial){
+  return new Promise(res=>{
+    try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch(e){}
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(179,38,30,.94);display:flex;align-items:center;justify-content:center;padding:18px';
+    const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    ov.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;padding:22px;text-align:center">
+      <div style="font-size:24px;font-weight:700;color:#B3261E">PEDIDO DE OUTRA FILIAL</div>
+      <div style="font-size:15px;color:#333;margin:8px 0 12px">Você está lançando na <b>${esc(filial)}</b>, mas ${itens.length>1?'estes pedidos são':'este pedido é'} de outra filial. <b>Não lance aqui.</b></div>
+      <div style="text-align:left;background:#f5f4f0;border-radius:8px;padding:10px 14px;margin-bottom:14px">${itens.map(i=>`<div style="padding:6px 0"><span style="font-family:monospace;font-size:20px;font-weight:600">${esc(i.num)}</span> é da <b>${esc(i.filial)}</b></div>`).join('')}</div>
+      <div style="font-size:13px;color:#5C6478;margin-bottom:12px">Se o pedido realmente é desta filial, fale com o encarregado.</div>
+      <button style="width:100%;min-height:54px;border:none;border-radius:10px;background:#B3261E;color:#fff;font-size:17px;font-weight:600">Entendi, não vou lançar</button></div>`;
+    document.body.appendChild(ov);ov.querySelector('button').addEventListener('click',()=>{ov.remove();res();});
+  });
 }
 
 function loadColabs(filialId,colabId){
@@ -1116,6 +1178,15 @@ async function addPedido(){
     const margem = margemData ? Number(margemData) : 1000;
     const todos = lancData ? Object.values(lancData) : [];
 
+    // Pedido que o Aro pôs na fila de OUTRA filial: não deixa lançar aqui
+    {const fAtual=document.getElementById('p-filial').value,fAro=await filialDoPedidoAro(num);
+     if(fAro&&fAtual&&!mesmaFilial(fAro,fAtual)){
+       registrarDuplicado({origem:'separador',bloqueado:true,numPedido:num,filial:fAtual,quem:document.getElementById('p-colab').value,detalhe:'Tentou lançar na '+fAtual+' um pedido da '+fAro});
+       await avisoOutraFilial([{num,filial:fAro}],fAtual);
+       showDuplicateAlert('🚫 Pedido '+num+' é da '+fAro+'. Não foi adicionado.','err');
+       document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
+       const _b0=document.getElementById('add-pedido-btn');if(_b0)_b0.dataset.processing='0';
+       return;}}
     // Pedido já registrado (qualquer data nos últimos 30 dias, qualquer filial): BLOQUEIA e pede para avisar o responsável
     let jaReg=[];try{jaReg=(await lancamentosRecentesPorPedido()).get(normPed(num))||[];}catch(e){console.error(e);}
     if(jaReg.length){
@@ -1204,6 +1275,15 @@ async function salvarPedidos(){
     showAlert('err','Pedido(s) '+tomados.map(p=>p.num).join(', ')+' já foram pegos por outro separador e saíram do seu lote. Confira e clique em Iniciar de novo.');
     btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;
   }
+  // Pedidos de outra filial (conferência final, inclusive se a filial foi trocada depois de adicionar)
+  {const fora=[];
+   for(const p of pedidosTemp){const fa=await filialDoPedidoAro(p.num);if(fa&&!mesmaFilial(fa,filial))fora.push({p,num:p.num,filial:fa});}
+   if(fora.length){
+     fora.forEach(x=>registrarDuplicado({origem:'separador',bloqueado:true,numPedido:x.num,filial,quem:colab,detalhe:'Tentou iniciar na '+filial+' um pedido da '+x.filial+'. Pedido retirado do lote.'}));
+     await avisoOutraFilial(fora,filial);
+     const tirar=new Set(fora.map(x=>x.p));pedidosTemp=pedidosTemp.filter(p=>!tirar.has(p));renderPedidoTemp();
+     showAlert('err','Pedido(s) de outra filial retirado(s) do lote.');
+     btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;}}
   // TRAVA FINAL: confere no servidor se algum pedido do lote já tem lançamento (qualquer filial, últimos 30 dias)
   const dups=await conferirDuplicadosLote(pedidosTemp.filter(p=>!p.dupAutorizadoPor));
   if(dups.length){
