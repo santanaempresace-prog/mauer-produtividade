@@ -450,6 +450,7 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
     <div class="nav-item" onclick="setView('conferentes',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Conferentes</div>
     <div class="nav-item" onclick="setView('gestores',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Gestores</div>
     <div class="nav-item" onclick="setView('lixeira',this)"><svg class="ic" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>Lixeira e histórico</div>
+    <div class="nav-item" onclick="setView('avisos',this)"><svg class="ic" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>Avisos (WhatsApp)</div>
     <div class="sb-footer">
       <div class="sb-stat-val" id="sb-pneus">—</div>
       <div class="sb-stat-lbl">pneus no período</div>
@@ -950,6 +951,69 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
     </div>
 
     <!-- VIEW GESTORES -->
+    <div class="view" id="view-avisos">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🔔 Avisos no WhatsApp</div><span id="av-status" class="badge badge-neu"></span></div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">A cada 5 minutos o sistema confere o que está atrasado ou precisa do responsável e manda <b>uma mensagem por filial</b> no grupo (ou nos números) dela. Cada aviso vai uma vez só. Funciona mesmo com o painel fechado.</div>
+        <div id="av-somente" style="display:none;font-size:13px;background:var(--amber-bg);color:var(--amber-t);padding:8px 12px;border-radius:var(--rsm);margin-bottom:12px">Só o usuário responsável altera esta tela. Você pode ver como está configurado.</div>
+        <div class="field-row" style="flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:12px">
+          <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="av-ativo"> Avisos ligados</label>
+          <span style="font-size:13px">Enviar das <input type="number" id="av-hi" min="0" max="23" style="width:60px"> h às <input type="number" id="av-hf" min="1" max="24" style="width:60px"> h</span>
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">O que avisar</div>
+        <div class="field-row" style="flex-wrap:wrap;gap:14px;margin-bottom:6px;font-size:13px">
+          <label><input type="checkbox" class="av-tipo" data-t="fila"> 📥 Pedido parado na fila do Aro</label>
+          <label><input type="checkbox" class="av-tipo" data-t="separacao"> 🐢 Separação passando do limite</label>
+          <label><input type="checkbox" class="av-tipo" data-t="conferencia"> 📋 Pedido esperando conferência</label>
+          <label><input type="checkbox" class="av-tipo" data-t="bloqueio"> 🔒 Separador bloqueado</label>
+          <label><input type="checkbox" class="av-tipo" data-t="duplicado"> ⚠️ Tentativa de duplicado</label>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Os prazos de fila e conferência são os da tela Rastreamento; o da separação é o limite da tela Tempos.</div>
+
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">Como enviar</div>
+        <select id="av-prov" onchange="mostrarProvedorAvisos()" style="min-width:320px;margin-bottom:10px">
+          <option value="zapi">WhatsApp em grupos, via Z-API (recomendado, pago)</option>
+          <option value="callmebot">WhatsApp em números individuais, via CallMeBot (grátis)</option>
+          <option value="telegram">Telegram (grátis)</option>
+        </select>
+        <div id="av-box-zapi" class="av-box">
+          <div class="field-row" style="flex-wrap:wrap;gap:8px;margin-bottom:6px">
+            <input id="av-z-inst" placeholder="ID da instância" style="flex:1;min-width:180px">
+            <input type="password" id="av-z-tok" placeholder="Token da instância" autocomplete="off" style="flex:1;min-width:180px">
+            <input type="password" id="av-z-sec" placeholder="Client-Token (token de segurança da conta)" autocomplete="off" style="flex:1;min-width:220px">
+          </div>
+          <div class="field-row" style="gap:8px;align-items:center;margin-bottom:6px"><button class="btn btn-outline btn-sm" onclick="buscarGruposWhats()">Buscar grupos do WhatsApp</button><span id="av-grupos-info" style="font-size:12px;color:var(--muted)"></span></div>
+          <div id="av-grupos-z" style="font-size:12px;margin-bottom:10px"></div>
+        </div>
+        <div id="av-box-callmebot" class="av-box" style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada pessoa ativa uma vez no próprio celular: abre <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noopener">callmebot.com (WhatsApp)</a>, salva o número do robô que aparece lá nos contatos e manda para ele no WhatsApp a frase <code>I allow callmebot to send me messages</code>. Ela recebe uma <b>apikey</b>. Na filial, escreva <code>número:apikey</code> separados por <b>;</b> (ex.: <code>5511999990000:123456; 5511988880000:654321</code>).</div>
+        <div id="av-box-telegram" class="av-box">
+          <div class="field-row" style="flex-wrap:wrap;gap:8px;margin-bottom:6px">
+            <input type="password" id="av-token" placeholder="Token do robô (do @BotFather)" autocomplete="off" style="flex:1;min-width:260px">
+            <button class="btn btn-outline btn-sm" onclick="descobrirGruposTelegram()">Descobrir grupos</button>
+          </div>
+          <div id="av-grupos" style="font-size:12px;margin-bottom:10px"></div>
+        </div>
+
+        <div style="font-size:13px;font-weight:600;margin:6px 0">Para onde vai o aviso de cada filial</div>
+        <div class="table-wrap"><table><thead><tr><th>Filial</th><th id="av-col-dest">Destino</th><th>Ligado</th><th></th></tr></thead><tbody id="av-filiais"></tbody></table></div>
+        <div class="field-row" style="flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center">
+          <span style="font-size:13px;font-weight:600">Geral (recebe de todas as filiais):</span>
+          <input id="av-geral" placeholder="opcional" style="width:280px">
+          <button class="btn btn-outline btn-sm" onclick="testarAviso(document.getElementById('av-geral').value,'Geral')">Testar</button>
+        </div>
+        <div id="av-teste-res" style="font-size:12px;margin-top:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" id="av-salvar" onclick="salvarAvisos()">Salvar</button></div>
+        <details style="margin-top:16px;font-size:13px"><summary style="cursor:pointer;font-weight:600">Como configurar o WhatsApp em grupos (Z-API)</summary>
+          <ol style="line-height:1.7;margin-top:8px">
+            <li>Separe um <b>chip só para os avisos</b> (ex.: "Avisos Mauer") com WhatsApp instalado num celular.</li>
+            <li>Crie a conta em <b>z-api.io</b>, crie uma instância e leia o <b>QR Code</b> com esse WhatsApp (como no WhatsApp Web).</li>
+            <li>Copie o <b>ID da instância</b>, o <b>Token da instância</b> e, em Segurança, o <b>Client-Token</b>. Cole acima e clique em Salvar.</li>
+            <li>Crie um grupo por filial com os encarregados e coloque o número dos avisos nele.</li>
+            <li>Clique em <b>Buscar grupos do WhatsApp</b>. Em até 5 minutos a lista aparece; clique em cada grupo para escolher a filial.</li>
+            <li>Clique em <b>Testar</b> em cada filial, marque <b>Avisos ligados</b> e <b>Salvar</b>.</li>
+          </ol></details>
+      </div>
+    </div>
     <div class="view" id="view-lixeira">
       <div class="card" id="backup-card" style="display:none">
         <div class="card-header"><div class="card-title">💾 Backup</div></div>
@@ -1231,7 +1295,7 @@ function auditar(op,path,dados,forcar){
   try{
     if(!forcar&&Date.now()>acaoUsuarioAte)return;
     if(/^(auditoria|lixeira|lixeiraDados)(\/|$)/.test(path))return;
-    let v='';try{v=JSON.stringify(dados);}catch(e){}
+    let v='';try{v=JSON.stringify(dados,(k,x)=>/^(token|clientToken)$/.test(k)&&x?'(oculto)':x);}catch(e){}
     if(v&&v.length>400)v=v.slice(0,400)+'…';
     fetch(FB_RAIZ+'auditoria.json',{method:'POST',body:JSON.stringify({quando:Date.now(),quem:quemGestor(),usuario:(gestorLogado&&gestorLogado.usuario)||'',op,caminho:path,valor:v})}).catch(()=>{});
   }catch(e){}
@@ -1448,6 +1512,7 @@ function setView(view,el){
   if(view==='dashboard'){initDashboard();return;}
   if(view==='gestores'){renderGestoresList();return;}
   if(view==='lixeira'){carregarLixeira();return;}
+  if(view==='avisos'){carregarAvisos();return;}
   if(view==='conferentes'){renderConferentesTabs();return;}
   if(view==='erros'){popularOcorrenciaFiliais();const dEl=document.getElementById('oc-data');if(dEl&&!dEl.value)dEl.value=dataBR();}
   if(view==='descarga'){popularDescargaFilial();(descargasCarregadas?Promise.resolve():carregarDescargas()).then(renderDescarga);return;}
@@ -2269,6 +2334,106 @@ async function baixarBackup(){
     auditar('backup','(banco inteiro)',{arquivo:nome},true);
   }catch(e){console.error(e);info.textContent='Falhou: '+e.message;}
 }
+// ===== AVISOS (WhatsApp / Telegram). Quem envia é o robô do GitHub a cada 5 min =====
+let cfgAvisos={},avTimer=null;
+const chaveFilialAv=n=>String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+const tgUrl=(tok,metodo)=>'https://api.telegram.org/bot'+encodeURIComponent(tok).replace(/%3A/gi,':')+'/'+metodo;
+const DEST_PH={zapi:'ID do grupo (ex.: 120363…-group)',callmebot:'5511999990000:apikey; 5511…:apikey',telegram:'ID do grupo (ex.: -1001234567890)'};
+function provAv(){return document.getElementById('av-prov').value;}
+function mostrarProvedorAvisos(){
+  const p=provAv();document.querySelectorAll('.av-box').forEach(b=>b.style.display=b.id==='av-box-'+p?'':'none');
+  document.getElementById('av-col-dest').textContent=p==='callmebot'?'Números (número:apikey)':'ID do grupo';
+  document.querySelectorAll('.av-dest').forEach(i=>i.placeholder=DEST_PH[p]);document.getElementById('av-geral').placeholder='opcional · '+DEST_PH[p];
+}
+async function carregarAvisos(){
+  try{cfgAvisos=(await fbGet('configuracoes/avisos'))||{};}catch(e){cfgAvisos={};}
+  const pode=podeTrocarSenhaDup(),$=id=>document.getElementById(id),z=cfgAvisos.zapi||{};
+  $('av-somente').style.display=pode?'none':'';
+  $('av-ativo').checked=!!cfgAvisos.ativo;$('av-hi').value=cfgAvisos.horaIni??6;$('av-hf').value=cfgAvisos.horaFim??23;
+  $('av-prov').value=cfgAvisos.provedor||'zapi';
+  $('av-token').value=pode?(cfgAvisos.token||''):(cfgAvisos.token?'configurado':'');
+  $('av-z-inst').value=z.instancia||'';$('av-z-tok').value=pode?(z.token||''):(z.token?'configurado':'');$('av-z-sec').value=pode?(z.clientToken||''):(z.clientToken?'configurado':'');
+  $('av-geral').value=cfgAvisos.destinoGeral||cfgAvisos.chatGeral||'';
+  document.querySelectorAll('.av-tipo').forEach(c=>{c.checked=(cfgAvisos.tipos||{})[c.dataset.t]!==false;});
+  const fl=cfgAvisos.filiais||{};
+  $('av-filiais').innerHTML=filiais.map(f=>{const k=chaveFilialAv(f.nome),d=fl[k]||{};
+    return '<tr><td style="font-weight:600">'+escL(f.nome)+'</td><td><input class="av-dest" data-k="'+k+'" value="'+escL(d.destino||d.chatId||'')+'" style="width:100%;min-width:220px"></td><td><input type="checkbox" class="av-fon" data-k="'+k+'" '+(d.ativo!==false?'checked':'')+'></td><td><button class="btn btn-outline btn-sm" onclick="testarAviso(this.closest(\'tr\').querySelector(\'.av-dest\').value,\''+escL(f.nome)+'\')">Testar</button></td></tr>';}).join('');
+  if(!pode)document.querySelectorAll('#view-avisos input,#view-avisos select,#view-avisos button').forEach(e=>e.disabled=true);
+  mostrarProvedorAvisos();renderGruposWhats();renderTesteAviso();
+  const n=Object.values(fl).filter(d=>d&&(d.destino||d.chatId)&&d.ativo!==false).length;
+  const nomeProv={zapi:'WhatsApp (Z-API)',callmebot:'WhatsApp (CallMeBot)',telegram:'Telegram'}[cfgAvisos.provedor||'telegram'];
+  $('av-status').textContent=cfgAvisos.ativo?('Ligado · '+nomeProv+' · '+n+' filial(is)'):'Desligado';
+  // acompanha respostas do robô (teste e busca de grupos) enquanto a tela estiver aberta
+  if(avTimer)clearInterval(avTimer);
+  avTimer=setInterval(async()=>{if(currentView!=='avisos'){clearInterval(avTimer);avTimer=null;return;}
+    try{const c=await fbGet('configuracoes/avisos');if(c){cfgAvisos.teste=c.teste;cfgAvisos.gruposEncontrados=c.gruposEncontrados;cfgAvisos.buscarGrupos=c.buscarGrupos;cfgAvisos.gruposEm=c.gruposEm;renderGruposWhats();renderTesteAviso();}}catch(e){}},20000);
+}
+function renderTesteAviso(){
+  const t=cfgAvisos.teste,el=document.getElementById('av-teste-res');if(!el)return;
+  if(!t||!t.destino){el.textContent='';return;}
+  el.innerHTML=!t.resultado?'⏳ Teste para <b>'+escL(t.nome)+'</b> na fila: o robô envia em até 5 minutos.'
+    :t.resultado==='ok'?'<span style="color:var(--green-t)">✓ Teste para <b>'+escL(t.nome)+'</b> enviado às '+dtHora(t.em)+'. Confira no WhatsApp.</span>'
+    :'<span style="color:var(--red-t)">✗ Teste para '+escL(t.nome)+' falhou ('+escL(t.resultado)+'). Confira os dados e se o número está no grupo.</span>';
+}
+function renderGruposWhats(){
+  const el=document.getElementById('av-grupos-z'),info=document.getElementById('av-grupos-info');if(!el)return;
+  info.textContent=cfgAvisos.buscarGrupos?'⏳ Buscando… em até 5 minutos a lista aparece aqui.':(cfgAvisos.gruposEm?'Lista de '+dtHora(cfgAvisos.gruposEm):'');
+  const g=cfgAvisos.gruposEncontrados||[];
+  el.innerHTML=g.length?'Clique no grupo para escolher a filial:<br>'+g.map(x=>x.id?'<span class="badge badge-neu" style="cursor:pointer;margin:4px 6px 0 0;display:inline-block" onclick="usarGrupoAviso(\''+escL(x.id)+'\',\''+escL(x.nome).replace(/'/g,'')+'\')">'+escL(x.nome)+'</span>':'<span style="color:var(--red-t)">'+escL(x.nome)+'</span>').join(''):'';
+}
+async function salvarParteAvisos(upd){await fetch(FB_RAIZ+'configuracoes/avisos.json',{method:'PATCH',body:JSON.stringify(upd)});Object.assign(cfgAvisos,upd);}
+async function buscarGruposWhats(){
+  if(!podeTrocarSenhaDup())return;
+  if(!(cfgAvisos.zapi&&cfgAvisos.zapi.instancia)||cfgAvisos.provedor!=='zapi'){showAlert('err','Salve primeiro os dados da Z-API (e escolha "WhatsApp em grupos").');return;}
+  await salvarParteAvisos({buscarGrupos:true});renderGruposWhats();showAlert('ok','Pedido enviado. A lista aparece em até 5 minutos.');
+}
+async function testarAviso(destino,nome){
+  if(!podeTrocarSenhaDup())return;
+  destino=String(destino||'').trim();if(!destino){showAlert('err','Preencha o destino primeiro.');return;}
+  if(provAv()==='telegram'){
+    const tok=document.getElementById('av-token').value.trim();if(!tok){showAlert('err','Cole o token do robô.');return;}
+    try{const r=await fetch(tgUrl(tok,'sendMessage'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:destino,text:'✅ Teste do Sistema Mauer: os avisos da '+nome+' vão chegar aqui.'})});
+      const d=await r.json();if(!d.ok)throw new Error(d.description||r.status);showAlert('ok','Teste enviado para '+nome+'.');}
+    catch(e){showAlert('err','O Telegram recusou: '+e.message);}
+    return;
+  }
+  if((cfgAvisos.provedor||'')!==provAv()){showAlert('err','Salve antes de testar (você trocou a forma de envio).');return;}
+  await salvarParteAvisos({teste:{destino,nome,pedidoEm:Date.now()}});renderTesteAviso();
+}
+async function descobrirGruposTelegram(){
+  const tok=document.getElementById('av-token').value.trim(),el=document.getElementById('av-grupos');
+  if(!tok){showAlert('err','Cole o token do robô primeiro.');return;}
+  el.textContent='Procurando…';
+  try{const d=await (await fetch(tgUrl(tok,'getUpdates'))).json();if(!d.ok)throw new Error(d.description);
+    const chats=new Map();(d.result||[]).forEach(u=>{const m=u.message||u.my_chat_member||u.channel_post||u.edited_message;const c=m&&m.chat;if(c&&c.type!=='private')chats.set(String(c.id),c.title||String(c.id));});
+    if(!chats.size){el.innerHTML='<span style="color:var(--amber-t)">Nenhum grupo encontrado. Adicione o robô no grupo, mande uma mensagem lá e tente de novo.</span>';return;}
+    el.innerHTML='Grupos encontrados (clique para usar numa filial):<br>'+[...chats].map(([id,t])=>'<span class="badge badge-neu" style="cursor:pointer;margin:4px 6px 0 0;display:inline-block" onclick="usarGrupoAviso(\''+id+'\',\''+escL(t).replace(/'/g,'')+'\')">'+escL(t)+'</span>').join('');
+  }catch(e){el.innerHTML='<span style="color:var(--red-t)">Não consegui consultar: '+escL(e.message)+'</span>';}
+}
+function usarGrupoAviso(id,titulo){
+  const nomes=filiais.map(f=>f.nome);
+  const sug=nomes.find(n=>titulo.toUpperCase().includes(n.toUpperCase().replace('MAUER ','')))||'';
+  const esc=prompt('Para qual filial é o grupo "'+titulo+'"? Digite o nome da filial ou GERAL.\n\nFiliais: '+nomes.join(', '),sug);
+  if(!esc)return;
+  if(esc.trim().toUpperCase()==='GERAL'){document.getElementById('av-geral').value=id;return;}
+  const inp=document.querySelector('.av-dest[data-k="'+chaveFilialAv(esc)+'"]');
+  if(!inp){showAlert('err','Filial não encontrada: '+esc);return;}inp.value=id;
+}
+async function salvarAvisos(){
+  if(!podeTrocarSenhaDup()){showAlert('err','Só o usuário responsável altera os avisos.');return;}
+  const $=id=>document.getElementById(id),hi=Number($('av-hi').value),hf=Number($('av-hf').value),prov=provAv();
+  if(!(hi>=0&&hi<=23)||!(hf>=1&&hf<=24)){showAlert('err','Horário inválido.');return;}
+  const filiaisCfg={};document.querySelectorAll('.av-dest').forEach(i=>{const k=i.dataset.k,v=i.value.trim();if(v)filiaisCfg[k]={destino:v,ativo:document.querySelector('.av-fon[data-k="'+k+'"]').checked};});
+  const tipos={};document.querySelectorAll('.av-tipo').forEach(c=>tipos[c.dataset.t]=c.checked);
+  const cfg={...cfgAvisos,ativo:$('av-ativo').checked,provedor:prov,token:$('av-token').value.trim(),
+    zapi:{instancia:$('av-z-inst').value.trim(),token:$('av-z-tok').value.trim(),clientToken:$('av-z-sec').value.trim()},
+    destinoGeral:$('av-geral').value.trim(),horaIni:hi,horaFim:hf,tipos,filiais:filiaisCfg,alteradoPor:quemGestor(),alteradoEm:Date.now()};
+  delete cfg.chatGeral;
+  if(cfg.ativo&&prov==='zapi'&&!(cfg.zapi.instancia&&cfg.zapi.token)){showAlert('err','Para ligar, preencha a instância e o token da Z-API.');return;}
+  if(cfg.ativo&&prov==='telegram'&&!cfg.token){showAlert('err','Para ligar, cole o token do robô do Telegram.');return;}
+  try{await fbPut('configuracoes/avisos',cfg);cfgAvisos=cfg;showAlert('ok','Avisos salvos.');carregarAvisos();}catch(e){showAlert('err','Não consegui salvar.');}
+}
+
 // ===== LINHA DO TEMPO DO PEDIDO + ATRASADOS =====
 let filaGestor=[],prazos={fila:60,conferencia:30};
 const normP=x=>String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');
