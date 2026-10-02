@@ -1,0 +1,18 @@
+# Avisos do Sistema Mauer no WhatsApp ou Telegram (pedido parado, separação atrasada, conferência atrasada,
+# separador bloqueado, tentativa de duplicado). Configuração no painel do gestor → Avisos.
+name: Avisos WhatsApp
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # a cada 5 min (o GitHub pode atrasar alguns minutos em horário de pico)
+  workflow_dispatch:
+
+jobs:
+  avisos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    concurrency: { group: avisos, cancel-in-progress: false }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar e enviar avisos
+        run: python3 avisos/avisos.py
