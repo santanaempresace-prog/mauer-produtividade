@@ -1,0 +1,49 @@
+# Backup diário do banco do Sistema de Produtividade Mauer
+# Use SOMENTE num repositório PRIVADO (o backup tem nomes e dados da operação).
+name: Backup diário Mauer
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # todo dia às 03:00 (horário de Brasília)
+  workflow_dispatch:       # botão "Run workflow" para rodar na hora
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baixar o banco inteiro
+        run: |
+          set -e
+          curl -sf --retry 5 --retry-delay 20 --max-time 600 \
+            "https://mauer-produtividade-default-rtdb.firebaseio.com/.json" -o /tmp/banco.json
+          # confere se veio um JSON válido e não vazio
+          python3 -c "import json,sys; d=json.load(open('/tmp/banco.json')); sys.exit(0 if d else 1)"
+
+      - name: Salvar compactado e apagar os com mais de 90 dias
+        run: |
+          set -e
+          mkdir -p backups
+          HOJE=$(TZ=America/Sao_Paulo date +%F)
+          gzip -9 -c /tmp/banco.json > "backups/mauer-$HOJE.json.gz"
+          python3 - <<'PY'
+          import os, re, datetime
+          limite = datetime.date.today() - datetime.timedelta(days=90)
+          for f in os.listdir('backups'):
+              m = re.match(r'mauer-(\d{4}-\d{2}-\d{2})\.json\.gz$', f)
+              if m and datetime.date.fromisoformat(m.group(1)) < limite:
+                  os.remove(os.path.join('backups', f))
+          PY
+          ls -lh backups | tail -5
+
+      - name: Gravar no repositório
+        run: |
+          git config user.name  "backup-mauer"
+          git config user.email "backup-mauer@users.noreply.github.com"
+          git add -A backups
+          git commit -m "Backup $(TZ=America/Sao_Paulo date '+%d/%m/%Y %H:%M')" || echo "Nada mudou"
+          git push
