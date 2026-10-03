@@ -729,8 +729,7 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
         <div class="card-header"><div class="card-title">⏰ Atrasados agora</div><span id="atr-count" class="badge badge-neu"></span></div>
         <div id="atr-lista"></div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);margin-top:12px;padding-top:10px;font-size:12px;color:var(--muted)">
-          Prazos: na fila do Aro <input type="number" id="prz-fila" min="5" style="width:64px"> min ·
-          esperando conferência <input type="number" id="prz-conf" min="5" style="width:64px"> min ·
+          <input type="number" id="prz-fila" min="5" style="display:none">Prazos: esperando conferência <input type="number" id="prz-conf" min="5" style="width:64px"> min ·
           separação: o limite da tela Tempos
           <button class="btn btn-outline btn-sm" onclick="salvarPrazos()">Salvar prazos</button>
           <span style="margin-left:auto">Clique no nº do pedido para ver a linha do tempo.</span>
@@ -2363,7 +2362,7 @@ async function carregarAvisos(){
   $('av-token').value=pode?(cfgAvisos.token||''):(cfgAvisos.token?'configurado':'');
   $('av-z-inst').value=z.instancia||'';$('av-z-tok').value=pode?(z.token||''):(z.token?'configurado':'');$('av-z-sec').value=pode?(z.clientToken||''):(z.clientToken?'configurado':'');
   $('av-geral').value=cfgAvisos.destinoGeral||cfgAvisos.chatGeral||'';
-  document.querySelectorAll('.av-tipo').forEach(c=>{c.checked=(cfgAvisos.tipos||{})[c.dataset.t]!==false;});
+  document.querySelectorAll('.av-tipo').forEach(c=>{const v=(cfgAvisos.tipos||{})[c.dataset.t];c.checked=c.dataset.t==='fila'?v===true:v!==false;});
   const fl=cfgAvisos.filiais||{};
   $('av-filiais').innerHTML=filiais.map(f=>{const k=chaveFilialAv(f.nome),d=fl[k]||{};
     return '<tr><td style="font-weight:600">'+escL(f.nome)+'</td><td><input class="av-dest" data-k="'+k+'" value="'+escL(d.destino||d.chatId||'')+'" style="width:100%;min-width:220px"></td><td><input type="checkbox" class="av-fon" data-k="'+k+'" '+(d.ativo!==false?'checked':'')+'></td><td><button class="btn btn-outline btn-sm" onclick="testarAviso(this.closest(\'tr\').querySelector(\'.av-dest\').value,\''+escL(f.nome)+'\')">Testar</button></td></tr>';}).join('');
@@ -2471,7 +2470,7 @@ const durTxt=m=>{if(m==null||!isFinite(m))return'';m=Math.max(0,Math.round(m));r
 // Lista do que está passando do prazo agora (filiais do filtro)
 function calcAtrasados(){
   const{filiais:fs}=getFilter(),agora=Date.now(),out=[],ok=f=>fs.size===0||fs.has(f);
-  filaGestor.forEach(f=>{if(f.status==='disponivel'&&ok(f.filial)&&f.criadoEm){const m=(agora-f.criadoEm)/60000;if(m>prazos.fila)out.push({etapa:'Na fila do Aro sem separador',num:f.num,filial:f.filial,min:m,prazo:prazos.fila,quem:''});}});
+  // pedidos parados na fila do Aro: por enquanto não entram nos atrasados (decisão da operação)
   registros.filter(r=>r.status==='em_separacao'&&ok(r.filial)&&regAtrasado(r)).forEach(r=>{const m=(agora-r.inicio)/60000;(r.pedidos||[]).forEach(p=>{if(!(r.pedidosFinalizados||{})[p.num])out.push({etapa:'Separação passando do limite',num:p.num,filial:r.filial,min:m,prazo:metaMinReg(r),quem:r.colaborador});});});
   const lim=dataBR(new Date(agora-3*864e5)),hoje=dataBR();antigosSemConf=0;
   lancamentos.forEach(l=>{if(!l.isPedido||!ok(l.filial)||!(l.data>=lim))return;const c=cicloPedido(l);if(c.conf)return;
