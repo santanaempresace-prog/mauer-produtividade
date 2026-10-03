@@ -141,6 +141,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
   <div><div class="top-t">Conferência</div><div class="top-s" id="top-filial">—</div></div>
   <div class="top-r">
     <span class="clock" id="clock"></span>
+    <button class="chip" id="chip-avisos" onclick="ativarAvisos()" title="Avisos do tablet">🔔</button>
     <span class="dot" id="dot" title="Conexão"></span>
     <button class="chip" id="chip-conf" onclick="abrirSetup('conferente')">—</button>
   </div>
@@ -207,6 +208,11 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
   </div>
 </div>
 
+<div id="aviso-conf" style="position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:55;width:min(640px,94vw);display:none;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);overflow:hidden">
+  <div id="aviso-conf-cab" style="padding:12px 16px;color:#fff;font-weight:700;font-size:18px;display:flex;align-items:center;gap:10px"></div>
+  <div id="aviso-conf-txt" style="background:#fff;padding:12px 16px;font-size:16px;line-height:1.45;max-height:45vh;overflow:auto"></div>
+  <button onclick="fecharAvisoConf()" style="width:100%;min-height:56px;border:none;background:#131F3B;color:#fff;font-size:18px;font-weight:600">OK, vi</button>
+</div>
 <div class="toast" id="toast"><span id="toast-t"></span><button id="toast-undo">Desfazer</button></div>
 
 <div class="setup" id="setup">
@@ -221,7 +227,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-10-02-conf-offline-1';
+const APP_VERSAO='2026-10-02-conf-avisos';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
@@ -400,6 +406,80 @@ function alertaDup(titulo,num,linhas){
   setTimeout(()=>document.getElementById('dup-b').focus(),50);
 }
 function fecharDup(){dupAberto=false;document.getElementById('dup-ov').classList.remove('show');focar();}
+// ===== AVISOS DO TABLET =====
+// Avisa (bipe, vibração, faixa na tela e notificação do Android quando o app está em segundo plano):
+//  • pedido esperando conferência além do prazo (o mesmo prazo do gestor → Rastreamento)
+//  • pedido lançado mais de uma vez na fila
+//  • tentativa de lançar pedido duplicado ou de outra filial nesta filial
+// Cada aviso é dado uma vez; pedidos atrasados lembram de novo a cada 15 min.
+let prazoConf=30,prazoLidoEm=0,avisosAlertasDesde=Date.now();
+const AV_KEY='mauerAvisosConf';
+function avLer(){try{const d=JSON.parse(localStorage.getItem(AV_KEY)||'{}');return d.dia===hojeStr()?d:{dia:hojeStr(),vistos:{},lembrete:0,alertasDesde:Date.now()};}catch(e){return{dia:hojeStr(),vistos:{},lembrete:0,alertasDesde:Date.now()};}}
+function avSalvar(d){try{localStorage.setItem(AV_KEY,JSON.stringify(d));}catch(e){}}
+function atualizarSino(){
+  const b=document.getElementById('chip-avisos');if(!b)return;
+  const ok=('Notification' in window)&&Notification.permission==='granted';
+  b.textContent=ok?'🔔':'🔕 Ativar avisos';b.title=ok?'Avisos ligados (também com o tablet em outro app)':'Toque para receber avisos com o tablet em outro app';
+}
+async function ativarAvisos(){
+  if(!('Notification' in window)){toast('Este navegador não mostra notificações. Os avisos aparecem só com o app aberto.');return;}
+  if(Notification.permission==='granted'){mostrarNotificacao('🔔 Avisos ligados','Teste: os avisos do tablet vão aparecer assim.','teste');toast('Avisos ligados. Mandei uma notificação de teste.');return;}
+  const r=await Notification.requestPermission();atualizarSino();
+  if(r==='granted'){mostrarNotificacao('🔔 Avisos ligados','Os avisos do tablet vão aparecer assim.','teste');toast('Avisos ligados.');}
+  else toast('As notificações foram bloqueadas. Libere nas configurações do navegador (cadeado ao lado do endereço).');
+}
+function mostrarNotificacao(titulo,texto,tag){
+  try{
+    if(!('Notification' in window)||Notification.permission!=='granted')return;
+    const op={body:texto,tag:tag||'mauer',renotify:true,requireInteraction:true,icon:'logo-mauer-branco.png',vibrate:[200,100,200]};
+    if(navigator.serviceWorker&&navigator.serviceWorker.ready)navigator.serviceWorker.ready.then(r=>r.showNotification(titulo,op)).catch(()=>{try{new Notification(titulo,op);}catch(e){}});
+    else new Notification(titulo,op);
+  }catch(e){}
+}
+function avisarConf(titulo,linhas,cor,tag){
+  // dentro do app: faixa + bipe + vibração; fora do app: notificação do sistema
+  const el=document.getElementById('aviso-conf'),cab=document.getElementById('aviso-conf-cab'),txt=document.getElementById('aviso-conf-txt');
+  const aberto=el.style.display==='block';
+  const bloco='<div style="font-weight:700;margin:6px 0 2px;color:'+(cor||'#E38A29')+'">'+esc(titulo)+'</div>'+linhas.map(l=>'<div style="padding:4px 0;border-bottom:1px solid #eee">'+esc(l)+'</div>').join('');
+  if(aberto){cab.textContent='🔔 Avisos do tablet';if(cor==='#B3261E')cab.style.background=cor;txt.innerHTML+=bloco;}
+  else{cab.textContent=titulo;cab.style.background=cor||'#E38A29';txt.innerHTML=linhas.map(l=>'<div style="padding:4px 0;border-bottom:1px solid #eee">'+esc(l)+'</div>').join('');txt.dataset.primeiro=titulo;}
+  el.style.display='block';
+  try{alarme();}catch(e){}
+  if(document.visibilityState!=='visible')mostrarNotificacao(titulo,linhas.slice(0,4).join('\n')+(linhas.length>4?'\n…':''),tag);
+}
+function fecharAvisoConf(){const el=document.getElementById('aviso-conf');el.style.display='none';document.getElementById('aviso-conf-txt').innerHTML='';focar();}
+async function verificarAvisosConf(){
+  if(!cfg.filial)return;
+  const d=avLer(),agora=Date.now();
+  if(agora-prazoLidoEm>5*60000){try{const pz=await fbGet('configuracoes/prazosEtapas');if(pz&&pz.conferencia>=5)prazoConf=Number(pz.conferencia);}catch(e){}prazoLidoEm=agora;}
+  // 1) esperando conferência além do prazo
+  const atras=pendentes.filter(p=>!p.emSep&&(agora-p.desde)/60000>prazoConf);
+  const novos=atras.filter(p=>!d.vistos['atr_'+normPed(p.num)]);
+  if(novos.length){
+    novos.forEach(p=>d.vistos['atr_'+normPed(p.num)]=1);d.lembrete=agora;
+    avisarConf('⏰ Pedido esperando conferência',novos.map(p=>'Pedido '+p.num+' ('+p.colaborador+') esperando há '+fmtMin((agora-p.desde)/60000)+' (prazo '+prazoConf+' min)'),'#E38A29','atraso');
+  }else if(atras.length&&agora-(d.lembrete||0)>15*60000){
+    d.lembrete=agora;avisarConf('⏰ Ainda há '+atras.length+' pedido(s) atrasado(s)',atras.slice(0,8).map(p=>'Pedido '+p.num+' esperando há '+fmtMin((agora-p.desde)/60000)),'#E38A29','atraso');
+  }
+  // 2) pedido lançado mais de uma vez na fila
+  const dups=pendentes.filter(p=>{const a=analisarDup(p.num);return a.lancDup&&!d.vistos['dup_'+normPed(p.num)];});
+  if(dups.length){dups.forEach(p=>d.vistos['dup_'+normPed(p.num)]=1);
+    avisarConf('⚠️ Pedido lançado mais de uma vez',dups.map(p=>'Pedido '+p.num+': '+linhasDup(analisarDup(p.num)).join(' | ')),'#B3261E','dup');}
+  // 3) tentativas de duplicado / outra filial feitas nesta filial (separador ou Aro)
+  try{
+    const a=await fbQuery('alertasDuplicado','data',{startAt:hojeStr()});
+    const desde=d.alertasDesde||agora;
+    const L=Object.entries(a||{}).map(([k,v])=>({...v,_k:k})).filter(x=>x.filial===cfg.filial&&x.origem!=='conferente'&&!x.liberacao&&x.numPedido&&(x.timestamp||0)>desde&&!d.vistos['al_'+x._k]);
+    if(L.length){L.forEach(x=>d.vistos['al_'+x._k]=1);
+      avisarConf(L.some(x=>/outra filial|um pedido da /i.test(x.detalhe||''))?'🚫 Pedido de outra filial / duplicado':'🚫 Tentativa de pedido duplicado',
+        L.map(x=>'Pedido '+x.numPedido+' · '+(x.quem||'')+': '+(x.detalhe||'')),'#B3261E','alerta');}
+  }catch(e){}
+  if(!d.alertasDesde)d.alertasDesde=agora;
+  avSalvar(d);
+}
+setInterval(verificarAvisosConf,30000);
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{atualizarSino();verificarAvisosConf();},4000));
+setTimeout(()=>{atualizarSino();},1500);
 function alarme(){
   try{navigator.vibrate&&navigator.vibrate([200,100,200,100,400]);}catch(e){}
   try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();const t0=audioCtx.currentTime;
@@ -584,14 +664,14 @@ async function checarVersao(){
     if(m&&m[1]!==APP_VERSAO&&!ocupado&&!selecionado){location.reload();return true;}}catch(e){}
   return false;
 }
-// ---------- reabertura automática a cada 30 min ----------
+// ---------- reabertura automática a cada 10 min ----------
 // Recarrega a página do zero (sem cache) para pegar sempre a versão nova.
 // Só reabre com o app parado: sem pedido aberto, sem alerta, sem nada digitado e sem toque nos últimos 20 s.
-const REABRIR_MIN=30;
+const REABRIR_MIN=10;
 const abertoEm=Date.now();let ultimaAcao=Date.now();
 ['pointerdown','keydown','input'].forEach(ev=>document.addEventListener(ev,()=>{ultimaAcao=Date.now();},true));
 function podeReabrir(){
-  return !ocupado&&!selecionado&&!dupAberto&&!document.getElementById('setup').classList.contains('show')
+  return !ocupado&&!selecionado&&!dupAberto&&document.getElementById('aviso-conf').style.display!=='block'&&!document.getElementById('setup').classList.contains('show')
     &&!document.getElementById('num').value&&Date.now()-ultimaAcao>20000;
 }
 function reabrir(){const u=new URL(location.href);u.searchParams.set('r',Date.now());location.replace(u.toString());}
