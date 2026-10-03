@@ -547,6 +547,33 @@ async function checarVersao(){
   return false;
 }
 setInterval(checarVersao,5*60000);
+// ---------- reabertura automática a cada 10 min (pega sempre a versão nova) ----------
+// Só reabre com o app parado: sem pedido no lote, nada digitado, nenhuma tela por cima e sem mexer nos últimos 20 s.
+// Nome, filial e data escolhidos voltam sozinhos depois de reabrir. A tela do Aro (?robo=1) nunca reabre.
+const REABRIR_MIN=10,abertoEm=Date.now(),IDENT_KEY='mauerReabrirIdent';let ultimaAcao=Date.now();
+['pointerdown','keydown','input'].forEach(ev=>document.addEventListener(ev,()=>{ultimaAcao=Date.now();},true));
+function temTelaPorCima(){return [...document.body.children].some(e=>e.id!=='aviso-offline'&&getComputedStyle(e).position==='fixed'&&getComputedStyle(e).display!=='none'&&Number(getComputedStyle(e).zIndex)>=9000);}
+function podeReabrir(){
+  if(MODO_ROBO)return false;
+  const b=document.getElementById('btn-salvar-pedidos'),n=document.getElementById('p-num');
+  return !pedidosTemp.length&&!(n&&n.value)&&!(b&&b.dataset.busy==='1')&&!temTelaPorCima()&&Date.now()-ultimaAcao>20000;
+}
+function reabrir(){
+  try{sessionStorage.setItem(IDENT_KEY,JSON.stringify({filial:document.getElementById('p-filial').value,colab:document.getElementById('p-colab').value,data:document.getElementById('p-date').value,aba:(document.querySelector('.tab-content.active')||{}).id||'',em:Date.now()}));}catch(e){}
+  const u=new URL(location.href);u.searchParams.set('r',Date.now());location.replace(u.toString());
+}
+function checarReabertura(){if(Date.now()-abertoEm>=REABRIR_MIN*60000&&podeReabrir())reabrir();}
+setInterval(checarReabertura,30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-abertoEm>=REABRIR_MIN*60000){const u=ultimaAcao;ultimaAcao=0;if(podeReabrir())reabrir();else ultimaAcao=u;}});
+function restaurarIdentReabertura(){
+  let d=null;try{d=JSON.parse(sessionStorage.getItem(IDENT_KEY)||'null');sessionStorage.removeItem(IDENT_KEY);}catch(e){}
+  if(!d||Date.now()-d.em>5*60000)return;
+  const pf=document.getElementById('p-filial'),pc=document.getElementById('p-colab'),pd=document.getElementById('p-date');
+  if(d.filial&&!pf.disabled&&[...pf.options].some(o=>o.value===d.filial)){pf.value=d.filial;loadColabs('p-filial','p-colab');}
+  if(d.colab&&pf.value===d.filial&&[...pc.options].some(o=>o.value===d.colab))pc.value=d.colab;
+  if(d.data===getBrasiliaDateStr())pd.value=d.data;
+  carregarRegistrosAbertos();atualizarIdent();verificarBloqueio();if(typeof carregarFilaAro==='function')carregarFilaAro();
+}
 setInterval(()=>{if(document.getElementById('p-colab')?.value&&!MODO_ROBO_SAFE())carregarFilaAro();},15000);
 function MODO_ROBO_SAFE(){try{return MODO_ROBO;}catch(e){return false;}}
 // Atualiza o card "Em separação" (ex.: lote finalizado pela conferência)
@@ -1025,6 +1052,7 @@ async function init() {
     colaboradores = {};
     if(colData){Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});}
     populateFilialSelects();
+    restaurarIdentReabertura();
   // Populate rc-filial select
   const rcf=document.getElementById('rc-filial');
   if(rcf){rcf.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option>'+f.nome+'</option>').join('');}
@@ -1064,6 +1092,8 @@ function populateFilialSelects(){
 // Depois disso a filial fica fixa e o separador não consegue lançar em outra.
 const TRAVA_KEY='mauerFilialComputador';
 function travaFilial(){try{return JSON.parse(localStorage.getItem(TRAVA_KEY)||'null');}catch(e){return null;}}
+function computadorTravado(){const t=travaFilial();return !!(t&&filiais.some(f=>mesmaFilial(f.nome,t.filial)));}
+function exigirTrava(){if(computadorTravado())return false;showAlert('err','Este computador ainda não tem filial definida. Chame o encarregado.');abrirTravaFilial();return true;}
 function mesmaFilial(a,b){return String(a||'').trim().toUpperCase()===String(b||'').trim().toUpperCase();}
 function aplicarTravaFilial(){
   const sel=document.getElementById('p-filial'),box=document.getElementById('trava-filial');if(!sel||!box)return;
@@ -1074,8 +1104,11 @@ function aplicarTravaFilial(){
     sel.disabled=true;sel.title='Este computador está travado na '+nome;
     box.innerHTML='<span style="display:inline-flex;align-items:center;gap:6px;background:#E9F7EE;color:#1A6B45;border-radius:8px;padding:6px 10px;font-weight:600">🔒 Computador da '+nome+'</span> <a href="#" onclick="abrirTravaFilial();return false" style="color:var(--muted,#5C6478);margin-left:8px">trocar (só o encarregado)</a>';
   }else{
-    sel.disabled=false;sel.title='';
-    box.innerHTML='<div style="background:#FFF6EC;border:1px solid #E38A29;color:#9C5A12;border-radius:8px;padding:8px 12px">⚠ Este computador ainda não tem filial fixa. <a href="#" onclick="abrirTravaFilial();return false" style="color:#9C5A12;font-weight:700">Encarregado: travar na filial</a></div>';
+    // sem trava não lança: vale para qualquer navegador novo, aba anônima ou dados apagados
+    sel.value='';sel.disabled=true;sel.title='Peça ao encarregado para travar a filial deste computador';
+    const pc=document.getElementById('p-colab');if(pc){pc.innerHTML='<option value="">Aguardando o encarregado</option>';}
+    atualizarIdent&&atualizarIdent();
+    box.innerHTML='<div style="background:#FDECEA;border:2px solid #B3261E;color:#8A1C16;border-radius:10px;padding:12px 14px;line-height:1.45">🔒 <b>Lançamentos bloqueados neste navegador.</b><br>O encarregado precisa definir a filial deste computador.<br><button type="button" onclick="abrirTravaFilial()" style="margin-top:8px;min-height:40px;padding:0 16px;border:none;border-radius:8px;background:#B3261E;color:#fff;font-weight:700;cursor:pointer">Encarregado: travar na filial</button></div>';
   }
 }
 function abrirTravaFilial(){
@@ -1145,6 +1178,7 @@ function registrarDuplicado(d){
   try{fbPost('alertasDuplicado',{...d,numPedido:String(d.numPedido||''),data:getBrasiliaDateStr(),timestamp:getBrasiliaTimestamp(),visto:false}).catch(()=>{});}catch(e){}
 }
 async function addPedido(){
+  if(exigirTrava())return;
   if(await verificarBloqueio())return;
   const num=document.getElementById('p-num').value.trim();
   const qt=parseInt(document.getElementById('p-qt').value);
@@ -1257,6 +1291,7 @@ function renderPedidoTemp(){
 }
 
 async function salvarPedidos(){
+  if(exigirTrava())return;
   const filial=document.getElementById('p-filial').value;
   const date=document.getElementById('p-date').value;
   const colab=document.getElementById('p-colab').value;
@@ -1807,6 +1842,7 @@ function filaMarcarTodos(){
   const todos=cbs.every(c=>c.checked);cbs.forEach(c=>c.checked=!todos);
 }
 async function filaAdicionar(){
+  if(exigirTrava())return;
   if(await verificarBloqueio())return;
   const sel=[...document.querySelectorAll('#fila-lista input:checked:not(:disabled)')].map(i=>i.value);
   if(!sel.length){showAlert('err','Marque pelo menos um pedido da fila.');return;}
