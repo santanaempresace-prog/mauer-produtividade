@@ -227,7 +227,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-10-02-conf-avisos';
+const APP_VERSAO='2026-10-03-conf-avisos2';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
@@ -453,7 +453,7 @@ async function verificarAvisosConf(){
   const d=avLer(),agora=Date.now();
   if(agora-prazoLidoEm>5*60000){try{const pz=await fbGet('configuracoes/prazosEtapas');if(pz&&pz.conferencia>=5)prazoConf=Number(pz.conferencia);}catch(e){}prazoLidoEm=agora;}
   // 1) esperando conferência além do prazo
-  const atras=pendentes.filter(p=>!p.emSep&&(agora-p.desde)/60000>prazoConf);
+  const atras=pendentes.filter(p=>!p.emSep&&p.data===hojeStr()&&(agora-p.desde)/60000>prazoConf); // só os de hoje
   const novos=atras.filter(p=>!d.vistos['atr_'+normPed(p.num)]);
   if(novos.length){
     novos.forEach(p=>d.vistos['atr_'+normPed(p.num)]=1);d.lembrete=agora;
