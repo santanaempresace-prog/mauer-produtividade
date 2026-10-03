@@ -182,7 +182,7 @@ def main():
         print('Avisos desligados ou sem configuração. Nada a fazer.')
         return
     tipos = cfg.get('tipos') or {}
-    liga = lambda t: tipos.get(t, True)
+    liga = lambda t: tipos.get(t, t != 'fila')   # fila do Aro vem desligada por padrão
     h = datetime.now(BR).hour
     hi, hf = int(cfg.get('horaIni', 0)), int(cfg.get('horaFim', 24))
     silencio = not (hi <= h < hf) if hi < hf else not (h >= hi or h < hf)
