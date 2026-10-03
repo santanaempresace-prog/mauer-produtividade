@@ -226,6 +226,8 @@ def main():
         for k, l in lancs.items():
             if not isinstance(l, dict) or not l.get('isPedido') or not l.get('numPedido'):
                 continue
+            if l.get('data') != dia(0):        # só pedidos de hoje; os antigos são pendência, não atraso
+                continue
             chave = norm_ped(l['numPedido']) + '|' + str(l.get('filial'))
             if chave in conferidos or chave in vistos:
                 continue
