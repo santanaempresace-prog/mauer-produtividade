@@ -2444,7 +2444,7 @@ async function salvarAvisos(){
 }
 
 // ===== LINHA DO TEMPO DO PEDIDO + ATRASADOS =====
-let filaGestor=[],prazos={fila:60,conferencia:30},fechamentoAuto={ativo:true,hora:18};
+let antigosSemConf=0,verTodosAtr=false,filaGestor=[],prazos={fila:60,conferencia:30},fechamentoAuto={ativo:true,hora:18};
 const normP=x=>String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');
 async function carregarFilaGestor(){
   try{
@@ -2473,8 +2473,9 @@ function calcAtrasados(){
   const{filiais:fs}=getFilter(),agora=Date.now(),out=[],ok=f=>fs.size===0||fs.has(f);
   filaGestor.forEach(f=>{if(f.status==='disponivel'&&ok(f.filial)&&f.criadoEm){const m=(agora-f.criadoEm)/60000;if(m>prazos.fila)out.push({etapa:'Na fila do Aro sem separador',num:f.num,filial:f.filial,min:m,prazo:prazos.fila,quem:''});}});
   registros.filter(r=>r.status==='em_separacao'&&ok(r.filial)&&regAtrasado(r)).forEach(r=>{const m=(agora-r.inicio)/60000;(r.pedidos||[]).forEach(p=>{if(!(r.pedidosFinalizados||{})[p.num])out.push({etapa:'Separação passando do limite',num:p.num,filial:r.filial,min:m,prazo:metaMinReg(r),quem:r.colaborador});});});
-  const lim=dataBR(new Date(agora-3*864e5));
+  const lim=dataBR(new Date(agora-3*864e5)),hoje=dataBR();antigosSemConf=0;
   lancamentos.forEach(l=>{if(!l.isPedido||!ok(l.filial)||!(l.data>=lim))return;const c=cicloPedido(l);if(c.conf)return;
+    if(l.data!==hoje){antigosSemConf++;return;} // dias anteriores: não é "atrasado agora", é pendência antiga
     const reg=c.reg;if(reg&&reg.status==='em_separacao')return;const desde=(reg&&reg.fim)||l.timestamp;if(!desde)return;const m=(agora-desde)/60000;
     if(m>prazos.conferencia)out.push({etapa:'Esperando conferência',num:l.numPedido,filial:l.filial,min:m,prazo:prazos.conferencia,quem:l.colaborador,key:l._key});});
   return out.sort((a,b)=>(b.min-b.prazo)-(a.min-a.prazo));
@@ -2483,9 +2484,11 @@ function renderAtrasados(){
   const el=document.getElementById('atr-lista');if(!el)return;
   const pf=document.getElementById('prz-fila'),pc=document.getElementById('prz-conf');
   if(pf&&document.activeElement!==pf)pf.value=prazos.fila;if(pc&&document.activeElement!==pc)pc.value=prazos.conferencia;
-  const L=calcAtrasados();document.getElementById('atr-count').textContent=L.length+' atrasado(s)';
-  el.innerHTML=L.length?'<div class="table-wrap"><table><thead><tr><th>Etapa</th><th>Pedido</th><th>Filial</th><th>Quem</th><th style="text-align:right">Há</th><th style="text-align:right">Passou</th></tr></thead><tbody>'+L.slice(0,60).map(a=>'<tr><td>'+escL(a.etapa)+'</td><td style="font-family:\'IBM Plex Mono\',monospace">'+(a.key?'<a href="#" onclick="abrirLinhaTempo(\''+a.key+'\');return false">'+escL(a.num)+'</a>':escL(a.num))+'</td><td>'+escL(a.filial)+'</td><td>'+escL(a.quem||'—')+'</td><td style="text-align:right">'+durTxt(a.min)+'</td><td style="text-align:right;color:var(--red-t);font-weight:600">+'+durTxt(a.min-a.prazo)+'</td></tr>').join('')+'</tbody></table></div>'+(L.length>60?'<div style="font-size:12px;color:var(--muted);margin-top:6px">Mostrando 60 de '+L.length+'.</div>':'')
-    :'<div style="text-align:center;color:var(--hint);padding:12px">Nada atrasado agora 🎉</div>';
+  const L=calcAtrasados();document.getElementById('atr-count').textContent=L.length+' atrasado(s) hoje';
+  const MOSTRA=verTodosAtr?200:8;
+  const antigos=antigosSemConf?'<div style="margin-top:10px;padding:10px 12px;border-radius:var(--rsm);background:var(--bg);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">📦 <b>'+antigosSemConf+' pedido(s) de dias anteriores</b> ainda sem baixa de conferência (não entram nos atrasados de hoje). <button class="btn btn-outline btn-sm" onclick="abrirBaixaMassa()">Dar baixa em massa</button></div>':'';
+  el.innerHTML=(L.length?'<div class="table-wrap"><table><thead><tr><th>Etapa</th><th>Pedido</th><th>Filial</th><th>Quem</th><th style="text-align:right">Há</th><th style="text-align:right">Passou</th></tr></thead><tbody>'+L.slice(0,MOSTRA).map(a=>'<tr><td>'+escL(a.etapa)+'</td><td style="font-family:\'IBM Plex Mono\',monospace">'+(a.key?'<a href="#" onclick="abrirLinhaTempo(\''+a.key+'\');return false">'+escL(a.num)+'</a>':escL(a.num))+'</td><td>'+escL(a.filial)+'</td><td>'+escL(a.quem||'—')+'</td><td style="text-align:right">'+durTxt(a.min)+'</td><td style="text-align:right;color:var(--red-t);font-weight:600">+'+durTxt(a.min-a.prazo)+'</td></tr>').join('')+'</tbody></table></div>'+(L.length>MOSTRA||verTodosAtr&&L.length>8?'<div style="margin-top:6px"><button class="btn btn-outline btn-sm" onclick="verTodosAtr=!verTodosAtr;renderAtrasados()">'+(verTodosAtr?'Mostrar só os 8 mais atrasados':'Ver todos os '+L.length)+'</button></div>':'')
+    :'<div style="text-align:center;color:var(--hint);padding:12px">Nada atrasado hoje 🎉</div>')+antigos;
 }
 function atualizarBadgeAtrasados(){
   const n=calcAtrasados().length,nav=[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.trim().startsWith('Rastreamento'));if(!nav)return;
