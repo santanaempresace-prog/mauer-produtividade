@@ -2133,8 +2133,11 @@ function celulasTempoPedido(l){
   const tit=(r.totalPedidos>1?'Tempo do registro ('+r.totalPedidos+' pedidos juntos)':'Tempo do registro');
   return'<td style="'+mono+';color:var(--muted)">'+fmtHora(r.inicio)+'</td><td>'+fimCell+'</td><td style="text-align:right;'+mono+';font-weight:500;color:'+cor+'" title="'+tit+'">'+fmtDurMin(durRegistro(r))+(r.totalPedidos>1?' <span style="color:var(--hint);font-weight:400">('+r.totalPedidos+')</span>':'')+'</td>';
 }
+// Lotes encerrados muito rápido (até 3 min) ou que levaram mais de 2 h não entram em pneus/hora-homem nem no tempo médio
+const PH_MIN_MIN=3,PH_MAX_MIN=120;
+function regForaDaFaixaPH(r){const d=durRegistro(r);return d!=null&&(d<=PH_MIN_MIN||d>PH_MAX_MIN);}
 function statsTempo(regs){
-  const fin=regs.filter(r=>r.status==='finalizado'&&!regForaPadrao(r)&&durRegistro(r)!=null);
+  const fin=regs.filter(r=>r.status==='finalizado'&&!regForaPadrao(r)&&durRegistro(r)!=null&&!regForaDaFaixaPH(r));
   const min=fin.reduce((a,r)=>a+durRegistro(r),0);
   const pn=fin.reduce((a,r)=>a+Number(r.totalPneus||0),0);
   return{n:fin.length,min,pn,media:fin.length?min/fin.length:null,pnHora:min>0?pn/(min/60):null,minPneu:pn>0?min/pn:null};
@@ -2143,7 +2146,8 @@ function cardMetricaTempo(){
   const regs=getRegistrosFiltrados();
   const st=statsTempo(regs);
   const abertos=regs.filter(r=>r.status==='em_separacao').length;
-  const sub='meta '+metaPneusHora+(st.n?' | média '+fmtDurMin(st.media)+' por registro':'');
+  const forasFaixa=regs.filter(r=>r.status==='finalizado'&&!regForaPadrao(r)&&regForaDaFaixaPH(r)).length;
+  const sub='meta '+metaPneusHora+(st.n?' | média '+fmtDurMin(st.media)+' por registro':'')+(forasFaixa?' | '+forasFaixa+' lote(s) com até '+PH_MIN_MIN+' min ou mais de '+(PH_MAX_MIN/60)+' h fora da conta':'');
   return'<div class="metric-card"><div class="metric-lbl">Pneus por hora-homem</div><div class="metric-val" style="color:'+corPnHora(st.pnHora)+'">'+(st.pnHora!=null?st.pnHora.toFixed(1).replace('.',','):'—')+'</div><div class="metric-sub">'+sub+(abertos?' | '+abertos+' em separação':'')+'</div></div>';
 }
 function metaMinReg(r){return Math.max(5,Math.ceil((Number(r.totalPneus)||0)/metaPneusHora*60));}
@@ -2574,7 +2578,7 @@ function renderTempos(){
   // ---- Por colaborador
   const por={};
   regs.filter(r=>!tpFilial||r.filial===tpFilial).forEach(r=>{const k=r.filial+'|'+r.colaborador;(por[k]=por[k]||{colab:r.colaborador,filial:r.filial,regs:[]}).regs.push(r);});
-  const linhas=Object.values(por).map(g=>({...g,st:statsTempo(g.regs),...extra(g),fora:g.regs.filter(regForaPadrao).length}))
+  const linhas=Object.values(por).map(g=>({...g,st:statsTempo(g.regs),...extra(g),fora:g.regs.filter(r=>regForaPadrao(r)||(r.status==='finalizado'&&regForaDaFaixaPH(r))).length}))
     .sort((a,b)=>(b.st.pnHora||-1)-(a.st.pnHora||-1));
   document.getElementById('tp-colab-body').innerHTML=linhas.length?linhas.map((g,i)=>{
     const abaixo=g.st.pnHora!=null&&g.st.pnHora<metaPneusHora;
