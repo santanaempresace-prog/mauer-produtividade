@@ -1187,12 +1187,24 @@ function mostrarApp() {
   if(!existing && tb && gestorLogado) {
     const div = document.createElement('div');
     div.style.cssText='display:flex;align-items:center;gap:8px;';
-    div.innerHTML=`<span style="font-size:12px;color:var(--muted)">Olá, <strong>${gestorLogado.nome}</strong></span>
+    div.innerHTML=`<span style="font-size:12px;color:var(--muted)">Olá, <strong>${gestorLogado.nome}</strong></span>${ehMaster()?'<span title="Administrador master: acesso total ao painel" style="font-size:11px;font-weight:700;background:#E38A29;color:#fff;border-radius:999px;padding:3px 10px">👑 Master</span>':''}
       <button class="btn btn-outline btn-sm" id="user-info-btn" onclick="abrirTrocarSenha()">Senha</button>
       <button class="btn btn-outline btn-sm" onclick="fazerLogout()">Sair</button>`;
     tb.appendChild(div);
   }
+  aplicarPermissoes();
   carregarTudo();
+}
+function aplicarPermissoes(){
+  const m=ehMaster();
+  document.querySelectorAll('[onclick="openModal()"]').forEach(b=>b.style.display=m?'':'none');
+  const formG=document.getElementById('new-gestor-nome');
+  if(formG){const card=formG.closest('.card');card.querySelectorAll('.field-row').forEach(r=>r.style.display=m?'':'none');
+    let av=document.getElementById('aviso-master-gestores');
+    if(!m&&!av){av=document.createElement('div');av.id='aviso-master-gestores';av.style.cssText='font-size:13px;background:var(--amber-bg);color:var(--amber-t);padding:8px 12px;border-radius:var(--rsm);margin-bottom:10px';
+      av.textContent='Só o administrador master cadastra, remove ou muda a senha de gestores.';formG.closest('.field-row').before(av);}
+    if(av)av.style.display=m?'none':'';}
+  const nf=document.getElementById('new-filial');if(nf)nf.closest('.field-row').style.display=m?'':'none';
 }
 
 function fazerLogout() {
@@ -1921,7 +1933,7 @@ async function carregarDeducao(){
     if(lbl)lbl.textContent='Atual: '+deducaoPorErro+' pontos por erro';
   }catch(e){console.error(e);}
 }
-async function salvarDeducao(){
+async function salvarDeducao(){if(!exigirMaster('mudar a dedução por erro'))return;
   const val=parseInt(document.getElementById('deducao-input').value);
   if(!val||val<1){showAlert('err','Valor inválido.');return;}
   try{
@@ -1993,7 +2005,7 @@ function pendentesAntesDe(dataLimite){
     return !confIdx().has(String(l.numPedido)+'|'+l.filial+'|'+l.data);
   });
 }
-function abrirBaixaMassa(){
+function abrirBaixaMassa(){if(!exigirMaster('dar baixa em massa'))return;
   const inp=document.getElementById('bm-data');if(!inp.value)inp.value='2026-09-29';
   document.getElementById('bm-overlay').style.display='flex';previaBaixaMassa();
 }
@@ -2011,7 +2023,7 @@ function previaBaixaMassa(){
   const ls=Object.entries(lotes).sort((a,b)=>b[1].ts-a[1].ts);
   document.getElementById('bm-lotes').innerHTML=ls.length?'<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Baixas em massa já feitas</div>'+ls.map(([id,l])=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border);font-size:13px"><span>'+fmt(dataBrasilia(l.ts))+' '+fmtHora(l.ts)+' | '+l.n+' pedidos antes de '+fmt(l.ate||'')+'</span><button class="btn btn-outline btn-sm" style="color:var(--red-t);border-color:var(--red-b)" onclick="desfazerBaixaMassa(\''+id+'\')">Desfazer</button></div>').join('')+'<div style="height:10px"></div>':'';
 }
-async function executarBaixaMassa(){
+async function executarBaixaMassa(){if(!exigirMaster('dar baixa em massa'))return;
   const d=document.getElementById('bm-data').value;const pend=pendentesAntesDe(d);if(!pend.length)return;
   if(!confirm('Confirmar baixa de '+pend.length+' pedidos com data antes de '+fmt(d)+'?'))return;
   const btn=document.getElementById('bm-btn');btn.disabled=true;btn.textContent='Gravando...';
@@ -2028,7 +2040,7 @@ async function executarBaixaMassa(){
   }catch(e){console.error(e);showAlert('err','Erro na baixa em massa. Parte pode ter sido gravada; abra de novo para conferir.');await carregarTudo(true);}
   btn.disabled=false;
 }
-async function desfazerBaixaMassa(lote){
+async function desfazerBaixaMassa(lote){if(!exigirMaster('desfazer baixa em massa'))return;
   const alvo=confirmacoes.filter(c=>c.loteBaixa===lote);
   if(!alvo.length||!confirm('Desfazer esta baixa em massa ('+alvo.length+' pedidos voltam a ficar pendentes)?'))return;
   try{
@@ -2181,7 +2193,7 @@ function dupFiltrados(){
   return alertasDup.filter(a=>(fs.size===0||fs.has(a.filial)||!a.filial)&&(!ini||a.data>=ini)&&(!fim||a.data<=fim)).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
 }
 function atualizarBadgeDup(){
-  const n=alertasDup.filter(a=>!a.visto).length+bloqueiosDup.length;
+  const n=new Set(alertasDup.filter(a=>!a.visto).map(a=>[a.data,a.numPedido,a.quem,a.origem,a.bloqueado,String(a.detalhe||'').replace(/ em \d\d\/\d\d às \d\d:\d\d/g,'')].join('|'))).size+bloqueiosDup.length;
   const nav=[...document.querySelectorAll('.nav-item')].find(x=>x.textContent.trim().startsWith('Duplicados'));
   if(!nav)return;let b=nav.querySelector('.nav-alert');
   if(!n){if(b)b.remove();return;}
@@ -2226,8 +2238,12 @@ async function garantirSenhaDaSemana(){
 }
 const hashSenhaDup=hashPalavra;
 // Só este usuário vê e troca a senha de liberação
-const DONO_SENHA_DUP='caio.mauer';
-const podeTrocarSenhaDup=()=>!!(gestorLogado&&String(gestorLogado.usuario||'').toLowerCase()===DONO_SENHA_DUP);
+// ===== ADMINISTRADOR MASTER =====
+// Só os usuários desta lista fazem as ações que mudam regras, cadastros-base ou apagam em massa.
+const MASTERS=['caio.mauer'];
+function ehMaster(){return !!(gestorLogado&&MASTERS.includes(String(gestorLogado.usuario||'').toLowerCase()));}
+function exigirMaster(acao){if(ehMaster())return true;showAlert('err','Só o administrador master pode '+acao+'.');return false;}
+const podeTrocarSenhaDup=()=>ehMaster();
 function gerarSenhaDup(){document.getElementById('senha-dup-1').value=sortearPalavra(senhaDupInfo&&senhaDupInfo.texto);}
 function alternarVerSenhaDup(){verSenhaDup=!verSenhaDup;renderDuplicados();}
 async function salvarSenhaDup(){
@@ -2268,9 +2284,15 @@ function renderDuplicados(){
       quem.textContent=senhaDupDefinida?'Cadastre uma nova para ela aparecer aqui.':'Sem senha, o separador bloqueado só é liberado pelo botão Liberar acima.';
     }}}
   const ONDE={separador:'App separador',conferente:'App conferente',aro:'Aro (robô)'};
-  const lista=dupFiltrados(),tb=document.getElementById('dup-tbody');if(!tb)return;
-  document.getElementById('dup-count').textContent=lista.length+' no período · '+lista.filter(a=>!a.visto).length+' não vistas';
-  tb.innerHTML=lista.length?lista.map(a=>'<tr style="'+(a.visto?'opacity:.55':'font-weight:500')+'"><td style="white-space:nowrap">'+fmt(a.data)+' '+fmtHora(a.timestamp)+'</td><td>'+dupEsc(a.filial||'—')+'</td><td style="font-family:\'IBM Plex Mono\',monospace">'+dupEsc(a.numPedido)+'</td><td>'+(ONDE[a.origem]||dupEsc(a.origem))+'</td><td>'+dupEsc(a.quem||'—')+'</td><td style="font-size:12px;max-width:360px">'+dupEsc(a.detalhe||'')+'</td><td>'+(a.liberacao?'<span class="badge" style="background:var(--blue-bg,#e8eefc);color:var(--blue-t,#1e3a8a)">Liberado ('+dupEsc(a.autorizadoPor||'')+')</span>':a.bloqueado?'<span class="badge" style="background:var(--green-bg);color:var(--green-t)">Bloqueado</span>':a.autorizadoPor?'<span class="badge" style="background:var(--red-bg);color:var(--red-t)">Liberado por '+dupEsc(a.autorizadoPor)+'</span>':'<span class="badge" style="background:var(--amber-bg);color:var(--amber-t)">Só avisou</span>')+'</td><td>'+(a.visto?'<span style="font-size:11px;color:var(--hint)">visto</span>':'<button class="btn btn-outline btn-sm" onclick="marcarDupVisto(\''+a._key+'\')">Visto</button>')+'</td></tr>').join('')
+  const brutos=dupFiltrados(),tb=document.getElementById('dup-tbody');if(!tb)return;
+  // junta a mesma tentativa repetida (mesmo pedido, pessoa, local e resultado no mesmo dia) numa linha só
+  const grupos=new Map();
+  brutos.forEach(a=>{const k=[a.data,a.numPedido,a.quem,a.origem,a.bloqueado,a.autorizadoPor||'',String(a.detalhe||'').replace(/ em \d\d\/\d\d às \d\d:\d\d/g,'')].join('|');
+    const g=grupos.get(k);if(g){g.vezes++;g.chaves.push(a._key);if(!a.visto)g.visto=false;}else grupos.set(k,{...a,vezes:1,chaves:[a._key],primeiro:a.timestamp});
+    const gg=grupos.get(k);gg.primeiro=Math.min(gg.primeiro||a.timestamp,a.timestamp);});
+  const lista=[...grupos.values()];
+  document.getElementById('dup-count').textContent=lista.length+' no período'+(brutos.length>lista.length?' ('+brutos.length+' registros)':'')+' · '+lista.filter(a=>!a.visto).length+' não vistas';
+  tb.innerHTML=lista.length?lista.map(a=>'<tr style="'+(a.visto?'opacity:.55':'font-weight:500')+'"><td style="white-space:nowrap">'+fmt(a.data)+' '+fmtHora(a.timestamp)+'</td><td>'+dupEsc(a.filial||'—')+'</td><td style="font-family:\'IBM Plex Mono\',monospace">'+dupEsc(a.numPedido)+(a.vezes>1?' <span class="badge" style="background:var(--red-bg);color:var(--red-t)" title="Mesma tentativa repetida entre '+fmtHora(a.primeiro)+' e '+fmtHora(a.timestamp)+'">'+a.vezes+'x</span>':'')+'</td><td>'+(ONDE[a.origem]||dupEsc(a.origem))+'</td><td>'+dupEsc(a.quem||'—')+'</td><td style="font-size:12px;max-width:360px">'+dupEsc(a.detalhe||'')+'</td><td>'+(a.liberacao?'<span class="badge" style="background:var(--blue-bg,#e8eefc);color:var(--blue-t,#1e3a8a)">Liberado ('+dupEsc(a.autorizadoPor||'')+')</span>':a.bloqueado?'<span class="badge" style="background:var(--green-bg);color:var(--green-t)">Bloqueado</span>':a.autorizadoPor?'<span class="badge" style="background:var(--red-bg);color:var(--red-t)">Liberado por '+dupEsc(a.autorizadoPor)+'</span>':'<span class="badge" style="background:var(--amber-bg);color:var(--amber-t)">Só avisou</span>')+'</td><td>'+(a.visto?'<span style="font-size:11px;color:var(--hint)">visto</span>':'<button class="btn btn-outline btn-sm" onclick="marcarDupVisto(\''+a.chaves.join(',')+'\')">Visto</button>')+'</td></tr>').join('')
     :'<tr><td colspan="8" style="text-align:center;color:var(--hint);padding:18px">Nenhuma tentativa de duplicado no período 🎉</td></tr>';
   // pedidos com mais de um lançamento
   const{filiais:fs,ini,fim}=getFilter(),g={};
@@ -2280,9 +2302,10 @@ function renderDuplicados(){
   document.getElementById('dup-lanc-tbody').innerHTML=rep.length?rep.map(([n,v])=>'<tr><td style="font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:var(--red-t)">'+dupEsc(n)+'<div style="font-size:11px;font-weight:400;color:var(--muted)">'+v.length+'x</div></td><td style="font-size:12px">'+v.sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)).map(l=>fmt(l.data)+' '+fmtHora(l.timestamp)+' · '+dupEsc(l.filial)+' · '+dupEsc(l.colaborador||'—')+(l.origem==='aro'?' · via Aro':'')).join('<br>')+'</td></tr>').join('')
     :'<tr><td colspan="2" style="text-align:center;color:var(--hint);padding:18px">Nenhum pedido repetido no período</td></tr>';
 }
-async function marcarDupVisto(k){
-  const quem=(typeof gestorLogado==='object'&&gestorLogado)?(gestorLogado.nome||gestorLogado.usuario||''):'';
-  try{await fbPatch('alertasDuplicado/'+k,{visto:true,vistoPor:quem,vistoEm:Date.now()});const a=alertasDup.find(x=>x._key===k);if(a)a.visto=true;renderDuplicados();atualizarBadgeDup();}catch(e){showAlert('err','Não consegui marcar.');}
+async function marcarDupVisto(ks){
+  const quem=(typeof gestorLogado==='object'&&gestorLogado)?(gestorLogado.nome||gestorLogado.usuario||''):'',t=Date.now(),lista=String(ks).split(','),upd={};
+  lista.forEach(k=>{upd[k+'/visto']=true;upd[k+'/vistoPor']=quem;upd[k+'/vistoEm']=t;});
+  try{await fbPatch('alertasDuplicado',upd);alertasDup.forEach(a=>{if(lista.includes(a._key))a.visto=true;});renderDuplicados();atualizarBadgeDup();}catch(e){showAlert('err','Não consegui marcar.');}
 }
 async function marcarDupVistos(){
   const ab=dupFiltrados().filter(a=>!a.visto);if(!ab.length)return;
@@ -2351,7 +2374,7 @@ function renderLixeira(){
   document.getElementById('aud-tbody').innerHTML=lista.length?lista.map(a=>'<tr><td style="white-space:nowrap">'+dtHora(a.quando)+'</td><td>'+escL(a.quem)+'</td><td><span class="badge" style="'+(a.op==='excluiu'?'background:var(--red-bg);color:var(--red-t)':a.op==='restaurou'?'background:var(--green-bg);color:var(--green-t)':'background:var(--bg);color:var(--muted)')+'">'+(OP[a.op]||escL(a.op))+'</span></td><td style="font-size:12px">'+escL(a.caminho)+'</td><td style="font-size:11px;color:var(--muted);max-width:380px;word-break:break-word">'+escL(a.valor)+'</td></tr>').join('')
     :'<tr><td colspan="5" style="text-align:center;color:var(--hint);padding:14px">Nada registrado</td></tr>';
 }
-async function restaurarLixeira(id){
+async function restaurarLixeira(id){if(!exigirMaster('restaurar da lixeira'))return;
   const x=lixeira.find(i=>i._key===id);if(!x)return;
   if(!confirm('Restaurar "'+x.resumo+'"?'))return;
   try{
@@ -2491,13 +2514,13 @@ async function carregarFilaGestor(){
     const ia=document.getElementById('fa-ativo'),ih=document.getElementById('fa-hora');if(ia&&document.activeElement!==ih){ia.checked=fechamentoAuto.ativo!==false;ih.value=fechamentoAuto.hora;}
   }catch(e){console.error('fila',e);}
 }
-async function salvarFechamentoAuto(){
+async function salvarFechamentoAuto(){if(!exigirMaster('mudar o fechamento automático'))return;
   const ativo=document.getElementById('fa-ativo').checked,hora=Number(document.getElementById('fa-hora').value);
   if(!(hora>=1&&hora<=23)){showAlert('err','Hora inválida (1 a 23).');return;}
   try{await fbPut('configuracoes/fechamentoAuto',{ativo,hora,alteradoPor:quemGestor(),alteradoEm:Date.now()});fechamentoAuto={ativo,hora};
     showAlert('ok',ativo?'Separações abertas serão fechadas às '+hora+'h.':'Fechamento automático desligado.');}catch(e){showAlert('err','Não consegui salvar.');}
 }
-async function salvarPrazos(){
+async function salvarPrazos(){if(!exigirMaster('mudar os prazos'))return;
   const f=Number(document.getElementById('prz-fila').value),c=Number(document.getElementById('prz-conf').value);
   if(!(f>=5)||!(c>=5)){showAlert('err','Use pelo menos 5 minutos.');return;}
   try{await fbPut('configuracoes/prazosEtapas',{fila:f,conferencia:c});prazos={fila:f,conferencia:c};renderAtrasados();atualizarBadgeAtrasados();showAlert('ok','Prazos salvos.');}catch(e){showAlert('err','Não consegui salvar.');}
@@ -2624,14 +2647,14 @@ function renderTempos(){
     return'<tr'+(atr?' style="background:var(--red-bg)"':'')+'><td>'+fmt(r.data)+'</td><td><span class="badge badge-neu">'+r.filial+'</span></td><td>'+r.colaborador+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+fmtHora(r.inicio)+'</td><td style="'+mono+';font-size:12px;color:var(--muted)">'+(r.fim?(dataBrasilia(r.fim)!==dataBrasilia(r.inicio)?fmt(dataBrasilia(r.fim))+' ':'')+fmtHora(r.fim):'—')+'</td><td style="'+R+';'+mono+';color:var(--muted)">'+metaMinReg(r)+' min</td><td style="'+R+';'+mono+';font-weight:600;color:'+(atr?'var(--red-t)':'var(--text)')+'">'+fmtDurMin(d)+'</td><td style="'+R+'">'+r.totalPedidos+'</td><td style="'+R+'">'+r.totalPneus+'</td><td style="'+mono+';font-size:12px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.pedidos||[]).map(p=>p.num).join(', ')+'">'+(r.pedidos||[]).map(p=>p.num).join(', ')+'</td><td>'+badgeStatusReg(r)+'</td></tr>';
   }).join(''):'<tr><td colspan="11" style="text-align:center;padding:18px;color:var(--hint)">Nenhum registro no período</td></tr>';
 }
-async function salvarMeta(){
+async function salvarMeta(){if(!exigirMaster('mudar a meta'))return;
   const v=Number(document.getElementById('tp-meta').value);
   if(!v||v<1){document.getElementById('tp-meta').value=metaPneusHora;return;}
   metaPneusHora=v;
   try{await fbPut('configuracoes/metaPneusHora',v);showAlert('ok','Meta salva: '+v+' pneus por hora-homem');}catch(e){console.error(e);showAlert('err','Erro ao salvar a meta.');}
   render();
 }
-async function salvarTempoMax(){
+async function salvarTempoMax(){if(!exigirMaster('mudar o tempo máximo'))return;
   const v=Number(document.getElementById('tp-max').value);
   if(!v||v<10){document.getElementById('tp-max').value=tempoMaxMin;return;}
   tempoMaxMin=v;
@@ -2756,7 +2779,7 @@ function cancelEditFilial(i){document.getElementById('fname-'+i).style.display='
 // Nós do Firebase que guardam o nome da filial no campo "filial"
 const NOS_COM_FILIAL=['colaboradores','conferentes','lancamentos','registros','confirmacoes','filaPedidos','descarregamentos'];
 // Troca o nome da filial em todos os cadastros e no histórico
-async function migrarNomeFilial(antigo,novo,progresso){
+async function migrarNomeFilial(antigo,novo,progresso){if(!exigirMaster('mover cadastros entre filiais'))return;
   let total=0;
   for(const no of NOS_COM_FILIAL){
     const data=await fbGet(no);if(!data)continue;
@@ -2796,7 +2819,7 @@ async function corrigirOrfao(i){
   try{const n=await migrarNomeFilial(antigo,novo,(no,q)=>{btn.textContent=no+'...';});showAlert('ok',n+' registro(s) movidos de '+antigo+' para '+novo+'.');await carregarTudo();renderOrfaos();}
   catch(e){console.error(e);showAlert('err','Erro ao mover. Tente de novo; o que já foi movido fica salvo.');btn.disabled=false;btn.textContent='Mover';}
 }
-async function saveFilial(i){
+async function saveFilial(i){if(!exigirMaster('renomear filiais'))return;
   const novo=document.getElementById('finput-'+i).value.trim();if(!novo)return;
   const antigo=filiais[i].nome;if(novo===antigo){cancelEditFilial(i);return;}
   if(filiais.some(f=>f.nome===novo)){showAlert('err','Já existe uma filial com esse nome.');return;}
@@ -2806,13 +2829,13 @@ async function saveFilial(i){
     showAlert('ok','Filial renomeada. '+n+' registro(s) atualizados.');await carregarTudo(true);renderFiliaisList();renderOrfaos();}
   catch(e){showAlert('err','Erro ao salvar.');}
 }
-async function addFilial(){
+async function addFilial(){if(!exigirMaster('criar filiais'))return;
   const inp=document.getElementById('new-filial');const name=inp.value.trim();if(!name)return;
   if(filiais.find(f=>f.nome===name)){showAlert('err','Filial já cadastrada.');return;}
   try{const r=await fbPost('filiais',{nome:name});filiais.push({nome:name,_key:r.name});inp.value='';colaboradores[name]=[];filiaisSelecionadas.add(name);populateFiliaisSelect();renderFiliaisList();showAlert('ok','Filial adicionada!');}
   catch(e){showAlert('err','Erro ao adicionar.');}
 }
-async function removeFilial(i){
+async function removeFilial(i){if(!exigirMaster('remover filiais'))return;
   const nome=filiais[i].nome;
   if(!confirm('⚠ Remover filial "'+nome+'"?\n\nTODOS os lançamentos, colaboradores e conferentes desta filial serão apagados.'))return;
   const confirm2=prompt('Digite o nome da filial "'+nome+'" para confirmar:');
@@ -2967,7 +2990,7 @@ function renderGestoresList(){
   });
   el.innerHTML=html;
 }
-async function addGestor(){
+async function addGestor(){if(!exigirMaster('cadastrar gestores'))return;
   const nome=document.getElementById('new-gestor-nome').value.trim();
   const usuario=document.getElementById('new-gestor-usuario').value.trim().toLowerCase();
   const senha=document.getElementById('new-gestor-senha').value;
@@ -2993,7 +3016,7 @@ async function addGestor(){
     showAlert('ok','Gestor adicionado! Já pode fazer login com usuário e senha.');
   }catch(e){showAlert('err','Erro ao adicionar.');console.error(e);}
 }
-async function redefinirSenhaGestor(el){
+async function redefinirSenhaGestor(el){if(!exigirMaster('redefinir a senha de outros gestores'))return;
   const usuario=el.dataset.usuario,nome=el.dataset.nome;
   if(!usuario){showAlert('err','Este gestor não tem usuário definido. Remova e cadastre de novo com um usuário.');return;}
   const nova=prompt('Nova senha para '+nome+' ('+usuario+'):');
@@ -3010,7 +3033,7 @@ async function redefinirSenhaGestor(el){
   }catch(e){showAlert('err','Erro ao redefinir senha.');console.error(e);}
 }
 function vincularFilialEl(el){vincularFilial(el.dataset.key,el.dataset.filial,el.checked);}
-async function vincularFilial(gestorKey,filialNome,checked){
+async function vincularFilial(gestorKey,filialNome,checked){if(!exigirMaster('mudar as filiais dos gestores'))return;
   const g=gestores.find(g=>g._key===gestorKey);if(!g)return;
   if(!g.filiais)g.filiais=[];
   if(checked&&!g.filiais.includes(filialNome))g.filiais.push(filialNome);
@@ -3018,7 +3041,7 @@ async function vincularFilial(gestorKey,filialNome,checked){
   try{await fbPatch('gestores/'+gestorKey,{filiais:g.filiais});showAlert('ok','Vínculo atualizado!');}
   catch(e){showAlert('err','Erro ao salvar.');}
 }
-async function removeGestor(el){
+async function removeGestor(el){if(!exigirMaster('remover gestores'))return;
   const key=el&&el.dataset?el.dataset.key:el;
   if(!confirm('Remover este gestor?'))return;
   try{await fbDelete('gestores/'+key);gestores=gestores.filter(g=>g._key!==key);renderGestoresList();showAlert('ok','Gestor removido.');}
@@ -3032,7 +3055,7 @@ async function carregarMargem(){
   try{const data=await fbGet('configuracoes/margemPedidos');if(data){const inp=document.getElementById('margem-input'),lbl=document.getElementById('margem-atual');if(inp)inp.value=Number(data);if(lbl)lbl.textContent='Margem atual: '+Number(data).toLocaleString('pt-BR');}}
   catch(e){console.error(e);}
 }
-async function salvarMargem(){
+async function salvarMargem(){if(!exigirMaster('mudar a margem de pedidos'))return;
   const val=parseInt(document.getElementById('margem-input').value);
   if(!val||val<1){showAlert('err','Valor inválido.');return;}
   try{await fbPut('configuracoes/margemPedidos',val);document.getElementById('margem-atual').textContent='Margem atual: '+val.toLocaleString('pt-BR');showAlert('ok','Margem salva!');}
@@ -3056,9 +3079,9 @@ function exportarMes(){
   XLSX.writeFile(wb,'produtividade_mauer_'+mes+'.xlsx');
   showAlert('ok','Exportado!');
 }
-function openModal(){document.getElementById('modal-fechar').classList.add('open');document.getElementById('confirm-input').value='';}
+function openModal(){if(!exigirMaster('fechar o mês'))return;document.getElementById('modal-fechar').classList.add('open');document.getElementById('confirm-input').value='';}
 function closeModal(){document.getElementById('modal-fechar').classList.remove('open');}
-async function fecharMes(){
+async function fecharMes(){if(!exigirMaster('fechar o mês'))return;
   const val=document.getElementById('confirm-input').value.trim().toUpperCase();
   if(val!=='FECHAR'){const inp=document.getElementById('confirm-input');inp.classList.add('err');setTimeout(()=>inp.classList.remove('err'),1500);return;}
   closeModal();
@@ -3446,7 +3469,7 @@ function impParecido(atual,novoCompleto){
   if(!a.length||a[0]!==b[0])return false;
   return a.every(x=>b.includes(x));
 }
-function abrirImportColab(){document.getElementById('imp-file').value='';document.getElementById('imp-file').click();}
+function abrirImportColab(){if(!exigirMaster('importar colaboradores'))return;document.getElementById('imp-file').value='';document.getElementById('imp-file').click();}
 async function lerArquivoImport(ev){
   const f=ev.target.files[0];if(!f)return;
   try{
@@ -3531,7 +3554,7 @@ function montarPreviaImport(){
   document.getElementById('imp-res').textContent='';
 }
 async function impPatchRaiz(upd){const r=await fetch(IMP_FB+'/.json',{method:'PATCH',body:JSON.stringify(upd)});if(!r.ok)throw new Error('PATCH '+r.status);}
-async function aplicarImport(){
+async function aplicarImport(){if(!exigirMaster('importar colaboradores'))return;
   const P=impPlano,byI=new Map([...P.novos,...P.parecidos,...P.outraFilial].map(x=>[x.i,x]));
   const novos=[...document.querySelectorAll('.imp-novo:checked')].map(e=>byI.get(+e.dataset.i));
   const renome=[...document.querySelectorAll('.imp-par')].filter(e=>e.value).map(e=>({...byI.get(+e.dataset.i),modo:e.value}));
