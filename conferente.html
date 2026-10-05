@@ -227,7 +227,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-10-03-conf-avisos2';
+const APP_VERSAO='2026-10-06-conf-dupunico';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
@@ -394,8 +394,12 @@ function marcarDupSel(p){
   const dp=analisarDup(p.num),fx=document.getElementById('sel-dup');
   fx.innerHTML=dp.dup?'DUPLICADO: '+linhasDup(dp).map(esc).join('<br>'):'';fx.classList.toggle('show',dp.dup);
 }
+// Evita gravar a mesma tentativa várias vezes (ex.: bipar o mesmo pedido de novo): 1 registro a cada 30 min
+function jaRegistrouDup(chave){try{const m=JSON.parse(localStorage.getItem('mauerDupLog')||'{}'),t=Date.now();
+  Object.keys(m).forEach(k=>{if(t-m[k]>30*60000)delete m[k];});if(m[chave]){localStorage.setItem('mauerDupLog',JSON.stringify(m));return true;}
+  m[chave]=t;localStorage.setItem('mauerDupLog',JSON.stringify(m));return false;}catch(e){return false;}}
 function alertaDup(titulo,num,linhas){
-  try{fbPost('alertasDuplicado',{origem:'conferente',bloqueado:/CONFERIDO/.test(titulo),numPedido:String(num),filial:cfg.filial||'',quem:cfg.conferente||'',
+  if(!jaRegistrouDup(normPed(num)+'|'+titulo+'|'+(cfg.conferente||'')))try{fbPost('alertasDuplicado',{origem:'conferente',bloqueado:/CONFERIDO/.test(titulo),numPedido:String(num),filial:cfg.filial||'',quem:cfg.conferente||'',
     detalhe:titulo+': '+linhas.join(' | '),data:hojeStr(0),timestamp:Date.now(),visto:false}).catch(()=>{});}catch(e){}
   dupAberto=true;
   document.getElementById('dup-t').textContent=titulo;
