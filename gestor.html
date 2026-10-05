@@ -910,6 +910,12 @@ button:focus-visible,.nav-item:focus-visible{outline:3px solid rgba(227,138,41,.
     </div>
     <div class="view" id="view-config">
       <div class="card">
+        <div class="card-header"><div class="card-title">🔒 Computadores travados por filial</div><span id="pcs-count" class="badge badge-neu"></span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada navegador travado pelo encarregado aparece aqui. Sem trava, o computador não lança pedidos. "Destravar" bloqueia os lançamentos daquele computador na próxima vez que ele abrir ou em até 10 minutos.</div>
+        <div id="pcs-resumo" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+        <div class="table-wrap"><table><thead><tr><th>Filial</th><th>Computador</th><th>Navegador</th><th>Travado em</th><th>Último uso</th><th></th></tr></thead><tbody id="pcs-tbody"></tbody></table></div>
+      </div>
+      <div class="card">
         <div class="card-header"><div class="card-title">Filiais</div><span id="filiais-count" class="badge badge-neu"></span></div>
         <div class="field-row">
           <input type="text" id="new-filial" placeholder="Nome da nova filial" onkeydown="if(event.key==='Enter')addFilial()">
@@ -1505,7 +1511,7 @@ function render(){
   else if(currentView==='duplicados')renderDuplicados();
   if(currentView==='pedidos')try{renderAtrasados();}catch(e){}
   else if(currentView==='historico')renderHistorico(data);
-  else if(currentView==='config'){renderFiliaisList();renderColabTabs();}
+  else if(currentView==='config'){renderFiliaisList();renderColabTabs();renderComputadores();}
   const el=document.getElementById('sb-pneus');
   if(el)el.textContent=filterData().reduce((a,l)=>a+Number(l.pneus||0),0).toLocaleString('pt-BR');
 }
@@ -2285,6 +2291,32 @@ async function marcarDupVistos(){
   ab.forEach(a=>{upd[a._key+'/visto']=true;upd[a._key+'/vistoPor']=quem;upd[a._key+'/vistoEm']=t;});
   try{await fbPatch('alertasDuplicado',upd);ab.forEach(a=>a.visto=true);renderDuplicados();atualizarBadgeDup();showAlert('ok','Marcadas como vistas.');}catch(e){showAlert('err','Não consegui marcar.');}
 }
+// ===== COMPUTADORES TRAVADOS =====
+let computadoresCache=[],computadoresLidoEm=0;
+async function renderComputadores(forcar){
+  const tb=document.getElementById('pcs-tbody');if(!tb)return;
+  if(forcar||Date.now()-computadoresLidoEm>60000){
+    try{const d=await fbGet('computadores');computadoresCache=d?Object.entries(d).map(([k,v])=>({...v,_key:k})):[];computadoresLidoEm=Date.now();}catch(e){}
+  }
+  const agora=Date.now(),norm=x=>String(x||'').trim().toUpperCase();
+  const pcs=computadoresCache.filter(c=>!c.destravar).sort((a,b)=>String(a.filial).localeCompare(String(b.filial))||(b.ultimoUso||0)-(a.ultimoUso||0));
+  const pend=computadoresCache.filter(c=>c.destravar);
+  document.getElementById('pcs-count').textContent=pcs.length+' computador(es)';
+  const porF={};pcs.forEach(c=>{const k=norm(c.filial);porF[k]=(porF[k]||0)+1;});
+  document.getElementById('pcs-resumo').innerHTML=filiais.map(f=>{const n=porF[norm(f.nome)]||0;
+    return '<span class="badge" style="padding:5px 10px;'+(n?'background:var(--green-bg);color:var(--green-t)':'background:var(--amber-bg);color:var(--amber-t)')+'">'+escL(f.nome)+': '+(n?n+' travado'+(n>1?'s':''):'nenhum')+'</span>';}).join('');
+  const quando=t=>{if(!t)return'—';const m=(agora-t)/60000;return m<15?'<span style="color:var(--green-t);font-weight:600">em uso agora</span>':m<1440?'há '+durTxt(m):'há '+Math.floor(m/1440)+' dia(s)';};
+  tb.innerHTML=(pcs.length?pcs.map(c=>'<tr style="'+((agora-(c.ultimoUso||0))>7*864e5?'opacity:.55':'')+'"><td style="font-weight:600">'+escL(c.filial)+'</td><td>'+escL(c.nome||'(sem nome)')+(c.colaborador?'<div style="font-size:11px;color:var(--muted)">último: '+escL(c.colaborador)+'</div>':'')+'</td><td style="font-size:12px">'+escL(c.navegador||'')+'</td><td style="font-size:12px;white-space:nowrap">'+dtHora(c.travadoEm)+'</td><td style="font-size:12px;white-space:nowrap">'+quando(c.ultimoUso)+'</td><td><button class="btn btn-outline btn-sm" onclick="destravarComputador(\''+c._key+'\')">Destravar</button></td></tr>').join('')
+    :'<tr><td colspan="6" style="text-align:center;color:var(--hint);padding:14px">Nenhum computador travado registrado ainda. Eles aparecem aqui quando o app do separador é aberto num computador travado.</td></tr>')
+    +pend.map(c=>'<tr style="opacity:.6"><td>'+escL(c.filial)+'</td><td>'+escL(c.nome||'(sem nome)')+'</td><td style="font-size:12px">'+escL(c.navegador||'')+'</td><td colspan="2" style="font-size:12px;color:var(--amber-t)">⏳ destravando… (acontece quando o computador abrir o app)</td><td></td></tr>').join('');
+}
+async function destravarComputador(k){
+  const c=computadoresCache.find(x=>x._key===k);if(!c)return;
+  if(!confirm('Destravar "'+(c.nome||c.navegador||'computador')+'" da '+c.filial+'? Ele para de lançar pedidos até o encarregado travar de novo.'))return;
+  try{await fbPatch('computadores/'+k,{destravar:true,destravadoPor:quemGestor(),destravadoEm:Date.now()});showAlert('ok','Pedido de destrava enviado.');renderComputadores(true);}
+  catch(e){showAlert('err','Não consegui destravar.');}
+}
+
 // ===== LIXEIRA, HISTÓRICO E BACKUP =====
 let lixeira=[],auditoria=[];
 async function carregarLixeira(){
