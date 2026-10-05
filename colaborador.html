@@ -225,10 +225,11 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
       <div class="card-title"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Pedidos separados</div>
       <p class="card-sub">Adicione os pedidos um a um para rastreamento individual</p>
       <div class="pedido-add-row">
-        <div class="form-group" style="margin:0"><label>Nº do pedido</label><input type="text" id="p-num" placeholder="Ex: 299226" autocomplete="off" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter'){event.preventDefault();if(document.getElementById('p-qt').value)addPedido();else if(this.value)document.getElementById('p-qt').focus();}"></div>
-        <div class="form-group" style="margin:0"><label>Qtd pneus</label><input type="number" id="p-qt" min="1" placeholder="0" onkeydown="if(event.key==='Enter'){event.preventDefault();addPedido()}"></div>
+        <div class="form-group" style="margin:0"><label>Nº do pedido</label><input type="text" id="p-num" placeholder="Ex: 299226" autocomplete="off" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'');agendarQtdPedido()" onkeydown="if(event.key==='Enter'){event.preventDefault();enterNumPedido();}"></div>
+        <div class="form-group" style="margin:0"><label>Qtd pneus</label><input type="number" id="p-qt" min="1" placeholder="0" oninput="qtdEditada()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPedido()}"></div>
         <button class="btn-add" id="add-pedido-btn" onclick="addPedido()">+ Add</button>
       </div>
+      <div id="qt-info" style="font-size:12px;min-height:16px;margin:-4px 0 6px"></div>
       <div id="dup-alert" style="display:none;padding:10px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500;margin-bottom:8px"></div>
       <div class="pedido-list" id="pedido-list"></div>
       <div class="pedido-empty" id="pedido-empty">Nenhum pedido adicionado ainda</div>
@@ -1177,6 +1178,35 @@ function setTab(tab,btn){
 function registrarDuplicado(d){
   try{fbPost('alertasDuplicado',{...d,numPedido:String(d.numPedido||''),data:getBrasiliaDateStr(),timestamp:getBrasiliaTimestamp(),visto:false}).catch(()=>{});}catch(e){}
 }
+// ===== QUANTIDADE AUTOMÁTICA =====
+// Ao digitar ou bipar o número, busca o pedido na fila do Aro e já preenche a quantidade de pneus.
+let qtTimer=null,qtBuscaSeq=0,qtAuto=false;
+function qtInfo(html,cor){const el=document.getElementById('qt-info');if(el){el.innerHTML=html||'';el.style.color=cor||'var(--muted,#5C6478)';}}
+function agendarQtdPedido(){clearTimeout(qtTimer);const v=document.getElementById('p-num').value;
+  if(qtAuto){document.getElementById('p-qt').value='';qtAuto=false;}
+  if(v.length<4){qtInfo('');return;}qtTimer=setTimeout(()=>buscarQtdPedido(),350);}
+function qtdEditada(){if(qtAuto){qtAuto=false;qtInfo('Quantidade alterada à mão.','var(--muted,#5C6478)');}}
+async function buscarQtdPedido(){
+  const num=document.getElementById('p-num').value.trim();if(num.length<4)return false;
+  const seq=++qtBuscaSeq;qtInfo('Buscando o pedido…');
+  let f=null;try{f=await fbGet('filaPedidos/aro_'+normPed(num));}catch(e){}
+  if(seq!==qtBuscaSeq||document.getElementById('p-num').value.trim()!==num)return false; // digitou outro número no meio
+  const qt=document.getElementById('p-qt'),filial=document.getElementById('p-filial').value;
+  if(f&&Number(f.qt)>0){
+    if(f.filial&&filial&&!mesmaFilial(f.filial,filial)){qtInfo('🚫 Este pedido é da '+f.filial+'. Não lance aqui.','#B3261E');return false;}
+    if(!qt.value||qtAuto){qt.value=Number(f.qt);qtAuto=true;}
+    qtInfo('✓ '+Number(f.qt)+' pneus, puxado do Aro'+(f.status==='separacao'?' · ⚠ este pedido já foi pego por outro separador':''),f.status==='separacao'?'#9C5A12':'#1A6B45');
+    return true;
+  }
+  qtInfo('Pedido não está na fila do Aro: digite a quantidade de pneus.');return false;
+}
+async function enterNumPedido(){
+  // leitor de código de barras manda o número + Enter: se achou no Aro, já adiciona direto
+  const qt=document.getElementById('p-qt');clearTimeout(qtTimer);
+  if(qt.value&&!qtAuto){addPedido();return;}
+  const achou=await buscarQtdPedido();
+  if(achou&&qt.value)addPedido();else if(document.getElementById('p-num').value)qt.focus();
+}
 async function addPedido(){
   if(exigirTrava())return;
   if(await verificarBloqueio())return;
@@ -1261,6 +1291,7 @@ async function addPedido(){
   } catch(e){ console.error(e); const _be=document.getElementById('add-pedido-btn');if(_be)_be.dataset.processing='0'; }
 
   pedidosTemp.push(autorizadoPor?{num,qt,dupAutorizadoPor:autorizadoPor}:{num,qt});
+  qtAuto=false;qtInfo('');
   const _addBtnOk = document.getElementById('add-pedido-btn');
   if(_addBtnOk) _addBtnOk.dataset.processing='0';
   document.getElementById('p-num').value='';
