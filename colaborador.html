@@ -1054,6 +1054,7 @@ async function init() {
     if(colData){Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});}
     populateFilialSelects();
     restaurarIdentReabertura();
+    setTimeout(()=>registrarComputador(false),2000);
   // Populate rc-filial select
   const rcf=document.getElementById('rc-filial');
   if(rcf){rcf.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option>'+f.nome+'</option>').join('');}
@@ -1093,6 +1094,30 @@ function populateFilialSelects(){
 // Depois disso a filial fica fixa e o separador não consegue lançar em outra.
 const TRAVA_KEY='mauerFilialComputador';
 function travaFilial(){try{return JSON.parse(localStorage.getItem(TRAVA_KEY)||'null');}catch(e){return null;}}
+// ===== REGISTRO DOS COMPUTADORES TRAVADOS (o gestor vê em Filiais e colaboradores) =====
+// Cada navegador travado ganha um código e fica em computadores/<código> com filial, nome, navegador e último uso.
+// O gestor pode destravar à distância: o app vê o pedido e volta a bloquear os lançamentos.
+const PC_ID_KEY='mauerComputadorId';
+function idComputador(){let id=null;try{id=localStorage.getItem(PC_ID_KEY);}catch(e){}
+  if(!id){id='pc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);try{localStorage.setItem(PC_ID_KEY,id);}catch(e){}}return id;}
+function descreverNavegador(){const u=navigator.userAgent;
+  const nav=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Firefox\//.test(u)?'Firefox':/Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'Navegador';
+  const so=/Windows/.test(u)?'Windows':/Android/.test(u)?'Android':/iPhone|iPad/.test(u)?'iOS':/Mac OS/.test(u)?'Mac':/Linux/.test(u)?'Linux':'';
+  return nav+(so?' · '+so:'');}
+async function registrarComputador(novaTrava){
+  const t=travaFilial();if(!t||MODO_ROBO_PC())return;
+  const id=idComputador();
+  try{
+    if(!novaTrava){const r=await fbGet('computadores/'+id);
+      if(r&&r.destravar){ // gestor destravou pelo painel
+        try{localStorage.removeItem(TRAVA_KEY);}catch(e){}
+        try{await fetch(`${FB_URL}/computadores/${id}.json`,{method:'DELETE'});}catch(e){}
+        aplicarTravaFilial();showAlert('err','O gestor destravou este computador. Chame o encarregado para travar de novo.');return;}}
+    await fbPatch('computadores/'+id,{filial:t.filial,nome:t.nome||'',navegador:descreverNavegador(),travadoEm:t.em||Date.now(),ultimoUso:Date.now(),colaborador:(document.getElementById('p-colab')||{}).value||''});
+  }catch(e){}
+}
+function MODO_ROBO_PC(){try{return new URLSearchParams(location.search).has('robo');}catch(e){return false;}}
+setInterval(()=>{if(document.visibilityState==='visible')registrarComputador(false);},10*60000);
 function computadorTravado(){const t=travaFilial();return !!(t&&filiais.some(f=>mesmaFilial(f.nome,t.filial)));}
 function exigirTrava(){if(computadorTravado())return false;showAlert('err','Este computador ainda não tem filial definida. Chame o encarregado.');abrirTravaFilial();return true;}
 function mesmaFilial(a,b){return String(a||'').trim().toUpperCase()===String(b||'').trim().toUpperCase();}
@@ -1121,6 +1146,7 @@ function abrirTravaFilial(){
     <div style="font-size:20px;font-weight:700;color:#131F3B;margin-bottom:6px">🔒 Filial deste computador</div>
     <div style="font-size:14px;color:#5C6478;margin-bottom:14px">Só o encarregado faz isso. Depois de travado, todos os lançamentos deste computador vão para essa filial.</div>
     <select data-f style="width:100%;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px;margin-bottom:10px"><option value="">Escolha a filial</option>${filiais.map(f=>`<option ${t&&mesmaFilial(t.filial,f.nome)?'selected':''}>${esc(f.nome)}</option>`).join('')}</select>
+    <input data-n placeholder="Nome deste computador (ex.: PC Expedição 1)" value="${esc((t&&t.nome)||'')}" maxlength="40" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px;margin-bottom:10px">
     <input type="password" data-s placeholder="Palavra-chave do encarregado" autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px">
     <div data-e style="color:#B3261E;font-size:13px;min-height:18px;margin:6px 0"></div>
     <div style="display:flex;gap:8px"><button data-a="cancelar" style="flex:1;min-height:46px;border:1px solid #c8c5ba;border-radius:10px;background:#fff;font-weight:600">Cancelar</button>
@@ -1132,7 +1158,9 @@ function abrirTravaFilial(){
     const f=ov.querySelector('[data-f]').value;if(!f){err.textContent='Escolha a filial.';return;}
     b.disabled=true;const r=await conferirSenha(ov.querySelector('[data-s]').value);b.disabled=false;
     if(!r.ok){err.textContent=r.erro==='Senha incorreta.'?'Palavra-chave incorreta.':r.erro;return;}
-    try{localStorage.setItem(TRAVA_KEY,JSON.stringify({filial:f,em:Date.now()}));}catch(x){}
+    const nomePc=(ov.querySelector('[data-n]').value||'').trim().slice(0,40);
+    try{localStorage.setItem(TRAVA_KEY,JSON.stringify({filial:f,nome:nomePc,em:Date.now()}));}catch(x){}
+    registrarComputador(true);
     ov.remove();document.getElementById('p-filial').value='';aplicarTravaFilial();showAlert('ok','Computador travado na '+f+'.');});
 }
 // ===== PEDIDO DE OUTRA FILIAL =====
