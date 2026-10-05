@@ -1204,6 +1204,9 @@ function setTab(tab,btn){
 // ---- PEDIDOS ----
 // Registra para o gestor toda tentativa de lançar pedido repetido (não trava nada se falhar)
 function registrarDuplicado(d){
+  try{const m=JSON.parse(localStorage.getItem('mauerDupLog')||'{}'),t=Date.now(),ch=[d.origem,d.numPedido,d.quem,d.bloqueado,d.autorizadoPor||'',String(d.detalhe||'').slice(0,60)].join('|');
+    Object.keys(m).forEach(k=>{if(t-m[k]>30*60000)delete m[k];});if(m[ch]&&!d.liberacao){localStorage.setItem('mauerDupLog',JSON.stringify(m));return;}
+    m[ch]=t;localStorage.setItem('mauerDupLog',JSON.stringify(m));}catch(e){}
   try{fbPost('alertasDuplicado',{...d,numPedido:String(d.numPedido||''),data:getBrasiliaDateStr(),timestamp:getBrasiliaTimestamp(),visto:false}).catch(()=>{});}catch(e){}
 }
 // ===== QUANTIDADE AUTOMÁTICA =====
