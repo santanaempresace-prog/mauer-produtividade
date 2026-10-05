@@ -227,7 +227,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-10-06-conf-dupunico';
+const APP_VERSAO='2026-10-06-conf-offline2';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
@@ -268,7 +268,7 @@ async function offEnviar(){
     let q=offLer();
     while(q.length){
       const it=q[0];let ok=false;
-      try{const r=await fetch(`${FB_URL}/${it.path}.json`,{method:it.metodo,body:JSON.stringify(it.data)});
+      try{const r=await fetch(`${FB_URL}/${it.path}.json`,it.metodo==='DELETE'?{method:'DELETE'}:{method:it.metodo,body:JSON.stringify(it.data)});
         if(r.ok)ok=true;else if(r.status>=400&&r.status<500){ok=true;try{const er=JSON.parse(localStorage.getItem(OFF_KEY+'Erros')||'[]');er.push({...it,status:r.status});localStorage.setItem(OFF_KEY+'Erros',JSON.stringify(er.slice(-50)));}catch(e){}}}
       catch(e){break;}
       if(!ok)break;
@@ -288,7 +288,12 @@ function offAviso(){
 window.addEventListener('online',()=>offEnviar());
 setInterval(()=>{if(offLer().length)offEnviar();},15000);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{offAviso();offEnviar();});else setTimeout(()=>{offAviso();offEnviar();},0);
-async function fbDelete(p){const r=await fetch(`${FB_URL}/${p}.json`,{method:'DELETE'});if(!r.ok)throw new Error('DELETE '+r.status);}
+async function fbDelete(p){
+  // se o registro ainda está guardado no tablet (sem internet), basta tirar da fila local
+  try{const q=offLer(),i=q.findIndex(x=>x.metodo==='PUT'&&x.path===p);if(i>=0){q.splice(i,1);offSalvar(q);offAviso();return;}}catch(e){}
+  try{const r=await fetch(`${FB_URL}/${p}.json`,{method:'DELETE'});if(!r.ok)throw new Error('DELETE '+r.status);}
+  catch(e){if(!ehErroRede(e))throw e;const q=offLer();q.push({metodo:'DELETE',path:p,data:null,em:Date.now()});offSalvar(q);offAviso();}
+}
 async function fbQuery(path,field,opts){
   const qs=['orderBy='+encodeURIComponent(JSON.stringify(field))];
   if(opts.startAt!==undefined)qs.push('startAt='+encodeURIComponent(JSON.stringify(opts.startAt)));
@@ -343,6 +348,45 @@ function fecharSetup(){
 }
 
 // ---------- dados ----------
+// ===== TABLET COMO BASE LOCAL (conexão que oscila) =====
+// Toda vez que carrega com internet, guarda uma cópia dos pedidos, conferências e lotes no tablet.
+// Sem internet, o app abre e continua com essa cópia; as conferências feitas ficam guardadas e
+// já somem da fila na hora. Quando a conexão volta, tudo é enviado e a cópia é atualizada.
+const CACHE_CONF='mauerConfCache';let modoOffline=false,cacheEm=0;
+function salvarCacheConf(){
+  try{const regs={};pedidos.forEach(p=>{if(p.registroId&&registrosMap[p.registroId])regs[p.registroId]=registrosMap[p.registroId];});
+    localStorage.setItem(CACHE_CONF,JSON.stringify({em:Date.now(),pedidos,confs,regs}));cacheEm=Date.now();}catch(e){console.warn('cache',e);}
+}
+function carregarCacheConf(){
+  try{const c=JSON.parse(localStorage.getItem(CACHE_CONF)||'null');if(!c)return false;
+    pedidos=c.pedidos||[];confs=c.confs||[];registrosMap=c.regs||{};cacheEm=c.em||0;return true;}catch(e){return false;}
+}
+// conferências e baixas que ainda estão guardadas no tablet entram na conta da fila
+function aplicarFilaLocal(){
+  let q=[];try{q=offLer();}catch(e){}
+  q.forEach(it=>{
+    const ps=String(it.path).split('/');
+    if(it.metodo==='PUT'&&ps[0]==='confirmacoes'&&ps[1]&&it.data&&!confs.some(c=>c._key===ps[1]))confs.push({...it.data,_key:ps[1]});
+    if(it.metodo==='DELETE'&&ps[0]==='confirmacoes'&&ps[1])confs=confs.filter(c=>c._key!==ps[1]);
+    if(it.metodo==='PATCH'&&ps[0]==='registros'&&it.data){
+      if(ps[1]){const r=registrosMap[ps[1]]=registrosMap[ps[1]]||{};aplicarPatch(r,ps.slice(2),it.data);}
+      else Object.entries(it.data).forEach(([k,v])=>{const kp=k.split('/'),r=registrosMap[kp[0]]=registrosMap[kp[0]]||{};aplicarPatch(r,kp.slice(1),kp.length>1?v:null,kp.length===1?v:null);});
+    }
+  });
+}
+function aplicarPatch(obj,caminho,dados,inteiro){
+  if(inteiro&&typeof inteiro==='object'){Object.assign(obj,inteiro);return;}
+  if(!caminho.length){if(dados&&typeof dados==='object')Object.keys(dados).forEach(k=>{const kp=k.split('/');let o=obj;kp.slice(0,-1).forEach(x=>o=o[x]=o[x]||{});o[kp[kp.length-1]]=dados[k];});return;}
+  let o=obj;caminho.slice(0,-1).forEach(x=>o=o[x]=o[x]||{});o[caminho[caminho.length-1]]=dados;
+}
+function mostrarInfoOffline(){
+  const el=document.getElementById('top-filial');if(!el)return;
+  const base=cfg.filial||'—';
+  if(modoOffline){
+    const h=cacheEm?new Date(cacheEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'—';
+    el.innerHTML=esc(base)+' · <span style="color:#E38A29;font-weight:700">📶 sem internet · dados das '+h+'</span>';
+  }else el.textContent=base;
+}
 async function carregar(){
   if(!cfg.filial)return;
   try{
@@ -351,8 +395,12 @@ async function carregar(){
     pedidos=l?Object.entries(l).map(([k,v])=>({...v,_key:k})).filter(x=>x.isPedido&&x.numPedido):[];
     confs=c?Object.entries(c).map(([k,v])=>({...v,_key:k})):[];
     registrosMap={};if(r)Object.entries(r).forEach(([k,v])=>registrosMap[k]=v);
-    montarIndiceDup();montarFila();setDot('ok');
-  }catch(e){console.error(e);setDot('err');}
+    aplicarFilaLocal();salvarCacheConf();modoOffline=false;
+    montarIndiceDup();montarFila();setDot('ok');mostrarInfoOffline();
+  }catch(e){console.error(e);setDot('err');
+    if(!pedidos.length)carregarCacheConf();   // abriu o app sem internet: usa a última cópia guardada
+    modoOffline=true;aplicarFilaLocal();montarIndiceDup();montarFila();mostrarInfoOffline();
+  }
   // histórico de 30 dias roda por fora: se demorar ou falhar, a fila continua aparecendo
   if(!histCarregando&&Date.now()-histCarregadoEm>5*60000){
     histCarregando=true;
@@ -675,7 +723,7 @@ const REABRIR_MIN=10;
 const abertoEm=Date.now();let ultimaAcao=Date.now();
 ['pointerdown','keydown','input'].forEach(ev=>document.addEventListener(ev,()=>{ultimaAcao=Date.now();},true));
 function podeReabrir(){
-  return !ocupado&&!selecionado&&!dupAberto&&document.getElementById('aviso-conf').style.display!=='block'&&!document.getElementById('setup').classList.contains('show')
+  return navigator.onLine&&!modoOffline&&!offLer().length&&!ocupado&&!selecionado&&!dupAberto&&document.getElementById('aviso-conf').style.display!=='block'&&!document.getElementById('setup').classList.contains('show')
     &&!document.getElementById('num').value&&Date.now()-ultimaAcao>20000;
 }
 function reabrir(){const u=new URL(location.href);u.searchParams.set('r',Date.now());location.replace(u.toString());}
