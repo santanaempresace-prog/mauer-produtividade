@@ -382,7 +382,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:12px">
+    <div class="card" id="card-rank-geral" style="margin-bottom:12px;display:none">
       <div class="card-title" style="margin-bottom:10px">🌎 Ranking geral — todas as filiais</div>
       <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end">
         <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px">
@@ -619,7 +619,7 @@ async function buscarSeparador(num) {
   clearTimeout(buscarTimer);
   buscarTimer = setTimeout(async () => {
     try {
-      const data = await fbGet('lancamentos');
+      const data = await fbQuery('lancamentos','data',{startAt:dataMenos(30)});
       const todos = data ? Object.values(data) : [];
       
       // Busca pedido pelo número exato
@@ -702,7 +702,7 @@ async function confirmarPorNumero() {
   showMsg(msgEl,'Buscando...','info');
 
   try {
-    const [lancData, confData] = await Promise.all([fbGet('lancamentos'), fbGet('confirmacoes')]);
+    const [lancData, confData] = await Promise.all([fbQuery('lancamentos','data',{startAt:dataMenos(7)}), fbQuery('confirmacoes','data',{startAt:dataMenos(7)})]);
     const todos = lancData ? Object.values(lancData) : [];
     const confs = confData ? Object.values(confData) : [];
 
@@ -796,8 +796,8 @@ async function carregarPedidosParaConferir() {
   try {
     const hoje = data || getBrasiliaDateStr();
     const [lancData, confData] = await Promise.all([
-      fbGet('lancamentos'),
-      fbGet('confirmacoes')
+      fbQuery('lancamentos','data',{startAt:dataMenos(7)}),
+      fbQuery('confirmacoes','data',{startAt:dataMenos(7)})
     ]);
     const todos = lancData ? Object.values(lancData) : [];
     // Pedidos individuais da filial no dia
@@ -980,7 +980,7 @@ async function renderRankingConferentes() {
   wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando ranking... 🎖️</div>';
   try {
     const today = getBrasiliaDateStr();
-    const [confData, lancData] = await Promise.all([fbGet('confirmacoes'), fbGet('lancamentos')]);
+    const [confData, lancData] = await Promise.all([fbQuery('confirmacoes','data',{startAt:dataBR()}), fbQuery('lancamentos','data',{startAt:dataBR()})]);
     const confs = confData ? Object.values(confData) : [];
     const lancs = lancData ? Object.values(lancData) : [];
 
@@ -1013,7 +1013,7 @@ async function renderRankingConferentesGeral() {
   if(!wrap) return;
   wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando... 🎖️</div>';
   try {
-    const [confData, lancData] = await Promise.all([fbGet('confirmacoes'), fbGet('lancamentos')]);
+    const [confData, lancData] = await Promise.all([fbQuery('confirmacoes','data',{startAt:(document.getElementById('rc-date-ini').value||dataMenos(31))}), fbQuery('lancamentos','data',{startAt:(document.getElementById('rc-date-ini').value||dataMenos(31))})]);
     const confs = confData ? Object.values(confData) : [];
     const lancs = lancData ? Object.values(lancData) : [];
 
@@ -1054,6 +1054,7 @@ async function init() {
     if(colData){Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});}
     populateFilialSelects();
     restaurarIdentReabertura();
+    setTimeout(()=>obterLancRecentes().catch(()=>{}),1500); // já deixa o histórico pronto para o primeiro + Add
     setTimeout(()=>registrarComputador(false),2000);
   // Populate rc-filial select
   const rcf=document.getElementById('rc-filial');
@@ -1074,7 +1075,7 @@ async function init() {
 
 async function carregarHoje() {
   try {
-    const data = await fbGet('lancamentos');
+    const data = await fbQuery('lancamentos','data',{startAt:dataBR()}); // só hoje (antes baixava todo o histórico)
     const today=dataBR();
     allLancamentos = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
     lancamentosHoje = allLancamentos.filter(l=>l.data===today);
@@ -1195,7 +1196,7 @@ function setTab(tab,btn){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
-  if(tab==='grafico'){renderRankingCorrida();renderChart();}
+  if(tab==='grafico'){aplicarFilialRanking();renderRankingCorrida();renderChart();}
   if(tab==='confirmar'){carregarAbertosConferencia();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente')renderErroHistory();
@@ -1240,7 +1241,6 @@ async function enterNumPedido(){
 }
 async function addPedido(){
   if(exigirTrava())return;
-  if(await verificarBloqueio())return;
   const num=document.getElementById('p-num').value.trim();
   const qt=parseInt(document.getElementById('p-qt').value);
   if(!num||!qt||qt<1)return;
@@ -1266,15 +1266,15 @@ async function addPedido(){
     const hoje = getBrasiliaDateStr();
     const _lim=new Date();_lim.setDate(_lim.getDate()-8);
     const _limStr=dataBR(_lim);
-    const [lancData, margemData] = await Promise.all([
-      fbQuery('lancamentos','data',{startAt:_limStr}),
-      fbGet('configuracoes/margemPedidos')
-    ]);
+    // tudo ao mesmo tempo (antes era um depois do outro)
+    const [bloqueado,lista,margemData,fAroPar,mapaDup]=await Promise.all([
+      verificarBloqueio(),obterLancRecentes(),obterMargem().catch(()=>null),filialDoPedidoAro(num),lancamentosRecentesPorPedido().catch(()=>new Map())]);
+    if(bloqueado){if(addBtn)addBtn.dataset.processing='0';return;}
     const margem = margemData ? Number(margemData) : 1000;
-    const todos = lancData ? Object.values(lancData) : [];
+    const todos = (lista||[]).filter(l=>l.data>=_limStr);
 
     // Pedido que o Aro pôs na fila de OUTRA filial: não deixa lançar aqui
-    {const fAtual=document.getElementById('p-filial').value,fAro=await filialDoPedidoAro(num);
+    {const fAtual=document.getElementById('p-filial').value,fAro=fAroPar;
      if(fAro&&fAtual&&!mesmaFilial(fAro,fAtual)){
        registrarDuplicado({origem:'separador',bloqueado:true,numPedido:num,filial:fAtual,quem:document.getElementById('p-colab').value,detalhe:'Tentou lançar na '+fAtual+' um pedido da '+fAro});
        await avisoOutraFilial([{num,filial:fAro}],fAtual);
@@ -1283,7 +1283,7 @@ async function addPedido(){
        const _b0=document.getElementById('add-pedido-btn');if(_b0)_b0.dataset.processing='0';
        return;}}
     // Pedido já registrado (qualquer data nos últimos 30 dias, qualquer filial): BLOQUEIA e pede para avisar o responsável
-    let jaReg=[];try{jaReg=(await lancamentosRecentesPorPedido()).get(normPed(num))||[];}catch(e){console.error(e);}
+    let jaReg=mapaDup.get(normPed(num))||[];
     if(jaReg.length){
       const filialAtual=document.getElementById('p-filial').value,colabAtual=document.getElementById('p-colab').value;
       const r=await modalPedidoDuplicado([{p:{num},existentes:jaReg}],{tirar:'Não adicionar este pedido'});
@@ -1361,12 +1361,14 @@ async function salvarPedidos(){
   [['p-filial',filial],['p-date',date],['p-colab',colab]].forEach(([id,val])=>{document.getElementById(id).classList.toggle('err',!val);if(!val)ok=false;});
   if(!ok){showAlert('err','Preencha filial, data e colaborador.');return;}
   if(!pedidosTemp.length){showAlert('err','Adicione pelo menos um pedido.');return;}
-  if(await verificarBloqueio())return;
   const btn=document.getElementById('btn-salvar-pedidos');
   btn.disabled=true;btn.dataset.busy='1';btn.innerHTML='<span class="spinner"></span> Iniciando...';
-  // confere no servidor (pode ter sido aberto em outro aparelho)
-  await carregarRegistrosAbertos();
-  const tomados=await filaReservar(pedidosTemp);
+  // todas as conferências ao mesmo tempo (antes era uma depois da outra)
+  const [bloqueado,,tomados,fasPre,dupsPre]=await Promise.all([
+    verificarBloqueio(),carregarRegistrosAbertos(),filaReservar(pedidosTemp),
+    Promise.all(pedidosTemp.map(p=>filialDoPedidoAro(p.num))),
+    conferirDuplicadosLote(pedidosTemp.filter(p=>!p.dupAutorizadoPor))]);
+  if(bloqueado){btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;}
   if(tomados.length){
     pedidosTemp=pedidosTemp.filter(p=>!tomados.includes(p));renderPedidoTemp();await carregarFilaAro();
     showAlert('err','Pedido(s) '+tomados.map(p=>p.num).join(', ')+' já foram pegos por outro separador e saíram do seu lote. Confira e clique em Iniciar de novo.');
@@ -1374,7 +1376,8 @@ async function salvarPedidos(){
   }
   // Pedidos de outra filial (conferência final, inclusive se a filial foi trocada depois de adicionar)
   {const fora=[];
-   for(const p of pedidosTemp){const fa=await filialDoPedidoAro(p.num);if(fa&&!mesmaFilial(fa,filial))fora.push({p,num:p.num,filial:fa});}
+   const fas=fasPre;
+   pedidosTemp.forEach((p,i)=>{const fa=fas[i];if(fa&&!mesmaFilial(fa,filial))fora.push({p,num:p.num,filial:fa});});
    if(fora.length){
      fora.forEach(x=>registrarDuplicado({origem:'separador',bloqueado:true,numPedido:x.num,filial,quem:colab,detalhe:'Tentou iniciar na '+filial+' um pedido da '+x.filial+'. Pedido retirado do lote.'}));
      await avisoOutraFilial(fora,filial);
@@ -1382,7 +1385,7 @@ async function salvarPedidos(){
      showAlert('err','Pedido(s) de outra filial retirado(s) do lote.');
      btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;}}
   // TRAVA FINAL: confere no servidor se algum pedido do lote já tem lançamento (qualquer filial, últimos 30 dias)
-  const dups=await conferirDuplicadosLote(pedidosTemp.filter(p=>!p.dupAutorizadoPor));
+  const dups=dupsPre;
   if(dups.length){
     const r=await modalPedidoDuplicado(dups);
     const quem={filial,colab};
@@ -1417,13 +1420,14 @@ async function salvarPedidos(){
     // 2) Lançamentos (mesmo formato de antes + registroId), enviados em paralelo
     const base={data:date,filial,colaborador:colab,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:inicio,registroId};
     await Promise.all([
-      ...lote.map(p=>fbPost('lancamentos',{...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,pedidos:0,pneus:0,...(p.filaKey?{origem:'aro',filaKey:p.filaKey}:{}),...(p.dupAutorizadoPor?{dupAutorizadoPor:p.dupAutorizadoPor}:{})})),
+      ...lote.map(p=>{guardarNoCache({...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,_key:'local'+p.num});return fbPost('lancamentos',{...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,pedidos:0,pneus:0,...(p.filaKey?{origem:'aro',filaKey:p.filaKey}:{}),...(p.dupAutorizadoPor?{dupAutorizadoPor:p.dupAutorizadoPor}:{})});}),
       fbPost('lancamentos',{...base,isPedido:false,numPedido:'',qtdPedido:0,pedidos:lote.length,pneus:totalPneus})
     ]);
     try{await filaMarcarPegos(lote,colab,registroId,inicio);}catch(e){console.error(e);}
     pedidosTemp=[];renderPedidoTemp();carregarFilaAro();
     registrosAbertos.unshift({...reg,_key:registroId,data:date,filial,colaborador:colab,inicio,status:'em_separacao',pedidos:lote,totalPedidos:lote.length,totalPneus});
     renderRegistrosAbertos();
+    avisarConferente(filial);
     showAlert('ok',(finalizados.length?`Anterior finalizado em ${fmtDur(inicio-finalizados[0].inicio)}. `:'')+`Nova separação iniciada: ${lote.length} pedido${lote.length!==1?'s':''}, ${totalPneus} pneus.`);
     carregarHoje();
   }catch(e){showAlert('err','Erro ao salvar. Tente de novo.');console.error(e);}
@@ -1475,13 +1479,50 @@ const DUP_DIAS=30;
 function dupDataLimite(){return new Date(Date.now()-DUP_DIAS*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
 function dupDescrever(l){const h=l.timestamp?new Date(l.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'';
   return (l.colaborador||'sem separador')+' em '+String(l.data||'').split('-').reverse().slice(0,2).join('/')+(h?' às '+h:'')+(l.filial?' ('+l.filial+')':'');}
-async function lancamentosRecentesPorPedido(){
-  const d=await fbQuery('lancamentos','data',{startAt:dupDataLimite()});const m=new Map();
-  Object.entries(d||{}).forEach(([k,l])=>{if(!l||!l.isPedido||!l.numPedido)return;const n=normPed(l.numPedido);if(!n)return;(m.get(n)||m.set(n,[]).get(n)).push({...l,_key:k});});
-  return m;
+// ===== CACHE DOS LANÇAMENTOS (deixa o lançamento rápido) =====
+// Antes cada "+ Add" baixava 8 e depois 30 dias de lançamentos de todas as filiais.
+// Agora: carga completa a cada 10 min; entre elas, só os lançamentos de ontem para cá (bem pequeno).
+let cacheLanc={lista:[],completoEm:0,deltaEm:0,mapa:null},cacheLancPromessa=null;
+function dataMenos(d){return new Date(Date.now()-d*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
+async function obterLancRecentes(fresco){
+  if(cacheLancPromessa)return cacheLancPromessa;
+  const agora=Date.now();
+  if(!fresco&&agora-cacheLanc.deltaEm<20000&&cacheLanc.completoEm)return cacheLanc.lista;
+  cacheLancPromessa=(async()=>{
+    if(!cacheLanc.completoEm||agora-cacheLanc.completoEm>10*60000){
+      const d=await fbQuery('lancamentos','data',{startAt:dupDataLimite()});
+      cacheLanc.lista=Object.entries(d||{}).map(([k,v])=>({...v,_key:k}));cacheLanc.completoEm=agora;
+    }else{
+      const ini=dataMenos(1),d=await fbQuery('lancamentos','data',{startAt:ini});
+      cacheLanc.lista=cacheLanc.lista.filter(l=>!(l.data>=ini)).concat(Object.entries(d||{}).map(([k,v])=>({...v,_key:k})));
+    }
+    cacheLanc.deltaEm=Date.now();cacheLanc.mapa=null;return cacheLanc.lista;
+  })().finally(()=>{cacheLancPromessa=null;});
+  return cacheLancPromessa;
+}
+// Sinal para o tablet do conferente atualizar na hora (ele fica "ouvindo" sinais/<filial>)
+function chaveSinal(f){return String(f||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_');}
+function avisarConferente(filial){if(!filial)return;try{fbEscrever('PUT','sinais/'+chaveSinal(filial),Date.now()).catch(()=>{});}catch(e){}}
+// Ranking só da filial deste computador (a filial travada); o ranking de todas as filiais fica escondido
+function aplicarFilialRanking(){
+  const t=travaFilial(),g=document.getElementById('g-filial'),geral=document.getElementById('card-rank-geral');
+  if(geral)geral.style.display='none';
+  if(t&&g){if(![...g.options].some(o=>o.value===t.filial))g.insertAdjacentHTML('beforeend','<option>'+t.filial+'</option>');
+    if(g.value!==t.filial){g.value=t.filial;loadColabs('g-filial','g-colab');}g.disabled=true;g.title='Filial deste computador';}
+}
+function guardarNoCache(l){cacheLanc.lista.push(l);cacheLanc.mapa=null;}
+let margemCache={v:null,em:0};
+async function obterMargem(){if(Date.now()-margemCache.em<5*60000&&margemCache.v!=null)return margemCache.v;
+  const m=await fbGet('configuracoes/margemPedidos');margemCache={v:m,em:Date.now()};return m;}
+async function lancamentosRecentesPorPedido(fresco){
+  const lista=await obterLancRecentes(fresco);
+  if(cacheLanc.mapa&&!fresco)return cacheLanc.mapa;
+  const m=new Map();
+  lista.forEach(l=>{if(!l||!l.isPedido||!l.numPedido)return;const n=normPed(l.numPedido);if(!n)return;(m.get(n)||m.set(n,[]).get(n)).push(l);});
+  cacheLanc.mapa=m;return m;
 }
 async function conferirDuplicadosLote(lote){
-  let m;try{m=await lancamentosRecentesPorPedido();}catch(e){console.error(e);return[];}
+  let m;try{m=await lancamentosRecentesPorPedido(true);}catch(e){console.error(e);return[];}
   return lote.map(p=>{const ex=m.get(normPed(p.num))||[];return ex.length?{p,existentes:ex,texto:'já separado por '+ex.map(dupDescrever).join('; ')}:null;}).filter(Boolean);
 }
 // ===== BLOQUEIO DO SEPARADOR ATÉ A SENHA DO RESPONSÁVEL =====
@@ -2003,6 +2044,7 @@ async function finalizarRegistro(id,btn){
   const duracaoMin=reg?Math.round((fim-reg.inicio)/60000):null;
   try{
     await fbPatch('registros/'+id,{fim,duracaoMin,status:'finalizado'});
+    try{avisarConferente((registrosAbertos.find(r=>r._key===id)||{}).filial||document.getElementById('p-filial').value);}catch(e){}
     registrosAbertos=registrosAbertos.filter(r=>r._key!==id);
     mostrarDesfazer(reg,duracaoMin);
     renderRegistrosAbertos();
@@ -2098,6 +2140,7 @@ function setGeralPeriodo(tipo) {
 }
 
 async function renderRankingGeral() {
+  {const c=document.getElementById('card-rank-geral');if(c&&c.style.display==='none')return;}
   const wrap = document.getElementById('ranking-geral-wrap');
   const ini = document.getElementById('geral-date-ini').value;
   const fim = document.getElementById('geral-date-fim').value;
@@ -2106,7 +2149,7 @@ async function renderRankingGeral() {
   const dataFim = fim || today;
   wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando ranking geral... 🛞</div>';
   try {
-    const data = await fbGet('lancamentos');
+    const data = await fbQuery('lancamentos','data',{startAt:(document.getElementById('geral-date-ini').value||dataMenos(31))});
     const todos = data ? Object.values(data) : [];
     const hoje = todos.filter(l=>l.data>=dataIni&&l.data<=dataFim&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
     if(!hoje.length){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px;background:#131F3B;border-radius:var(--radius)">Nenhuma separação registrada hoje</div>';return;}
@@ -2169,7 +2212,7 @@ async function renderRankingCorrida() {
   wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando corrida... 🛞</div>';
   try {
     const today = dataBR();
-    const data = await fbGet('lancamentos');
+    const data = await fbQuery('lancamentos','data',{startAt:today});
     const todos = data ? Object.values(data) : [];
     const hoje = todos.filter(l=>l.filial===filial&&l.data===today&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
     if(!hoje.length){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px;background:#131F3B;border-radius:var(--radius)">Nenhuma separação registrada hoje nesta filial</div>';return;}
@@ -2228,7 +2271,7 @@ async function renderChart(){
   if(!filial||!colab){metricsEl.style.display='none';wrapEl.style.display='none';emptyEl.style.display='';if(myChart){myChart.destroy();myChart=null;}return;}
   emptyEl.textContent='Carregando...';emptyEl.style.display='';
   try{
-    const data=await fbGet('lancamentos');
+    const data=await fbQuery('lancamentos','data',{startAt:dataMenos(60)}); // últimos 60 dias
     const todos=data?Object.values(data):[];
     const dados=todos.filter(l=>l.filial===filial&&l.colaborador===colab&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
     if(!dados.length){emptyEl.textContent='Nenhum dado.';wrapEl.style.display='none';metricsEl.style.display='none';if(myChart){myChart.destroy();myChart=null;}return;}
