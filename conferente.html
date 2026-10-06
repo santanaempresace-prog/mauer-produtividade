@@ -227,7 +227,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.6);outline-offset:2px}
 
 <script>
 // Versão desta página. Ao publicar alteração, mude o valor: tablets com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-10-06-conf-offline2';
+const APP_VERSAO='2026-10-06-conf-aovivo';
 const FB_URL='https://mauer-produtividade-default-rtdb.firebaseio.com';
 const MOTIVOS=['Medida invertida','Pneu a mais','Pneu a menos','Etiqueta faltando','Doca errada','Sem nome','Outro'];
 const DIAS_FILA=3;          // pedidos pendentes dos últimos N dias aparecem na fila
@@ -330,7 +330,7 @@ function abrirSetup(passo){
     document.getElementById('setup-s').textContent='Fica gravado no aparelho. Só precisa escolher de novo se o tablet mudar de filial.';
     document.getElementById('setup-back').style.display='none';
     opts.innerHTML=filiais.length?filiais.map(f=>`<button data-v="${esc(f)}">${esc(f)}</button>`).join(''):'<div style="color:var(--muted)">Nenhuma filial cadastrada.</div>';
-    opts.onclick=e=>{const b=e.target.closest('button');if(!b)return;cfg.filial=b.dataset.v;cfg.conferente='';salvarCfg();abrirSetup('conferente');};
+    opts.onclick=e=>{const b=e.target.closest('button');if(!b)return;cfg.filial=b.dataset.v;cfg.conferente='';salvarCfg();ouvirSinal();abrirSetup('conferente');};
   }else{
     const lista=conferentesPorFilial[cfg.filial]||[];
     document.getElementById('setup-t').textContent='Quem está conferindo?';
@@ -386,6 +386,23 @@ function mostrarInfoOffline(){
     const h=cacheEm?new Date(cacheEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'—';
     el.innerHTML=esc(base)+' · <span style="color:#E38A29;font-weight:700">📶 sem internet · dados das '+h+'</span>';
   }else el.textContent=base;
+}
+// ===== ATUALIZAÇÃO NA HORA =====
+// O app do separador grava sinais/<filial> quando inicia ou finaliza um lote; o tablet fica ouvindo
+// esse ponto (conexão aberta com o Firebase) e recarrega a fila em ~1 s. A atualização de 15 em 15 s continua como reserva.
+let fonteSinal=null,filialSinal='',sinalPrimeiro=true,sinalTimer=null;
+function chaveSinal(f){return String(f||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_');}
+function ouvirSinal(){
+  if(!cfg.filial||typeof EventSource==='undefined')return;
+  if(fonteSinal&&filialSinal===cfg.filial&&fonteSinal.readyState!==2)return;
+  try{if(fonteSinal)fonteSinal.close();}catch(e){}
+  filialSinal=cfg.filial;sinalPrimeiro=true;
+  try{
+    fonteSinal=new EventSource(`${FB_URL}/sinais/${chaveSinal(cfg.filial)}.json`);
+    const chegou=()=>{if(sinalPrimeiro){sinalPrimeiro=false;return;} // o primeiro evento é só o valor atual
+      clearTimeout(sinalTimer);sinalTimer=setTimeout(()=>{if(!ocupado)carregar();},700);};
+    fonteSinal.addEventListener('put',chegou);fonteSinal.addEventListener('patch',chegou);
+  }catch(e){fonteSinal=null;}
 }
 async function carregar(){
   if(!cfg.filial)return;
@@ -746,6 +763,9 @@ async function init(){
   }catch(e){console.error(e);setDot('err');}
   if(!cfg.filial||!cfg.conferente)abrirSetup(cfg.filial?'conferente':'filial');else fecharSetup();
   setInterval(()=>{if(!ocupado)carregar();},15000);
+  ouvirSinal();
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ouvirSinal();});
+  window.addEventListener('online',()=>ouvirSinal());
   setInterval(()=>{if(!ocupado)renderFila();},60000);
   setInterval(checarVersao,5*60000);
 }
