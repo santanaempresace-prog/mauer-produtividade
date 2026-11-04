@@ -1,23 +1,2350 @@
 <!DOCTYPE html>
+<script>
+// ENDEREÇO ANTIGO (GitHub). Pessoas são levadas para o site novo, com a trava do computador.
+// O robô Aro (endereço com ?robo) continua rodando AQUI, porque a extensão dele só tem permissão neste endereço.
+(function(){
+  if(new URLSearchParams(location.search).has('robo'))return;
+  var url="https://mauer-produtividade.web.app/colaborador.html"+location.search,extra="";
+  try{var t=localStorage.getItem('mauerFilialComputador'),id=localStorage.getItem('mauerComputadorId');
+    if(t&&id)extra="#trava="+encodeURIComponent(JSON.stringify({t:JSON.parse(t),id:id}));}catch(e){}
+  location.replace(url+extra);
+  document.write('<plaintext style="display:none">');   // não roda o resto da página
+})();
+</script>
 <html lang="pt-BR">
 <head>
+<script>
+// ===== TRAVA DO COMPUTADOR VINDA DO ENDEREÇO ANTIGO =====
+// O endereço antigo (GitHub) manda a trava deste computador junto no redirecionamento.
+// Ela só é aceita se este computador estiver mesmo registrado nessa filial no painel do gestor
+// (Filiais e colaboradores > computadores) e não tiver sido destravado. Assim ninguém precisa travar de novo.
+(function(){try{
+  var m=location.hash.match(/[#&]trava=([^&]+)/);if(!m)return;
+  history.replaceState(null,'',location.pathname+location.search);
+  if(localStorage.getItem('mauerFilialComputador'))return;
+  var d=JSON.parse(decodeURIComponent(m[1]));if(!d||!d.t||!d.t.filial||!d.id)return;
+  var norm=function(x){return String(x||'').trim().toUpperCase();};
+  fetch('https://mauer-produtividade-default-rtdb.firebaseio.com/computadores/'+encodeURIComponent(d.id)+'.json')
+    .then(function(r){return r.json();}).then(function(c){
+      if(c&&!c.destravar&&norm(c.filial)===norm(d.t.filial)){
+        localStorage.setItem('mauerComputadorId',d.id);
+        localStorage.setItem('mauerFilialComputador',JSON.stringify(d.t));
+        location.reload();
+      }
+    }).catch(function(){});
+}catch(e){}})();
+</script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sistema Mauer mudou de endereço</title>
-<meta http-equiv="refresh" content="0; url=https://mauer-produtividade.web.app/colaborador.html">
-<script>location.replace("https://mauer-produtividade.web.app/colaborador.html" + location.search + location.hash);</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<title>Preenchimento Diário — Mauer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#131F3B">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#0d2a4d;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}
-.c{border-bottom:5px solid #f28c1b;padding:24px 28px;background:rgba(255,255,255,.06);border-radius:8px}
-a{color:#f28c1b;font-weight:bold}
+:root{--navy:#131F3B;--navy-2:#1E2C4E;--navy-soft:#AEB6C8;--orange:#E38A29;--orange-t:#9C5A12;--orange-bg:#FBF0E4;--orange-b:#F0C999;--teal:#669EA1;--teal-t:#3F6F72;--bg:#F3F3F2;--surface:#fff;--border:#E7E6E6;--border-strong:#C9CCD3;--text:#131F3B;--muted:#5C6478;--hint:#8A91A1;--radius:10px;--rsm:7px;--green-bg:#E7F2EC;--green-t:#2F7D5B;--green-b:#B5D8C5;--red-bg:#FBEAEA;--red-t:#B3261E;--red-b:#F0BDBA;--amber-bg:var(--orange-bg);--amber-t:var(--orange-t);--amber-b:var(--orange-b);--blue-bg:#EAF2F2;--blue-t:var(--teal-t);--blue-b:#C4DCDD;--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;background:url('bg-mauer.jpg.jpeg') center/cover no-repeat;opacity:.6;z-index:0;pointer-events:none}
+.tabs,.card:not(.card-sep){background:rgba(255,255,255,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.topbar{position:sticky;top:0;z-index:10;background:var(--navy);padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:inset 0 -4px 0 var(--orange)}
+.topbar{padding-bottom:16px}
+.tb-logo{height:26px;width:auto;display:block}
+.tb-sep{width:1px;height:22px;background:#34425F}
+.tb-title{font-size:14px;font-weight:500;color:#fff}.tb-sub{font-size:12px;color:var(--navy-soft);margin-top:1px}
+.tb-status{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:20px;font-weight:500;white-space:nowrap}
+.tb-status.ok{background:rgba(102,158,161,.18);color:#BFE0E1}.tb-status.err{background:rgba(179,38,30,.25);color:#FFD2CF}.tb-status.loading{background:rgba(255,255,255,.08);color:var(--navy-soft)}
+.container{position:relative;max-width:600px;margin:0 auto;padding:20px 16px 56px}
+.alert{border-radius:var(--rsm);padding:12px 15px;font-size:14px;margin-bottom:14px;display:none;align-items:center;gap:8px;font-weight:500}
+.alert.show{display:flex}
+.alert-ok{background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b)}
+.alert-err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
+.tab-btn{padding:10px 6px;border:none;border-radius:var(--rsm);background:transparent;font-family:var(--font);font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:background .15s,color .15s;text-align:center;line-height:1.3}
+.tab-btn:hover{background:var(--bg);color:var(--text)}
+.tab-btn.active{background:var(--navy);color:#fff}
+.tab-btn span{display:block;font-size:11px;font-weight:400;opacity:.7;margin-top:1px}
+.tab-content{display:none}.tab-content.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title svg{width:16px;height:16px;stroke:var(--teal-t);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.card-sub{font-size:13px;color:var(--muted);margin-top:-8px;margin-bottom:12px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+label{font-size:13px;font-weight:500;color:var(--muted)}
+label .req{color:var(--red-t);margin-left:2px}
+input,select,textarea{font-family:var(--font);font-size:15px;color:var(--text);background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--rsm);padding:10px 12px;min-height:46px;width:100%;outline:none;-webkit-appearance:none;transition:border-color .15s,box-shadow .15s}
+select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235C6478' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+input:focus,select:focus,textarea:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(19,31,59,.12)}
+input::placeholder,textarea::placeholder{color:var(--hint)}
+input.err,select.err{border-color:var(--red-t);box-shadow:0 0 0 3px rgba(179,38,30,.1)}
+textarea{resize:vertical;min-height:80px}
+button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
+.ident-resumo{display:none;align-items:center;justify-content:space-between;gap:12px}
+.ident-resumo.show{display:flex}
+.ident-nome{font-size:16px;font-weight:600}
+.ident-sub{font-size:13px;color:var(--muted);margin-top:2px}
+.btn-trocar{background:transparent;border:1px solid var(--border-strong);color:var(--teal-t);border-radius:var(--rsm);padding:9px 14px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;min-height:40px}
+.btn-trocar:hover{border-color:var(--teal-t)}
+.pedido-add-row{display:grid;grid-template-columns:1fr 100px auto;gap:8px;align-items:flex-end;margin-bottom:10px}
+.pedido-add-row input{font-family:var(--mono);font-size:16px}
+.btn-add{padding:0 18px;background:var(--navy);color:#fff;border:none;border-radius:var(--rsm);font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;height:46px;display:flex;align-items:center;gap:5px}
+.btn-add:hover{background:var(--navy-2)}
+.pedido-list{display:flex;flex-direction:column;margin-top:4px;border:1px solid var(--border);border-radius:var(--rsm);overflow:hidden}
+.pedido-list:empty{border:none}
+.pedido-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface);border-top:1px solid var(--border);font-size:14px}
+.pedido-item:first-child{border-top:none}
+.pedido-item>div>div{background:var(--teal)!important}
+.pedido-num{font-family:var(--mono);font-weight:500;font-size:15px}
+.pedido-qt{color:var(--muted);font-size:13px}
+.pedido-del{background:transparent;border:none;color:var(--hint);cursor:pointer;font-size:22px;width:36px;height:36px;line-height:1;border-radius:var(--rsm)}
+.pedido-del:hover{color:var(--red-t);background:var(--red-bg)}
+.pedido-empty{font-size:13px;color:var(--hint);text-align:center;padding:20px;border:1px dashed var(--border-strong);border-radius:var(--rsm);margin-top:4px}
+.pedido-summary{display:flex;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.ps-item{flex:1;text-align:center}
+.ps-val{font-family:var(--mono);font-size:20px;font-weight:500}
+.ps-lbl{font-size:12px;color:var(--muted);margin-top:2px}
+.conf-info{background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:var(--rsm);padding:11px 14px;font-size:13px;color:var(--teal-t);margin-bottom:14px;line-height:1.5}
+.btn-submit{width:100%;min-height:52px;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-submit:hover{background:var(--navy-2)}
+.btn-submit:disabled{opacity:.55;cursor:not-allowed}
+.btn-submit svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.btn-submit.danger{background:var(--red-t)}.btn-submit.danger:hover{background:#951F18}
+.chart-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.chart-filters select{font-size:13px;min-height:38px;padding:7px 32px 7px 10px;width:auto}
+.chart-wrap{position:relative;width:100%;height:210px;margin-bottom:14px}
+.chart-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.cm{background:var(--bg);border-radius:var(--rsm);padding:10px 12px;border:1px solid var(--border)}
+.cm-lbl{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:3px}
+.cm-val{font-family:var(--mono);font-size:18px;font-weight:500}
+.hist-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.hist-item:last-child{border-bottom:none}
+.hist-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.hist-dot.ok{background:var(--green-t)}.hist-dot.err{background:var(--red-t)}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:500}
+.badge-warn{background:var(--orange-bg);color:var(--orange-t);border:1px solid var(--orange-b)}
+.race-track{background:var(--navy);border-radius:var(--radius);padding:16px;margin-bottom:8px;overflow:hidden}
+.race-lane{display:flex;align-items:center;gap:10px;margin-bottom:14px;position:relative}
+.race-lane:last-child{margin-bottom:0}
+.race-pos{font-family:var(--mono);font-size:13px;font-weight:500;color:#fff;min-width:24px;text-align:center;opacity:.7}
+.race-pos.first{color:var(--orange);opacity:1;font-size:16px}
+.race-pos.second{color:#D5DAE4;opacity:1}
+.race-pos.third{color:#C9A27A;opacity:1}
+.race-name{font-size:13px;font-weight:500;color:#fff;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.race-bar-wrap{flex:1;height:22px;background:rgba(255,255,255,.08);border-radius:20px;overflow:hidden;position:relative}
+.race-bar{height:100%;border-radius:20px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;transition:width .8s cubic-bezier(.34,1.56,.64,1);min-width:30px;position:relative}
+.race-bar::after{content:'🛞';position:absolute;right:-18px;font-size:16px;animation:roll .4s linear infinite}
+@keyframes roll{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.race-val{font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;position:absolute;right:28px;white-space:nowrap}
+.race-total{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.65);min-width:50px;text-align:right}
+.race-crown{font-size:14px;margin-left:2px}
+.race-meta{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 0;border-top:1px solid rgba(255,255,255,.12);margin-top:8px}
+.race-meta-txt{font-size:12px;color:rgba(255,255,255,.6)}
+.dup-alert{font-size:13px!important}
+.dup-alert.dup-warn{background:var(--orange-bg);color:var(--orange-t);border:1px solid var(--orange-b)}
+.dup-alert.dup-err{background:var(--red-bg);color:var(--red-t);border:1px solid var(--red-b)}
+.ped-conf-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--rsm);border:1px solid var(--border);margin-bottom:8px;background:var(--surface);transition:all .2s}
+.ped-conf-item.confirmado{background:var(--green-bg);border-color:var(--green-b)}
+.ped-conf-item.pendente{background:var(--surface)}
+.ped-conf-num{font-family:var(--mono);font-weight:600;font-size:15px;min-width:80px}
+.ped-conf-info{flex:1}
+.ped-conf-colab{font-size:14px;font-weight:500}
+.ped-conf-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.ped-conf-status{font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.ped-conf-status.ok{background:var(--green-bg);color:var(--green-t)}
+.ped-conf-status.pend{background:var(--orange-bg);color:var(--orange-t);border:1px solid var(--orange-b)}
+.btn-confirmar{padding:9px 14px;min-height:40px;background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-b);border-radius:var(--rsm);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn-confirmar:hover{background:var(--green-t);color:#fff}
+.btn-confirmar.confirmed{background:var(--green-t);color:#fff;cursor:default}
+.conf-resumo-card{flex:1;min-width:100px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;text-align:center}
+.conf-resumo-val{font-family:var(--mono);font-size:20px;font-weight:600}
+.conf-resumo-lbl{font-size:12px;color:var(--muted);margin-top:3px}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.card-sep{background:var(--navy);border:none}
+.card-sep .card-title{color:var(--orange)}
+.card-sep .card-title svg{stroke:var(--orange)}
+.reg-list{display:flex;flex-direction:column;gap:10px}
+.reg-item{display:grid;grid-template-columns:1fr auto;grid-template-areas:"info timer" "meta meta" "btn btn";gap:4px 12px;padding:0;background:transparent;border:none}
+.reg-item+.reg-item{padding-top:12px;border-top:1px solid #2A3A5E}
+.reg-info{grid-area:info;min-width:0}
+.reg-head{font-size:15px;font-weight:600;color:#fff}
+.reg-sub{font-size:13px;color:#C3C9D6;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+.reg-timer{grid-area:timer;font-family:var(--mono);font-size:28px;font-weight:500;color:#fff;text-align:right;align-self:start;line-height:1.1}
+.reg-item.late .reg-timer{color:var(--orange)}
+.reg-item.late .reg-head::after{content:'Atrasado';display:inline-block;margin-left:8px;font-size:11px;font-weight:700;color:#fff;background:#D64545;padding:2px 9px;border-radius:20px;vertical-align:2px;letter-spacing:.03em}
+.reg-conf{display:inline-block;margin-top:6px;font-size:12px;font-weight:600;color:#8FD1B0;background:rgba(47,125,91,.25);border-radius:20px;padding:2px 10px}
+.fila-cont{font-family:var(--mono);font-size:13px;background:var(--navy);color:#fff;border-radius:20px;padding:2px 10px}
+#fila-lista{border:1px solid var(--border);border-radius:var(--rsm);max-height:320px;overflow:auto}
+.fila-it{display:flex;align-items:center;gap:12px;padding:10px 12px;border-top:1px solid var(--border);cursor:pointer;background:#fff}
+.fila-it:first-child{border-top:none}
+.fila-it:hover{background:var(--bg)}
+.fila-it input{-webkit-appearance:auto;appearance:auto;width:20px;height:20px;min-height:0;padding:0;margin:0;border:none;box-shadow:none;accent-color:var(--navy);flex-shrink:0;cursor:pointer}
+.fila-it:has(input:checked:not(:disabled)){background:#EAF2F2}
+.fila-it.nolote{opacity:.55;cursor:default}
+.fila-num{font-family:var(--mono);font-weight:500;font-size:15px}
+.fila-qt{color:var(--muted);font-size:13px}
+.fila-t{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--hint)}
+.fila-vazia{padding:16px;text-align:center;color:var(--hint);font-size:13px}
+.fila-acoes{display:flex;gap:8px;margin-top:10px}
+.reg-meta{grid-area:meta;display:flex;align-items:center;gap:10px;margin-top:8px}
+.reg-bar{flex:1;height:8px;background:#2A3A5E;border-radius:6px;overflow:hidden}
+.reg-bar>div{height:100%;background:var(--teal);border-radius:6px;transition:width .6s}
+.reg-meta-txt{font-family:var(--mono);font-size:12px;color:#C3C9D6;white-space:nowrap;min-width:92px;text-align:right}
+.reg-item.late .reg-bar>div{background:#D64545}
+.reg-item.late .reg-meta-txt{color:#FF9B9B;font-weight:600}
+.reg-item.late .reg-timer{color:#FF9B9B}
+.card-sep:has(.reg-item.late){box-shadow:0 0 0 3px #D64545}
+.btn-fin{grid-area:btn;margin-top:10px;width:100%;min-height:50px;padding:12px;background:var(--orange);color:var(--navy);border:none;border-radius:var(--rsm);font-family:var(--font);font-size:16px;font-weight:600;cursor:pointer}
+.btn-fin:hover{background:#EC9A40}
+.btn-fin:disabled{opacity:.6;cursor:not-allowed}
+.btn-submit.blocked{background:var(--muted)}
+.reg-undo{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:rgba(47,125,91,.22);border:1px solid rgba(181,216,197,.35);border-radius:var(--rsm);font-size:14px;color:#D6EDE1;font-weight:500}
+.reg-undo button{background:transparent;border:1px solid #D6EDE1;color:#fff;border-radius:var(--rsm);padding:8px 14px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;min-height:38px}
+.reg-empty{font-size:13px;color:var(--navy-soft);text-align:center;padding:14px}
+@media(max-width:480px){.topbar{padding:10px 14px 14px;gap:10px}.tb-logo{height:22px}.tb-sub{display:none}.form-grid{grid-template-columns:1fr}.pedido-add-row{grid-template-columns:1fr 82px auto}.chart-metrics{grid-template-columns:repeat(2,1fr)}.tab-btn{font-size:12px;padding:9px 4px}.tab-btn span{font-size:10px}.card{padding:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
-<div class="c">
-<h2>O Sistema Mauer mudou de endereço</h2>
-<p>Redirecionando... Se não abrir sozinho, clique:</p>
-<p><a href="https://mauer-produtividade.web.app/colaborador.html">https://mauer-produtividade.web.app/colaborador.html</a></p>
-<p style="font-size:13px;color:#cbd5e1">Atualize o seu atalho/favorito para o novo endereço.</p>
+<div class="topbar">
+  <img class="tb-logo" src="logo-mauer-branco.png" alt="Grupo Mauer" onerror="this.outerHTML='<span style=&quot;color:#fff;font-weight:600;letter-spacing:.08em&quot;>MAUER</span>'">
+  <div class="tb-sep"></div>
+  <div><div class="tb-title">Separação</div><div class="tb-sub">Preenchimento diário</div></div>
+  <div class="tb-status loading" id="status-badge">Conectando...</div>
 </div>
+
+<div class="container">
+  <div class="alert alert-ok" id="alert-ok"><span id="alert-ok-msg">Salvo!</span></div>
+  <div class="alert alert-err" id="alert-err"><span id="err-msg">Erro.</span></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="setTab('pedido',this)">Registrar pedido<span>Separador</span></button>
+    <button class="tab-btn" onclick="setTab('confirmar',this)">Confirmar<span>Conferência</span></button>
+    <button class="tab-btn" onclick="setTab('conferente',this)">Conferente<span>Lançar erros</span></button>
+    <button class="tab-btn" onclick="setTab('grafico',this)">Corrida<span>Ranking ao vivo</span></button>
+  </div>
+
+  <!-- TAB 1: PEDIDOS -->
+  <div class="tab-content active" id="tab-pedido">
+    <button type="button" onclick="abrirTutorial()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 12px;padding:12px 16px;border:2px dashed #E38A29;border-radius:12px;background:#FFF6EC;color:#9C5A12;font-weight:700;font-size:15px;cursor:pointer">❓ Dúvida? Veja como lançar pedidos (passo a passo com imagens)</button>
+    <div class="card">
+      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Identificação</div>
+      <div class="ident-resumo" id="ident-resumo"><div><div class="ident-nome" id="ident-nome"></div><div class="ident-sub" id="ident-sub"></div></div><button type="button" class="btn-trocar" onclick="trocarIdent()">Trocar</button></div>
+      <div class="form-grid" id="ident-form">
+        <div class="form-group"><label>Filial <span class="req">*</span></label><select id="p-filial" onchange="loadColabs('p-filial','p-colab');carregarRegistrosAbertos();atualizarIdent()"><option value="">Selecione</option></select></div>
+        <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="p-date" onchange="atualizarIdent()"></div>
+        <div class="form-group full"><label>Colaborador <span class="req">*</span></label><select id="p-colab" onchange="carregarRegistrosAbertos();atualizarIdent();verificarBloqueio()"><option value="">Selecione a filial primeiro</option></select></div>
+      </div>
+      <div id="trava-filial" style="margin-top:10px;font-size:13px"></div>
+    </div>
+    <div class="card card-sep" id="card-em-separacao" style="display:none">
+      <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 15"/><line x1="10" y1="2" x2="14" y2="2"/></svg>Em separação</div>
+      <div class="reg-list" id="reg-abertos"><div class="reg-empty">Selecione filial e colaborador</div></div>
+    </div>
+    <div class="card" id="card-fila-aro" style="display:none">
+      <div class="card-title" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/></svg>Pedidos do Aro para separar</span><span style="display:flex;align-items:center;gap:8px"><button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="carregarFilaAro()">Atualizar</button><span class="fila-cont" id="fila-cont">0</span></span></div>
+      <div class="card-sub">Marque os pedidos que você vai separar e clique em Adicionar ao lote.</div>
+      <div id="fila-lista"></div>
+      <div class="fila-acoes">
+        <button type="button" class="btn-trocar" onclick="filaMarcarTodos()">Marcar todos</button>
+        <button type="button" class="btn-add" id="fila-add" onclick="filaAdicionar()" style="flex:1;justify-content:center">Adicionar ao lote</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Pedidos separados</div>
+      <p class="card-sub">Adicione os pedidos um a um para rastreamento individual</p>
+      <div class="pedido-add-row">
+        <div class="form-group" style="margin:0"><label>Nº do pedido</label><input type="text" id="p-num" placeholder="Ex: 299226" autocomplete="off" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'');agendarQtdPedido()" onkeydown="if(event.key==='Enter'){event.preventDefault();enterNumPedido();}"></div>
+        <div class="form-group" style="margin:0"><label>Qtd pneus</label><input type="number" id="p-qt" min="1" placeholder="0" oninput="qtdEditada()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPedido()}"></div>
+        <button class="btn-add" id="add-pedido-btn" onclick="addPedido()">+ Add</button>
+      </div>
+      <div id="qt-info" style="font-size:12px;min-height:16px;margin:-4px 0 6px"></div>
+      <div id="dup-alert" style="display:none;padding:10px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500;margin-bottom:8px"></div>
+      <div class="pedido-list" id="pedido-list"></div>
+      <div class="pedido-empty" id="pedido-empty">Nenhum pedido adicionado ainda</div>
+      <div class="pedido-summary" id="pedido-summary" style="display:none">
+        <div class="ps-item"><div class="ps-val" id="ps-total-ped">0</div><div class="ps-lbl">Pedidos</div></div>
+        <div class="ps-item"><div class="ps-val" id="ps-total-pn">0</div><div class="ps-lbl">Pneus</div></div>
+      </div>
+    </div>
+    <button class="btn-submit" id="btn-salvar-pedidos" onclick="salvarPedidos()">
+      <svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>Iniciar separação
+    </button>
+    <div class="card" style="margin-top:18px">
+      <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Pedidos registrados hoje</div>
+      <div id="pedido-history"><div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum pedido hoje</div></div>
+    </div>
+  </div>
+
+  <!-- TAB 2: CONFERENTE -->
+  <div class="tab-content" id="tab-conferente">
+    <div class="conf-info"><strong>Aba do conferente</strong> — Registre os erros encontrados durante a conferência. Aparecem em tempo real no painel do gestor.</div>
+    <div class="card">
+      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Identificação</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Filial <span class="req">*</span></label><select id="cf-filial" onchange="loadColabs('cf-filial','cf-colab');loadConferentes('cf-filial','cf-nome')"><option value="">Selecione</option></select></div>
+        <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="cf-date"></div>
+        <div class="form-group"><label>Conferente <span class="req">*</span></label><select id="cf-nome"><option value="">Selecione o conferente</option></select></div>
+        <div class="form-group"><label>Colaborador com erro <span class="req">*</span></label><select id="cf-colab"><option value="">Selecione a filial primeiro</option></select></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Detalhes do erro</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Motivo <span class="req">*</span></label>
+          <select id="cf-motivo"><option value="">Selecione</option><option>Medida invertida</option><option>Pneu a mais</option><option>Pneu a menos</option><option>Etiqueta faltando</option><option>Doca errada</option><option>Sem nome</option><option>Outro</option></select>
+        </div>
+        <div class="form-group full"><label>Nº pedido com erro</label>
+          <input type="text" id="cf-pedido-err" placeholder="Ex: 299226" autocomplete="off" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'');buscarSeparador(this.value)">
+          <div id="separador-info" style="display:none;margin-top:6px;padding:9px 12px;background:var(--green-bg);border:1px solid var(--green-b);border-radius:var(--rsm);font-size:13px;color:var(--green-t)"></div>
+          <div id="separador-nao-found" style="display:none;margin-top:6px;padding:9px 12px;background:var(--amber-bg);border:1px solid var(--amber-b);border-radius:var(--rsm);font-size:13px;color:var(--amber-t)"></div>
+        </div>
+        <div class="form-group full"><label>Observação</label><textarea id="cf-obs" placeholder="Descreva o erro..."></textarea></div>
+      </div>
+    </div>
+    <button class="btn-submit danger" id="btn-salvar-erro" onclick="salvarErro()">
+      <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Registrar erro
+    </button>
+    <div class="card" style="margin-top:18px">
+      <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Erros registrados hoje</div>
+      <div id="erro-history"><div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum erro hoje</div></div>
+    </div>
+  </div>
+
+  <!-- TAB 3: CONFIRMAR -->
+  
+<!-- ===== ABA OCULTA DO ROBÔ: abre só com colaborador.html?robo=1 ===== -->
+<div class="tab-content" id="tab-robo">
+  <div class="card">
+    <div class="card-title"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/></svg>Aro | lançamento automático</div>
+    <div class="card-sub">Uso exclusivo do Aro, o robô de lançamentos. Liberado para: <b id="robo-liberadas"></b></div>
+    <div style="margin:12px 0 4px;font-size:13px;font-weight:600">Filiais que o Aro pode lançar <span style="font-weight:400;color:var(--hint)">(toque para pausar ou voltar)</span></div>
+    <div id="robo-casas" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Filial</label><select id="robo-filial"></select></div>
+      <div class="form-group"><label>Data</label><input type="date" id="robo-data"></div>
+      <div class="form-group full"><label>Pedidos: um por linha, no formato numero;quantidade</label><textarea id="robo-pedidos" rows="6" placeholder="363582;16&#10;363583;8" style="font-family:var(--mono)"></textarea></div>
+    </div>
+    <button class="btn-submit" id="robo-enviar" style="margin-top:14px" onclick="roboEnviar()">Enviar para a fila de separação</button>
+    <div id="robo-status" data-state="pronto" style="margin-top:12px;padding:10px 12px;border-radius:var(--rsm);font-size:14px;font-weight:500;background:var(--bg);border:1px solid var(--border)">Aro pronto</div>
+    <div style="margin-top:14px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center">Fila atual da filial <button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="roboMostrarFila()">Atualizar</button> <button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="roboLimparDuplicados()">Limpar duplicados</button></div>
+    <div id="robo-fila" style="margin-top:6px;border:1px solid var(--border);border-radius:var(--rsm);max-height:220px;overflow:auto;font-size:13px"></div>
+    <pre id="robo-resultado" style="margin-top:10px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;max-height:240px;overflow:auto">{}</pre>
+  </div>
+</div>
+<div class="tab-content" id="tab-confirmar">
+    <div class="card" style="margin-bottom:12px;background:var(--orange);border:none;text-align:center;padding:28px 18px">
+      <div style="font-size:44px;line-height:1">📲</div>
+      <div style="color:#fff;font-size:clamp(24px,6vw,40px);font-weight:800;line-height:1.15;letter-spacing:.01em;margin-top:10px;text-transform:uppercase">Use o tablet Mauer pra conferir os pedidos da sua filial</div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:4px;justify-content:space-between;display:flex;align-items:center">
+        <span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Pedidos aguardando conferência</span>
+        <span id="ab-total" class="badge badge-warn"></span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Pedidos separados nos últimos 3 dias que ainda não foram conferidos. Atualiza sozinho.</div>
+      <div id="ab-lista"><div style="text-align:center;color:var(--hint);padding:16px">Carregando…</div></div>
+      <div id="ab-hora" style="font-size:11px;color:var(--hint);margin-top:10px;text-align:right"></div>
+    </div>
+    <div style="display:none" aria-hidden="true">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:12px">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Confirmar pedidos conferidos
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:var(--rsm);padding:10px 14px;color:#1a4b8c">
+        Selecione sua filial para ver os pedidos separados hoje. Confirme cada pedido após a conferência física.
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px">
+          <label style="font-size:11px;font-weight:500;color:var(--muted)">Filial</label>
+          <select id="conf-filial-check" onchange="carregarConferentesParaConfirmar()" style="font-size:14px;">
+            <option value="">Selecione</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px">
+          <label style="font-size:11px;font-weight:500;color:var(--muted)">Conferente</label>
+          <select id="conf-conferente-check" style="font-size:14px;">
+            <option value="">Selecione a filial primeiro</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:120px">
+          <label style="font-size:11px;font-weight:500;color:var(--muted)">Data</label>
+          <input type="date" id="conf-data-check" style="font-size:14px;">
+        </div>
+        <button onclick="carregarPedidosParaConferir()" style="padding:9px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;align-self:flex-end">Ver pedidos</button>
+      </div>
+      <div id="conf-resumo" style="display:none;margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap"></div>
+
+      <!-- Busca rápida por número -->
+      <div id="conf-busca-wrap" style="display:none;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Confirmar por número do pedido</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="conf-busca-num" inputmode="numeric" placeholder="Digite o nº do pedido..." autocomplete="off"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarPorNumero()}"
+            style="flex:1;font-family:var(--font);font-size:14px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;outline:none;-webkit-appearance:none">
+          <button onclick="confirmarPorNumero()" style="padding:10px 16px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">✓ Confirmar</button>
+        </div>
+        <div id="conf-busca-msg" style="margin-top:6px;font-size:12px;display:none"></div>
+      </div>
+
+      <div id="conf-pedidos-list">
+        <div style="text-align:center;padding:32px;color:var(--hint);font-size:13px">Selecione a filial e data para ver os pedidos</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- TAB 4: GRÁFICO -->
+  <div class="tab-content" id="tab-grafico">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:10px">🏁 Ranking de corrida — hoje</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <select id="g-filial" onchange="loadChartColabs()" style="font-size:14px;flex:1">
+          <option value="">Selecione a filial</option>
+        </select>
+        <button onclick="renderRankingCorrida()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer">Atualizar</button>
+      </div>
+      <div id="ranking-corrida-wrap">
+        <div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>
+      </div>
+    </div>
+
+    <div class="card" id="card-rank-geral" style="margin-bottom:12px;display:none">
+      <div class="card-title" style="margin-bottom:10px">🌎 Ranking geral — todas as filiais</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">De</label>
+          <input type="date" id="geral-date-ini" style="font-size:14px;width:100%">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">Até</label>
+          <input type="date" id="geral-date-fim" style="font-size:14px;width:100%">
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="setGeralPeriodo('hoje')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:var(--font);font-size:12px;cursor:pointer">Hoje</button>
+          <button onclick="setGeralPeriodo('mes')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:var(--font);font-size:12px;cursor:pointer">Mês</button>
+          <button onclick="renderRankingGeral()" style="padding:6px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer">Buscar</button>
+        </div>
+      </div>
+      <div id="ranking-geral-wrap"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Meu histórico</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="g-colab" onchange="renderChart()" style="font-size:14px;flex:1">
+          <option value="">Selecione o colaborador</option>
+        </select>
+      </div>
+      <div class="chart-metrics" id="chart-metrics" style="display:none"></div>
+      <div class="chart-wrap" id="chart-wrap" style="display:none"><canvas id="myChart"></canvas></div>
+      <div id="chart-empty" style="text-align:center;padding:24px;color:var(--hint);font-size:13px">Selecione um colaborador</div>
+    </div>
+  
+  <!-- TAB: RANKING CONFERENTES -->
+  <div class="tab-content" id="tab-rank-conf">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:10px">🎖️ Ranking conferentes — hoje</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <select id="rc-filial" onchange="renderRankingConferentes()" style="font-size:14px;flex:1">
+          <option value="">Selecione a filial</option>
+        </select>
+        <button onclick="renderRankingConferentes()" style="padding:7px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer">Atualizar</button>
+      </div>
+      <div id="rc-today-wrap">
+        <div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">🌎 Ranking geral conferentes</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">De</label>
+          <input type="date" id="rc-date-ini" style="font-size:14px;width:100%">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px">
+          <label style="font-size:11px;color:var(--muted);font-weight:500">Até</label>
+          <input type="date" id="rc-date-fim" style="font-size:14px;width:100%">
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="setRcPeriodo('hoje')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:var(--font);font-size:12px;cursor:pointer">Hoje</button>
+          <button onclick="setRcPeriodo('mes')" style="padding:6px 12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--rsm);font-family:var(--font);font-size:12px;cursor:pointer">Mês</button>
+          <button onclick="renderRankingConferentesGeral()" style="padding:6px 14px;background:var(--text);color:#fff;border:none;border-radius:var(--rsm);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer">Buscar</button>
+        </div>
+      </div>
+      <div id="rc-geral-wrap"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// Data AAAA-MM-DD no fuso de Brasília (toISOString usa UTC e vira o dia seguinte depois das 21h)
+function dataBR(d){return (d||new Date()).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
+
+const FB_URL = 'https://mauer-produtividade-default-rtdb.firebaseio.com';
+
+async function fbGet(path){const r=await fetch(`${FB_URL}/${path}.json`);return await r.json();}
+// ===== MODO SEM INTERNET =====
+// Gravações que falham por falta de rede ficam guardadas neste aparelho (na ordem) e são enviadas sozinhas
+// quando a conexão volta. Cada registro novo já nasce com a chave definitiva, então reenviar nunca duplica.
+const OFF_KEY='mauerFilaOffline';
+const PUSH_CHARS='-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';let _pushT=0,_pushR=[];
+function gerarPushId(){let now=Date.now();const dup=now===_pushT;_pushT=now;const ts=[];for(let i=7;i>=0;i--){ts[i]=PUSH_CHARS.charAt(now%64);now=Math.floor(now/64);}
+  let id=ts.join('');if(!dup){for(let i=0;i<12;i++)_pushR[i]=Math.floor(Math.random()*64);}else{let i;for(i=11;i>=0&&_pushR[i]===63;i--)_pushR[i]=0;_pushR[i]++;}
+  for(let i=0;i<12;i++)id+=PUSH_CHARS.charAt(_pushR[i]);return id;}
+function offLer(){try{return JSON.parse(localStorage.getItem(OFF_KEY)||'[]');}catch(e){return[];}}
+function offSalvar(q){try{localStorage.setItem(OFF_KEY,JSON.stringify(q));}catch(e){}}
+function ehErroRede(e){return !!e&&(e.name==='TypeError'||/failed to fetch|networkerror|load failed|network/i.test(String(e.message||'')));}
+async function fbEscrever(metodo,path,data){
+  const q=offLer();
+  if(q.length){q.push({metodo,path,data,em:Date.now()});offSalvar(q);offAviso();offEnviar();return null;} // mantém a ordem do que já está esperando
+  try{const r=await fetch(`${FB_URL}/${path}.json`,{method:metodo,body:JSON.stringify(data)});if(!r.ok)throw new Error(metodo+' '+r.status);return await r.json();}
+  catch(e){if(!ehErroRede(e))throw e;q.push({metodo,path,data,em:Date.now()});offSalvar(q);offAviso();return null;}
+}
+async function fbPost(path,data){const k=gerarPushId();await fbEscrever('PUT',path+'/'+k,data);return{name:k};}
+async function fbPatch(path,data){return fbEscrever('PATCH',path,data);}
+let offEnviando=false,offTinha=false;
+async function offEnviar(){
+  if(offEnviando)return;offEnviando=true;
+  try{
+    let q=offLer();
+    while(q.length){
+      const it=q[0];let ok=false;
+      try{const r=await fetch(`${FB_URL}/${it.path}.json`,{method:it.metodo,body:JSON.stringify(it.data)});
+        if(r.ok)ok=true;else if(r.status>=400&&r.status<500){ok=true;try{const er=JSON.parse(localStorage.getItem(OFF_KEY+'Erros')||'[]');er.push({...it,status:r.status});localStorage.setItem(OFF_KEY+'Erros',JSON.stringify(er.slice(-50)));}catch(e){}}}
+      catch(e){break;}
+      if(!ok)break;
+      q=offLer();q.shift();offSalvar(q);
+    }
+  }finally{offEnviando=false;offAviso();}
+}
+function offAviso(){
+  const n=offLer().length;let el=document.getElementById('aviso-offline');
+  if(!el){el=document.createElement('div');el.id='aviso-offline';el.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9990;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));font:600 14px/1.35 system-ui,sans-serif;text-align:center;display:none;box-shadow:0 -4px 16px rgba(0,0,0,.18)';document.body.appendChild(el);}
+  if(n){offTinha=true;el.style.display='';el.style.background='#E38A29';el.style.color='#fff';
+    el.textContent='📶 Sem internet: '+n+' lançamento(s) guardado(s) neste aparelho. Eles vão ser enviados sozinhos quando a conexão voltar. Não limpe os dados do navegador.';}
+  else if(offTinha){offTinha=false;el.style.display='';el.style.background='#2F7D5B';el.style.color='#fff';el.textContent='✓ Conexão voltou: tudo que estava guardado foi enviado.';
+    setTimeout(()=>{if(!offLer().length)el.style.display='none';},5000);}
+  else el.style.display='none';
+}
+window.addEventListener('online',()=>offEnviar());
+setInterval(()=>{if(offLer().length)offEnviar();},15000);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{offAviso();offEnviar();});else setTimeout(()=>{offAviso();offEnviar();},0);
+// Consulta filtrada por campo (precisa de ".indexOn" nas regras do Firebase).
+// Se o índice não existir, cai para o download completo — nunca quebra.
+async function fbQuery(path,field,opts){
+  const qs=['orderBy='+encodeURIComponent(JSON.stringify(field))];
+  if(opts.equalTo!==undefined)qs.push('equalTo='+encodeURIComponent(JSON.stringify(opts.equalTo)));
+  if(opts.startAt!==undefined)qs.push('startAt='+encodeURIComponent(JSON.stringify(opts.startAt)));
+  try{
+    const r=await fetch(`${FB_URL}/${path}.json?`+qs.join('&'));
+    const d=await r.json();
+    if(r.ok && !(d&&d.error))return d;
+    console.warn('Índice ausente em '+path+'/'+field+' — usando download completo');
+  }catch(e){console.warn(e);}
+  const all=await fbGet(path);
+  if(!all)return all;
+  const out={};
+  Object.entries(all).forEach(([k,v])=>{
+    const val=v&&v[field];
+    if(opts.equalTo!==undefined&&val!==opts.equalTo)return;
+    if(opts.startAt!==undefined&&!(val>=opts.startAt))return;
+    out[k]=v;
+  });
+  return out;
+}
+
+let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
+let pedidosTemp=[];
+// Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
+const APP_VERSAO='2026-11-04-b';
+async function checarVersao(){
+  if(location.protocol==='file:')return false;
+  try{
+    const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});
+    const txt=await r.text();
+    const m=txt.match(/const APP_VERSAO='([^']+)'/);
+    if(m&&m[1]!==APP_VERSAO){
+      if(pedidosTemp.length)return false; // não recarrega com pedidos na lista
+      location.reload();return true;
+    }
+  }catch(e){}
+  return false;
+}
+setInterval(checarVersao,5*60000);
+// ---------- reabertura automática a cada 10 min (pega sempre a versão nova) ----------
+// Só reabre com o app parado: sem pedido no lote, nada digitado, nenhuma tela por cima e sem mexer nos últimos 20 s.
+// Nome, filial e data escolhidos voltam sozinhos depois de reabrir. A tela do Aro (?robo=1) nunca reabre.
+const REABRIR_MIN=10,abertoEm=Date.now(),IDENT_KEY='mauerReabrirIdent';let ultimaAcao=Date.now();
+['pointerdown','keydown','input'].forEach(ev=>document.addEventListener(ev,()=>{ultimaAcao=Date.now();},true));
+function temTelaPorCima(){return [...document.body.children].some(e=>e.id!=='aviso-offline'&&getComputedStyle(e).position==='fixed'&&getComputedStyle(e).display!=='none'&&Number(getComputedStyle(e).zIndex)>=9000);}
+function podeReabrir(){
+  if(MODO_ROBO)return false;
+  const b=document.getElementById('btn-salvar-pedidos'),n=document.getElementById('p-num');
+  return !pedidosTemp.length&&!(n&&n.value)&&!(b&&b.dataset.busy==='1')&&!temTelaPorCima()&&Date.now()-ultimaAcao>20000;
+}
+function reabrir(){
+  try{sessionStorage.setItem(IDENT_KEY,JSON.stringify({filial:document.getElementById('p-filial').value,colab:document.getElementById('p-colab').value,data:document.getElementById('p-date').value,aba:(document.querySelector('.tab-content.active')||{}).id||'',em:Date.now()}));}catch(e){}
+  const u=new URL(location.href);u.searchParams.set('r',Date.now());location.replace(u.toString());
+}
+function checarReabertura(){if(Date.now()-abertoEm>=REABRIR_MIN*60000&&podeReabrir())reabrir();}
+setInterval(checarReabertura,30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-abertoEm>=REABRIR_MIN*60000){const u=ultimaAcao;ultimaAcao=0;if(podeReabrir())reabrir();else ultimaAcao=u;}});
+function restaurarIdentReabertura(){
+  let d=null;try{d=JSON.parse(sessionStorage.getItem(IDENT_KEY)||'null');sessionStorage.removeItem(IDENT_KEY);}catch(e){}
+  if(!d||Date.now()-d.em>5*60000)return;
+  const pf=document.getElementById('p-filial'),pc=document.getElementById('p-colab'),pd=document.getElementById('p-date');
+  if(d.filial&&!pf.disabled&&[...pf.options].some(o=>o.value===d.filial)){pf.value=d.filial;loadColabs('p-filial','p-colab');}
+  if(d.colab&&pf.value===d.filial&&[...pc.options].some(o=>o.value===d.colab))pc.value=d.colab;
+  if(d.data===getBrasiliaDateStr())pd.value=d.data;
+  carregarRegistrosAbertos();atualizarIdent();verificarBloqueio();if(typeof carregarFilaAro==='function')carregarFilaAro();
+}
+setInterval(()=>{if(document.getElementById('p-colab')?.value&&!MODO_ROBO_SAFE())carregarFilaAro();},15000);
+function MODO_ROBO_SAFE(){try{return MODO_ROBO;}catch(e){return false;}}
+// Atualiza o card "Em separação" (ex.: lote finalizado pela conferência)
+setInterval(()=>{const b=document.getElementById('btn-salvar-pedidos');if(b&&b.dataset.busy==='1')return;if(document.querySelector('.reg-undo'))return;if(document.getElementById('p-colab')?.value)carregarRegistrosAbertos();},30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checarVersao();});
+let registrosAbertos=[], metaPneusHora=50, regTimerInt=null;
+// Tempo-meta do lote: pneus ÷ meta (pneus/hora-homem), mínimo de 5 minutos
+function metaMinRegistro(r){return Math.max(5,Math.ceil((Number(r.totalPneus)||0)/metaPneusHora*60));}
+
+
+
+let conferentesData = {};
+
+async function carregarConferentesData() {
+  try {
+    const data = await fbGet('conferentes');
+    conferentesData = {};
+    if(data){
+      Object.entries(data).forEach(([k,v])=>{
+        if(!conferentesData[v.filial]) conferentesData[v.filial]=[];
+        conferentesData[v.filial].push(v.nome);
+      });
+    }
+  } catch(e){ console.error(e); }
+}
+
+
+let buscarTimer = null;
+
+async function buscarSeparador(num) {
+  const infoEl = document.getElementById('separador-info');
+  const naoEl  = document.getElementById('separador-nao-found');
+  const colabSel = document.getElementById('cf-colab');
+  
+  // Hide both
+  infoEl.style.display = 'none';
+  naoEl.style.display  = 'none';
+  
+  if(!num || num.length < 4) return;
+  
+  // Debounce - espera 600ms após parar de digitar
+  clearTimeout(buscarTimer);
+  buscarTimer = setTimeout(async () => {
+    try {
+      const data = await fbQuery('lancamentos','data',{startAt:dataMenos(30)});
+      const todos = data ? Object.values(data) : [];
+      
+      // Busca pedido pelo número exato
+      const pedido = todos.find(l => l.isPedido && l.numPedido === num);
+      
+      if(pedido) {
+        // Preenche o colaborador automaticamente
+        infoEl.style.display = '';
+        infoEl.innerHTML = `✅ Pedido <strong>${num}</strong> separado por <strong>${pedido.colaborador}</strong> — ${pedido.filial} em ${pedido.data.split('-').reverse().join('/')}`;
+        
+        // Seleciona o colaborador automaticamente no select
+        const opts = colabSel.options;
+        for(let i=0;i<opts.length;i++){
+          if(opts[i].value === pedido.colaborador || opts[i].text === pedido.colaborador){
+            colabSel.value = opts[i].value;
+            colabSel.classList.add('ok');
+            setTimeout(()=>colabSel.classList.remove('ok'),2000);
+            break;
+          }
+        }
+        
+        // Se filial do pedido diferente da selecionada, avisa
+        const filialSel = document.getElementById('cf-filial').value;
+        if(filialSel && pedido.filial !== filialSel){
+          infoEl.innerHTML += `<br><span style="color:var(--amber-t)">⚠ Este pedido é da filial <strong>${pedido.filial}</strong>, diferente da selecionada.</span>`;
+        }
+      } else {
+        naoEl.style.display = '';
+        naoEl.textContent = `⚠ Pedido ${num} não encontrado no sistema.`;
+      }
+    } catch(e){ console.error(e); }
+  }, 600);
+}
+
+
+function loadConferentes(filialId, selId) {
+  const filial = document.getElementById(filialId).value;
+  const sel = document.getElementById(selId);
+  const confs = (filial && conferentesData[filial]) || [];
+  sel.innerHTML = confs.length
+    ? '<option value="">Selecione o conferente</option>' + confs.map(c=>`<option>${c}</option>`).join('')
+    : '<option value="">Nenhum conferente cadastrado</option>';
+}
+
+
+function getBrasiliaTimestamp() {
+  // Sempre salva o timestamp UTC — a conversão é feita na exibição
+  return Date.now();
+}
+
+function getBrasiliaDateStr() {
+  // Retorna a data atual no fuso de Brasilia (YYYY-MM-DD)
+  return new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).split('/').reverse().join('-');
+}
+
+
+
+// ============================================================
+// ABA CONFIRMAR PEDIDOS
+// ============================================================
+
+
+async function confirmarPorNumero() {
+  const numEl = document.getElementById('conf-busca-num');
+  const msgEl = document.getElementById('conf-busca-msg');
+  const num = numEl?.value?.trim();
+  if(!num) { showMsg(msgEl,'⚠ Digite o número do pedido.','warn'); return; }
+
+  const filial = document.getElementById('conf-filial-check')?.value;
+  const confSel = document.getElementById('conf-conferente-check');
+  const conferente = confSel?.value || '';
+  if(!filial) { showMsg(msgEl,'⚠ Selecione a filial primeiro.','warn'); return; }
+  if(!conferente) { showMsg(msgEl,'⚠ Selecione o conferente.','warn'); return; }
+
+  const hoje = document.getElementById('conf-data-check')?.value || getBrasiliaDateStr();
+
+  showMsg(msgEl,'Buscando...','info');
+
+  try {
+    const [lancData, confData] = await Promise.all([fbQuery('lancamentos','data',{startAt:dataMenos(7)}), fbQuery('confirmacoes','data',{startAt:dataMenos(7)})]);
+    const todos = lancData ? Object.values(lancData) : [];
+    const confs = confData ? Object.values(confData) : [];
+
+    // Find pedido
+    const pedido = todos.find(l => l.isPedido && String(l.numPedido) === String(num) && l.filial === filial && l.data === hoje);
+    if(!pedido) {
+      // Try other dates
+      const pedidoOutraData = todos.find(l => l.isPedido && String(l.numPedido) === String(num) && l.filial === filial);
+      if(pedidoOutraData) {
+        showMsg(msgEl,'⚠ Pedido '+num+' encontrado em '+pedidoOutraData.data.split("-").reverse().join("/")+" — selecione a data correta.",'warn');
+      } else {
+        showMsg(msgEl,'❌ Pedido '+num+' não encontrado nesta filial nesta data.','err');
+      }
+      return;
+    }
+
+    // Already confirmed?
+    const jaConf = confs.find(c => String(c.numPedido) === String(num) && c.filial === filial && c.data === hoje);
+    if(jaConf) {
+      showMsg(msgEl,'✅ Pedido '+num+' já foi conferido por '+jaConf.conferente+'.','ok');
+      numEl.value = '';
+      return;
+    }
+
+    // Confirm it
+    await fbPost('confirmacoes', {
+      numPedido: num,
+      filial,
+      data: hoje,
+      colaborador: pedido.colaborador,
+      qtd: Number(pedido.qtdPedido || 0),
+      conferente,
+      timestamp: Date.now()
+    });
+
+    showMsg(msgEl,'✅ Pedido #'+num+' de '+pedido.colaborador+' confirmado por '+conferente+'!','ok');
+    numEl.value = '';
+    numEl.focus();
+
+    // Remove from visible list if loaded
+    const item = document.getElementById('pci-'+num);
+    if(item) {
+      item.style.transition='all .3s';
+      item.style.opacity='0';
+      item.style.transform='translateX(20px)';
+      setTimeout(()=>{ item.remove(); }, 300);
+    }
+    // Update resumo
+    setTimeout(carregarPedidosParaConferir, 700);
+
+  } catch(e) {
+    showMsg(msgEl,'❌ Erro ao confirmar. Tente novamente.','err');
+    console.error(e);
+  }
+}
+
+function showMsg(el, txt, tipo) {
+  if(!el) return;
+  el.style.display = '';
+  el.style.color = tipo==='ok'?'var(--green-t)':tipo==='err'?'var(--red-t)':tipo==='warn'?'var(--amber-t)':'var(--muted)';
+  el.textContent = txt;
+  if(tipo==='ok') setTimeout(()=>{ el.style.display='none'; }, 3000);
+}
+
+
+async function carregarConferentesParaConfirmar() {
+  const filial = document.getElementById('conf-filial-check')?.value;
+  const sel = document.getElementById('conf-conferente-check');
+  if(!sel) return;
+  if(!filial) { sel.innerHTML='<option value="">Selecione a filial primeiro</option>'; return; }
+  const confs = conferentesData[filial] || [];
+  if(!confs.length) {
+    sel.innerHTML='<option value="">Nenhum conferente cadastrado</option>';
+  } else {
+    sel.innerHTML='<option value="">Selecione o conferente</option>'+confs.map(c=>'<option>'+c+'</option>').join('');
+  }
+  carregarPedidosParaConferir();
+}
+
+async function carregarPedidosParaConferir() {
+  const filial = document.getElementById('conf-filial-check')?.value;
+  const data   = document.getElementById('conf-data-check')?.value;
+  const listEl = document.getElementById('conf-pedidos-list');
+  const resumoEl = document.getElementById('conf-resumo');
+  if(!listEl) return;
+  if(!filial) {
+    listEl.innerHTML='<div style="text-align:center;padding:32px;color:var(--hint);font-size:13px">Selecione a filial e data</div>';
+    return;
+  }
+  listEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--hint);font-size:13px">Carregando pedidos... 🛞</div>';
+  try {
+    const hoje = data || getBrasiliaDateStr();
+    const [lancData, confData] = await Promise.all([
+      fbQuery('lancamentos','data',{startAt:dataMenos(7)}),
+      fbQuery('confirmacoes','data',{startAt:dataMenos(7)})
+    ]);
+    const todos = lancData ? Object.values(lancData) : [];
+    // Pedidos individuais da filial no dia
+    const pedidos = todos.filter(l=>l.isPedido && l.filial===filial && l.data===hoje && l.numPedido)
+      .sort((a,b)=>Number(a.numPedido)-Number(b.numPedido));
+    // Confirmações já feitas
+    const confirmacoesHoje = confData ? Object.entries(confData)
+      .filter(([k,v])=>v.filial===filial && v.data===hoje)
+      .map(([k,v])=>({...v,_key:k})) : [];
+    const confirmadosSet = new Set(confirmacoesHoje.map(c=>String(c.numPedido)));
+
+    if(!pedidos.length) {
+      if(resumoEl) resumoEl.style.display='none';
+      listEl.innerHTML='<div style="text-align:center;padding:32px;color:var(--hint);font-size:13px">Nenhum pedido registrado nesta filial nesta data</div>';
+      return;
+    }
+
+    // Resumo
+    const total = pedidos.length;
+    const confirmados = pedidos.filter(p=>confirmadosSet.has(String(p.numPedido))).length;
+    const pendentes = total - confirmados;
+    // Show search field
+    const buscaWrap = document.getElementById('conf-busca-wrap');
+    if(buscaWrap) buscaWrap.style.display='';
+    const buscaNum = document.getElementById('conf-busca-num');
+    if(buscaNum) { buscaNum.value=''; }
+    if(resumoEl) {
+      resumoEl.style.display='flex';
+      resumoEl.innerHTML=
+        '<div class="conf-resumo-card"><div class="conf-resumo-val">'+total+'</div><div class="conf-resumo-lbl">Total de pedidos</div></div>'+
+        '<div class="conf-resumo-card" style="background:var(--green-bg);border-color:var(--green-b)"><div class="conf-resumo-val" style="color:var(--green-t)">'+confirmados+'</div><div class="conf-resumo-lbl" style="color:var(--green-t)">Confirmados</div></div>'+
+        '<div class="conf-resumo-card" style="background:var(--amber-bg);border-color:var(--amber-b)"><div class="conf-resumo-val" style="color:var(--amber-t)">'+pendentes+'</div><div class="conf-resumo-lbl" style="color:var(--amber-t)">Pendentes</div></div>';
+    }
+
+    // Mostra só pedidos PENDENTES
+    const pedidosPendentes = pedidos.filter(p=>!confirmadosSet.has(String(p.numPedido)));
+
+    if(!pedidosPendentes.length && pendentes===0) {
+      listEl.innerHTML='<div style="text-align:center;padding:32px;font-size:24px">✅</div>'
+        +'<div style="text-align:center;padding:0 0 24px;color:var(--green-t);font-size:14px;font-weight:600">Todos os pedidos conferidos!</div>';
+      return;
+    }
+
+    // Cabeçalho de pendentes
+    listEl.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">⏳ Pendentes de conferência ('+pedidosPendentes.length+')</div>'
+    + pedidosPendentes.map(p=>{
+      const dataFmt = p.data ? p.data.split('-').reverse().join('/') : hoje.split('-').reverse().join('/');
+      const hora = p.timestamp ? new Date(p.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}) : '';
+      return '<div class="ped-conf-item pendente" id="pci-'+p.numPedido+'">'
+        +'<div style="display:flex;flex-direction:column;align-items:center;min-width:70px">'
+          +'<div class="ped-conf-num">#'+p.numPedido+'</div>'
+          +'<div style="font-size:10px;color:var(--amber-t);font-weight:500;margin-top:3px;background:var(--amber-bg);padding:2px 6px;border-radius:10px">'+dataFmt+'</div>'
+        +'</div>'
+        +'<div class="ped-conf-info">'
+          +'<div class="ped-conf-colab">'+p.colaborador+'</div>'
+          +'<div class="ped-conf-sub">'+(p.qtdPedido||'?')+' pneu'+(Number(p.qtdPedido)!==1?'s':'')+(hora?' · '+hora:'')+'</div>'
+        +'</div>'
+        +'<button class="btn-confirmar" onclick="confirmarPedido(this)" '
+          +'data-pedido="'+p.numPedido+'" data-filial="'+filial+'" data-data="'+hoje+'" '
+          +'data-colab="'+p.colaborador+'" data-qtd="'+(p.qtdPedido||0)+'">Confirmar</button>'
+        +'</div>';
+    }).join('');
+
+  } catch(e) {
+    listEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--red-t);font-size:13px">Erro ao carregar pedidos</div>';
+    console.error(e);
+  }
+}
+
+async function confirmarPedido(btn) {
+  const numPedido = btn.dataset.pedido;
+  const filial    = btn.dataset.filial;
+  const data      = btn.dataset.data;
+  const colaborador = btn.dataset.colab;
+  const qtd       = btn.dataset.qtd;
+
+  // Pega nome do conferente do select cadastrado
+  const confSel = document.getElementById('conf-conferente-check');
+  let conferente = confSel?.value || '';
+  if(!conferente) {
+    showAlert('err','Selecione o conferente antes de confirmar.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Confirmando...';
+
+  try {
+    await fbPost('confirmacoes', {
+      numPedido,
+      filial,
+      data,
+      colaborador,
+      qtd: Number(qtd),
+      conferente,
+      timestamp: Date.now()
+    });
+
+    // Remove item da tela imediatamente
+    const item = document.getElementById('pci-'+numPedido);
+    if(item) {
+      item.style.transition='all .3s';
+      item.style.opacity='0';
+      item.style.transform='translateX(20px)';
+      setTimeout(()=>item.remove(), 300);
+    }
+    // Reload resumo após animação
+    setTimeout(carregarPedidosParaConferir, 600);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar';
+    alert('Erro ao confirmar. Tente novamente.');
+    console.error(e);
+  }
+}
+
+
+
+// ============================================================
+// RANKING CONFERENTES
+// ============================================================
+
+function setRcPeriodo(tipo) {
+  const hoje = new Date();
+  const f = d => dataBR(d);
+  const ini = document.getElementById('rc-date-ini');
+  const fim = document.getElementById('rc-date-fim');
+  if(!ini||!fim) return;
+  if(tipo==='hoje') { ini.value=f(hoje); fim.value=f(hoje); }
+  else if(tipo==='mes') { ini.value=f(new Date(hoje.getFullYear(),hoje.getMonth(),1)); fim.value=f(new Date(hoje.getFullYear(),hoje.getMonth()+1,0)); }
+  renderRankingConferentesGeral();
+}
+
+function buildRaceConf(list, wrap, subtitulo) {
+  if(!list.length) {
+    wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px;background:#131F3B;border-radius:var(--radius)">Nenhuma conferência registrada</div>';
+    return;
+  }
+  const max = list[0]?.conferidos || 1;
+  const total = list.reduce((a,c)=>a+c.conferidos, 0);
+  const cores = ['#E38A29','#669EA1','#8FB8BA','#A9B4C8','#7E8CA8','#C3CAD8','#5E8587','#B38A5E'];
+  const medalhas = ['🥇','🥈','🥉'];
+  const hora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  wrap.innerHTML = '<div class="race-track">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+      +'<div style="font-size:13px;font-weight:600;color:#fff">🎖️ '+subtitulo+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,.4)">'+hora+'</div>'
+    +'</div>'
+    + list.map((c,i)=>{
+      const pct = Math.round((c.conferidos/max)*100);
+      const cor = cores[i%cores.length];
+      const medal = medalhas[i] || (i+1)+'º';
+      const erroColor = c.erros>0?'#F0928C':'#8FD1B0';
+      const erroTxt = c.erros>0? c.erros+' ⚠':'0 ⚠';
+      return '<div class="race-lane">'
+        +'<div class="race-pos'+(i===0?' first':i===1?' second':i===2?' third':'')+'">'+medal+'</div>'
+        +'<div class="race-name">'+c.nome+'</div>'
+        +'<div class="race-bar-wrap">'
+          +'<div class="race-bar" style="width:'+Math.max(pct,8)+'%;background:'+cor+'">'
+            +'<span class="race-val">'+c.conferidos+' ✅</span>'
+          +'</div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:90px">'
+          +'<span style="font-size:13px;font-weight:700;color:#fff">'+c.conferidos+' conf.</span>'
+          +'<span style="font-size:11px;color:'+erroColor+'">'+erroTxt+' erros</span>'
+        +'</div>'
+        +'</div>';
+    }).join('')
+    +'<div class="race-meta">'
+      +'<span class="race-meta-txt">'+list.length+' conferentes</span>'
+      +'<span class="race-meta-txt">'+total+' pedidos conferidos no período</span>'
+    +'</div>'
+    +'</div>';
+}
+
+async function renderRankingConferentes() {
+  const filial = document.getElementById('rc-filial').value;
+  const wrap = document.getElementById('rc-today-wrap');
+  if(!filial) { wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>'; return; }
+  wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando ranking... 🎖️</div>';
+  try {
+    const today = getBrasiliaDateStr();
+    const [confData, lancData] = await Promise.all([fbQuery('confirmacoes','data',{startAt:dataBR()}), fbQuery('lancamentos','data',{startAt:dataBR()})]);
+    const confs = confData ? Object.values(confData) : [];
+    const lancs = lancData ? Object.values(lancData) : [];
+
+    // Conferências de hoje nesta filial
+    const confHoje = confs.filter(c => c.filial===filial && c.data===today && c.conferente && !c.baixaMassa);
+    // Erros de hoje nesta filial (sem identificar autor)
+    const errosHoje = lancs.filter(l => l.filial===filial && l.data===today && l.motivo && l.isErro);
+
+    // Agrupa por conferente
+    const ag = {};
+    confHoje.forEach(c => {
+      if(!ag[c.conferente]) ag[c.conferente] = {nome:c.conferente, conferidos:0, erros:0};
+      ag[c.conferente].conferidos++;
+    });
+    // Conta erros por conferente (quem registrou o erro)
+    errosHoje.forEach(e => {
+      if(e.conferente && ag[e.conferente]) ag[e.conferente].erros++;
+      else if(e.conferente) ag[e.conferente] = {nome:e.conferente, conferidos:0, erros:1};
+    });
+
+    const list = Object.values(ag).sort((a,b)=>b.conferidos-a.conferidos);
+    buildRaceConf(list, wrap, filial+' — hoje');
+  } catch(e) { wrap.innerHTML='<div style="text-align:center;padding:20px;color:#B3261E;font-size:13px">Erro ao carregar</div>'; console.error(e); }
+}
+
+async function renderRankingConferentesGeral() {
+  const ini = document.getElementById('rc-date-ini')?.value;
+  const fim = document.getElementById('rc-date-fim')?.value;
+  const wrap = document.getElementById('rc-geral-wrap');
+  if(!wrap) return;
+  wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando... 🎖️</div>';
+  try {
+    const [confData, lancData] = await Promise.all([fbQuery('confirmacoes','data',{startAt:(document.getElementById('rc-date-ini').value||dataMenos(31))}), fbQuery('lancamentos','data',{startAt:(document.getElementById('rc-date-ini').value||dataMenos(31))})]);
+    const confs = confData ? Object.values(confData) : [];
+    const lancs = lancData ? Object.values(lancData) : [];
+
+    const confFilt = confs.filter(c => c.conferente && !c.baixaMassa && (!ini||c.data>=ini) && (!fim||c.data<=fim));
+    const errosFilt = lancs.filter(l => l.motivo && l.isErro && l.conferente && (!ini||l.data>=ini) && (!fim||l.data<=fim));
+
+    const ag = {};
+    confFilt.forEach(c => {
+      if(!ag[c.conferente]) ag[c.conferente] = {nome:c.conferente, conferidos:0, erros:0};
+      ag[c.conferente].conferidos++;
+    });
+    errosFilt.forEach(e => {
+      if(ag[e.conferente]) ag[e.conferente].erros++;
+      else ag[e.conferente] = {nome:e.conferente, conferidos:0, erros:1};
+    });
+
+    const list = Object.values(ag).sort((a,b)=>b.conferidos-a.conferidos);
+    const periodo = ini&&fim ? ini.split('-').reverse().join('/')+' a '+fim.split('-').reverse().join('/') : 'período selecionado';
+    buildRaceConf(list, wrap, 'Geral — '+periodo);
+  } catch(e) { wrap.innerHTML='<div style="text-align:center;padding:20px;color:#B3261E;font-size:13px">Erro ao carregar</div>'; console.error(e); }
+}
+
+
+async function init() {
+  if(await checarVersao())return;
+  setStatus('loading','Conectando...');
+  const today=dataBR();
+  const _gIni=new Date();_gIni.setDate(1);
+  const _gIniStr=dataBR(_gIni);
+  const _gFimStr=dataBR(new Date(_gIni.getFullYear(),_gIni.getMonth()+1,0));
+  const elIni=document.getElementById('geral-date-ini');if(elIni){elIni.value=_gIniStr;}
+  const elFim=document.getElementById('geral-date-fim');if(elFim){elFim.value=_gFimStr;}
+  ['p-date','cf-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
+  try {
+    const [filData,colData] = await Promise.all([fbGet('filiais'),fbGet('colaboradores')]);
+    filiais = filData ? Object.entries(filData).map(([k,v])=>({...v,_key:k})) : [];
+    colaboradores = {};
+    if(colData){Object.entries(colData).forEach(([k,v])=>{if(!colaboradores[v.filial])colaboradores[v.filial]=[];colaboradores[v.filial].push({...v,_key:k});});}
+    populateFilialSelects();
+    restaurarIdentReabertura();
+    setTimeout(()=>obterLancRecentes().catch(()=>{}),1500); // já deixa o histórico pronto para o primeiro + Add
+    setTimeout(()=>registrarComputador(false),2000);
+  // Populate rc-filial select
+  const rcf=document.getElementById('rc-filial');
+  if(rcf){rcf.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option>'+f.nome+'</option>').join('');}
+  // Populate confirmar filial select
+  const cfc=document.getElementById('conf-filial-check');
+  if(cfc){const cc=cfc.value;cfc.innerHTML='<option value="">Selecione a filial</option>'+filiais.map(f=>'<option'+(f.nome===cc?' selected':'')+'>'+f.nome+'</option>').join('');}
+    await carregarConferentesData();
+    await carregarHoje();
+    setStatus('ok','Conectado ✓');
+    initRobo();
+  } catch(e) {
+    setStatus('err','Sem conexão');
+    showAlert('err','Não foi possível conectar.');
+    console.error(e);
+  }
+}
+
+async function carregarHoje() {
+  try {
+    const data = await fbQuery('lancamentos','data',{startAt:dataBR()}); // só hoje (antes baixava todo o histórico)
+    const today=dataBR();
+    allLancamentos = data ? Object.entries(data).map(([k,v])=>({...v,_key:k})) : [];
+    lancamentosHoje = allLancamentos.filter(l=>l.data===today);
+    renderPedidoHistory();renderErroHistory();
+  } catch(e){console.error(e);}
+}
+
+function setStatus(type,msg){const el=document.getElementById('status-badge');el.className='tb-status '+type;el.textContent=msg;}
+
+function populateFilialSelects(){
+  const opts='<option value="">Selecione</option>'+filiais.map(f=>`<option>${f.nome}</option>`).join('');
+  ['p-filial','cf-filial','g-filial'].forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=opts;if(v)el.value=v;}});
+  aplicarTravaFilial();
+}
+// ===== COMPUTADOR TRAVADO NA FILIAL =====
+// O encarregado define uma vez (com a palavra-chave da semana) de qual filial é este computador.
+// Depois disso a filial fica fixa e o separador não consegue lançar em outra.
+const TRAVA_KEY='mauerFilialComputador';
+function travaFilial(){try{return JSON.parse(localStorage.getItem(TRAVA_KEY)||'null');}catch(e){return null;}}
+// ===== REGISTRO DOS COMPUTADORES TRAVADOS (o gestor vê em Filiais e colaboradores) =====
+// Cada navegador travado ganha um código e fica em computadores/<código> com filial, nome, navegador e último uso.
+// O gestor pode destravar à distância: o app vê o pedido e volta a bloquear os lançamentos.
+const PC_ID_KEY='mauerComputadorId';
+function idComputador(){let id=null;try{id=localStorage.getItem(PC_ID_KEY);}catch(e){}
+  if(!id){id='pc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);try{localStorage.setItem(PC_ID_KEY,id);}catch(e){}}return id;}
+function descreverNavegador(){const u=navigator.userAgent;
+  const nav=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Firefox\//.test(u)?'Firefox':/Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'Navegador';
+  const so=/Windows/.test(u)?'Windows':/Android/.test(u)?'Android':/iPhone|iPad/.test(u)?'iOS':/Mac OS/.test(u)?'Mac':/Linux/.test(u)?'Linux':'';
+  return nav+(so?' · '+so:'');}
+async function registrarComputador(novaTrava){
+  const t=travaFilial();if(!t||MODO_ROBO_PC())return;
+  const id=idComputador();
+  try{
+    if(!novaTrava){const r=await fbGet('computadores/'+id);
+      if(r&&r.destravar){ // gestor destravou pelo painel
+        try{localStorage.removeItem(TRAVA_KEY);}catch(e){}
+        try{await fetch(`${FB_URL}/computadores/${id}.json`,{method:'DELETE'});}catch(e){}
+        aplicarTravaFilial();showAlert('err','O gestor destravou este computador. Chame o encarregado para travar de novo.');return;}}
+    await fbPatch('computadores/'+id,{filial:t.filial,nome:t.nome||'',navegador:descreverNavegador(),travadoEm:t.em||Date.now(),ultimoUso:Date.now(),colaborador:(document.getElementById('p-colab')||{}).value||''});
+  }catch(e){}
+}
+function MODO_ROBO_PC(){try{return new URLSearchParams(location.search).has('robo');}catch(e){return false;}}
+setInterval(()=>{if(document.visibilityState==='visible')registrarComputador(false);},10*60000);
+function computadorTravado(){const t=travaFilial();return !!(t&&filiais.some(f=>mesmaFilial(f.nome,t.filial)));}
+function exigirTrava(){if(computadorTravado())return false;showAlert('err','Este computador ainda não tem filial definida. Chame o encarregado.');abrirTravaFilial();return true;}
+function mesmaFilial(a,b){return String(a||'').trim().toUpperCase()===String(b||'').trim().toUpperCase();}
+function aplicarTravaFilial(){
+  const sel=document.getElementById('p-filial'),box=document.getElementById('trava-filial');if(!sel||!box)return;
+  const t=travaFilial(),existe=t&&filiais.some(f=>mesmaFilial(f.nome,t.filial));
+  if(t&&existe){
+    const nome=filiais.find(f=>mesmaFilial(f.nome,t.filial)).nome;
+    if(sel.value!==nome){sel.value=nome;loadColabs('p-filial','p-colab');carregarRegistrosAbertos();atualizarIdent();}
+    sel.disabled=true;sel.title='Este computador está travado na '+nome;
+    box.innerHTML='<span style="display:inline-flex;align-items:center;gap:6px;background:#E9F7EE;color:#1A6B45;border-radius:8px;padding:6px 10px;font-weight:600">🔒 Computador da '+nome+'</span> <a href="#" onclick="abrirTravaFilial();return false" style="color:var(--muted,#5C6478);margin-left:8px">trocar (só o encarregado)</a>';
+  }else{
+    // sem trava não lança: vale para qualquer navegador novo, aba anônima ou dados apagados
+    sel.value='';sel.disabled=true;sel.title='Peça ao encarregado para travar a filial deste computador';
+    const pc=document.getElementById('p-colab');if(pc){pc.innerHTML='<option value="">Aguardando o encarregado</option>';}
+    atualizarIdent&&atualizarIdent();
+    box.innerHTML='<div style="background:#FDECEA;border:2px solid #B3261E;color:#8A1C16;border-radius:10px;padding:12px 14px;line-height:1.45">🔒 <b>Lançamentos bloqueados neste navegador.</b><br>O encarregado precisa definir a filial deste computador.<br><button type="button" onclick="abrirTravaFilial()" style="margin-top:8px;min-height:40px;padding:0 16px;border:none;border-radius:8px;background:#B3261E;color:#fff;font-weight:700;cursor:pointer">Encarregado: travar na filial</button></div>';
+  }
+}
+function abrirTravaFilial(){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:9997;background:rgba(19,31,59,.85);display:flex;align-items:center;justify-content:center;padding:18px';
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const t=travaFilial();
+  ov.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:22px">
+    <div style="font-size:20px;font-weight:700;color:#131F3B;margin-bottom:6px">🔒 Filial deste computador</div>
+    <div style="font-size:14px;color:#5C6478;margin-bottom:14px">Só o encarregado faz isso. Depois de travado, todos os lançamentos deste computador vão para essa filial.</div>
+    <select data-f style="width:100%;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px;margin-bottom:10px"><option value="">Escolha a filial</option>${filiais.map(f=>`<option ${t&&mesmaFilial(t.filial,f.nome)?'selected':''}>${esc(f.nome)}</option>`).join('')}</select>
+    <input data-n placeholder="Nome deste computador (ex.: PC Expedição 1)" value="${esc((t&&t.nome)||'')}" maxlength="40" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px;margin-bottom:10px">
+    <input type="password" data-s placeholder="Palavra-chave do encarregado" autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #c8c5ba;border-radius:8px;font-size:15px">
+    <div data-e style="color:#B3261E;font-size:13px;min-height:18px;margin:6px 0"></div>
+    <div style="display:flex;gap:8px"><button data-a="cancelar" style="flex:1;min-height:46px;border:1px solid #c8c5ba;border-radius:10px;background:#fff;font-weight:600">Cancelar</button>
+    <button data-a="travar" style="flex:2;min-height:46px;border:none;border-radius:10px;background:#131F3B;color:#fff;font-weight:700">Travar nesta filial</button></div></div>`;
+  document.body.appendChild(ov);
+  const err=ov.querySelector('[data-e]');
+  ov.addEventListener('click',async e=>{const b=e.target.closest('button[data-a]');if(!b)return;
+    if(b.dataset.a==='cancelar'){ov.remove();return;}
+    const f=ov.querySelector('[data-f]').value;if(!f){err.textContent='Escolha a filial.';return;}
+    b.disabled=true;const r=await conferirSenha(ov.querySelector('[data-s]').value);b.disabled=false;
+    if(!r.ok){err.textContent=r.erro==='Senha incorreta.'?'Palavra-chave incorreta.':r.erro;return;}
+    const nomePc=(ov.querySelector('[data-n]').value||'').trim().slice(0,40);
+    try{localStorage.setItem(TRAVA_KEY,JSON.stringify({filial:f,nome:nomePc,em:Date.now()}));}catch(x){}
+    registrarComputador(true);
+    ov.remove();document.getElementById('p-filial').value='';aplicarTravaFilial();showAlert('ok','Computador travado na '+f+'.');});
+}
+// ===== PEDIDO DE OUTRA FILIAL =====
+// Se o pedido está na fila do Aro de outra filial, não deixa lançar nesta.
+async function filialDoPedidoAro(num){try{const d=await fbGet('filaPedidos/aro_'+normPed(num));return d&&d.filial?d.filial:null;}catch(e){return null;}}
+function avisoOutraFilial(itens,filial){
+  return new Promise(res=>{
+    try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch(e){}
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(179,38,30,.94);display:flex;align-items:center;justify-content:center;padding:18px';
+    const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    ov.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;padding:22px;text-align:center">
+      <div style="font-size:24px;font-weight:700;color:#B3261E">PEDIDO DE OUTRA FILIAL</div>
+      <div style="font-size:15px;color:#333;margin:8px 0 12px">Você está lançando na <b>${esc(filial)}</b>, mas ${itens.length>1?'estes pedidos são':'este pedido é'} de outra filial. <b>Não lance aqui.</b></div>
+      <div style="text-align:left;background:#f5f4f0;border-radius:8px;padding:10px 14px;margin-bottom:14px">${itens.map(i=>`<div style="padding:6px 0"><span style="font-family:monospace;font-size:20px;font-weight:600">${esc(i.num)}</span> é da <b>${esc(i.filial)}</b></div>`).join('')}</div>
+      <div style="font-size:13px;color:#5C6478;margin-bottom:12px">Se o pedido realmente é desta filial, fale com o encarregado.</div>
+      <button style="width:100%;min-height:54px;border:none;border-radius:10px;background:#B3261E;color:#fff;font-size:17px;font-weight:600">Entendi, não vou lançar</button></div>`;
+    document.body.appendChild(ov);ov.querySelector('button').addEventListener('click',()=>{ov.remove();res();});
+  });
+}
+
+function loadColabs(filialId,colabId){
+  const filial=document.getElementById(filialId).value;
+  const sel=document.getElementById(colabId);
+  const cols=(filial&&colaboradores[filial])||[];
+  sel.innerHTML=cols.length?'<option value="">Selecione</option>'+cols.map(c=>`<option>${c.nome}</option>`).join(''):'<option value="">Nenhum colaborador</option>';
+}
+
+function loadChartColabs(){loadColabs('g-filial','g-colab');renderRankingCorrida();renderChart();}
+
+function setTab(tab,btn){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
+  if(tab==='grafico'){aplicarFilialRanking();renderRankingCorrida();renderChart();}
+  if(tab==='confirmar'){carregarAbertosConferencia();}
+  if(tab==='pedido')renderPedidoHistory();
+  if(tab==='conferente')renderErroHistory();
+}
+
+// ---- PEDIDOS ----
+// Registra para o gestor toda tentativa de lançar pedido repetido (não trava nada se falhar)
+function registrarDuplicado(d){
+  try{const m=JSON.parse(localStorage.getItem('mauerDupLog')||'{}'),t=Date.now(),ch=[d.origem,d.numPedido,d.quem,d.bloqueado,d.autorizadoPor||'',String(d.detalhe||'').slice(0,60)].join('|');
+    Object.keys(m).forEach(k=>{if(t-m[k]>30*60000)delete m[k];});if(m[ch]&&!d.liberacao){localStorage.setItem('mauerDupLog',JSON.stringify(m));return;}
+    m[ch]=t;localStorage.setItem('mauerDupLog',JSON.stringify(m));}catch(e){}
+  try{fbPost('alertasDuplicado',{...d,numPedido:String(d.numPedido||''),data:getBrasiliaDateStr(),timestamp:getBrasiliaTimestamp(),visto:false}).catch(()=>{});}catch(e){}
+}
+// ===== QUANTIDADE AUTOMÁTICA =====
+// Ao digitar ou bipar o número, busca o pedido na fila do Aro e já preenche a quantidade de pneus.
+let qtTimer=null,qtBuscaSeq=0,qtAuto=false;
+function qtInfo(html,cor){const el=document.getElementById('qt-info');if(el){el.innerHTML=html||'';el.style.color=cor||'var(--muted,#5C6478)';}}
+function agendarQtdPedido(){clearTimeout(qtTimer);const v=document.getElementById('p-num').value;
+  if(qtAuto){document.getElementById('p-qt').value='';qtAuto=false;}
+  if(v.length<4){qtInfo('');return;}qtTimer=setTimeout(()=>buscarQtdPedido(),350);}
+function qtdEditada(){if(qtAuto){qtAuto=false;qtInfo('Quantidade alterada à mão.','var(--muted,#5C6478)');}}
+async function buscarQtdPedido(){
+  const num=document.getElementById('p-num').value.trim();if(num.length<4)return false;
+  const seq=++qtBuscaSeq;qtInfo('Buscando o pedido…');
+  let f=null;try{f=await fbGet('filaPedidos/aro_'+normPed(num));}catch(e){}
+  if(seq!==qtBuscaSeq||document.getElementById('p-num').value.trim()!==num)return false; // digitou outro número no meio
+  const qt=document.getElementById('p-qt'),filial=document.getElementById('p-filial').value;
+  if(f&&Number(f.qt)>0){
+    if(f.filial&&filial&&!mesmaFilial(f.filial,filial)){qtInfo('🚫 Este pedido é da '+f.filial+'. Não lance aqui.','#B3261E');return false;}
+    if(!qt.value||qtAuto){qt.value=Number(f.qt);qtAuto=true;}
+    qtInfo('✓ '+Number(f.qt)+' pneus, puxado do Aro'+(f.status==='separacao'?' · ⚠ este pedido já foi pego por outro separador':''),f.status==='separacao'?'#9C5A12':'#1A6B45');
+    return true;
+  }
+  qtInfo('Pedido não está na fila do Aro: digite a quantidade de pneus.');return false;
+}
+async function enterNumPedido(){
+  // leitor de código de barras manda o número + Enter: se achou no Aro, já adiciona direto
+  const qt=document.getElementById('p-qt');clearTimeout(qtTimer);
+  if(qt.value&&!qtAuto){addPedido();return;}
+  const achou=await buscarQtdPedido();
+  if(achou&&qt.value)addPedido();else if(document.getElementById('p-num').value)qt.focus();
+}
+async function addPedido(){
+  if(exigirTrava())return;
+  const num=document.getElementById('p-num').value.trim();
+  const qt=parseInt(document.getElementById('p-qt').value);
+  if(!num||!qt||qt<1)return;
+
+  // Bloqueia letras
+  if(!/^[0-9]+$/.test(num)){
+    showDuplicateAlert('⚠ Número do pedido inválido — use apenas números!','warn');
+    return;
+  }
+
+  // Verifica duplicata na lista temporária
+  if(pedidosTemp.find(p=>p.num===num)){
+    showDuplicateAlert('⚠ Pedido '+num+' já está na lista atual!','warn');
+    return;
+  }
+  // Bloqueia duplo clique
+  const addBtn = document.getElementById('add-pedido-btn');
+  if(addBtn) { if(addBtn.dataset.processing==='1') return; addBtn.dataset.processing='1'; }
+
+  // Verifica margem e duplicata no Firebase
+  var autorizadoPor='';
+  try {
+    const hoje = getBrasiliaDateStr();
+    const _lim=new Date();_lim.setDate(_lim.getDate()-8);
+    const _limStr=dataBR(_lim);
+    // tudo ao mesmo tempo (antes era um depois do outro)
+    const [bloqueado,lista,margemData,fAroPar,mapaDup]=await Promise.all([
+      verificarBloqueio(),obterLancRecentes(),obterMargem().catch(()=>null),filialDoPedidoAro(num),lancamentosRecentesPorPedido().catch(()=>new Map())]);
+    if(bloqueado){if(addBtn)addBtn.dataset.processing='0';return;}
+    const margem = margemData ? Number(margemData) : 1000;
+    const todos = (lista||[]).filter(l=>l.data>=_limStr);
+
+    // Pedido que o Aro pôs na fila de OUTRA filial: não deixa lançar aqui
+    {const fAtual=document.getElementById('p-filial').value,fAro=fAroPar;
+     if(fAro&&fAtual&&!mesmaFilial(fAro,fAtual)){
+       registrarDuplicado({origem:'separador',bloqueado:true,numPedido:num,filial:fAtual,quem:document.getElementById('p-colab').value,detalhe:'Tentou lançar na '+fAtual+' um pedido da '+fAro});
+       await avisoOutraFilial([{num,filial:fAro}],fAtual);
+       showDuplicateAlert('🚫 Pedido '+num+' é da '+fAro+'. Não foi adicionado.','err');
+       document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
+       const _b0=document.getElementById('add-pedido-btn');if(_b0)_b0.dataset.processing='0';
+       return;}}
+    // Pedido já registrado (qualquer data nos últimos 30 dias, qualquer filial): BLOQUEIA e pede para avisar o responsável
+    let jaReg=mapaDup.get(normPed(num))||[];
+    if(jaReg.length){
+      const filialAtual=document.getElementById('p-filial').value,colabAtual=document.getElementById('p-colab').value;
+      const r=await modalPedidoDuplicado([{p:{num},existentes:jaReg}],{tirar:'Não adicionar este pedido'});
+      const texto='já separado por '+jaReg.map(dupDescrever).join('; ');
+      if(r.acao!=='autorizado'){
+        registrarDuplicado({origem:'separador',bloqueado:true,numPedido:num,filial:filialAtual,quem:colabAtual,detalhe:'Tentou adicionar pedido que já tinha registro ('+texto+')'});
+        showDuplicateAlert('🚫 Pedido '+num+' já tem registro ('+jaReg.map(dupDescrever).join('; ')+'). Não foi adicionado. Avise o responsável.','err');
+        document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
+        const _b1=document.getElementById('add-pedido-btn');if(_b1)_b1.dataset.processing='0';
+        return;
+      }
+      autorizadoPor=r.nome;
+      registrarDuplicado({origem:'separador',bloqueado:false,numPedido:num,filial:filialAtual,quem:colabAtual,autorizadoPor,detalhe:'Adicionou pedido que já tinha registro ('+texto+'). Liberado por: '+autorizadoPor});
+    }
+
+    // Verifica margem — pega o último pedido registrado em qualquer dia (globalmente)
+    const todosPedidos = todos.filter(l=>l.isPedido && l.numPedido);
+    if(todosPedidos.length > 0) {
+      // Ordena por timestamp ou data para pegar o mais recente
+      const sorted = todosPedidos
+        .map(l=>({num:Number(l.numPedido), ts:l.timestamp||0, data:l.data||''}))
+        .filter(l=>!isNaN(l.num) && l.num > 0)
+        .sort((a,b)=>b.ts-a.ts || b.data.localeCompare(a.data));
+      if(sorted.length > 0) {
+        // Pega o maior número entre os últimos 50 pedidos (janela recente)
+        const recentes = sorted.slice(0, 50);
+        const ultimo = Math.max(...recentes.map(l=>l.num));
+        const numInt = Number(num);
+        if(numInt < ultimo - margem || numInt > ultimo + margem) {
+          showDuplicateAlert('⚠ Pedido '+num+' fora da margem! Referência: '+ultimo+' (margem: ±'+margem.toLocaleString('pt-BR')+')', 'warn');
+          const _b2=document.getElementById('add-pedido-btn');if(_b2)_b2.dataset.processing='0';
+          return;
+        }
+      }
+    }
+  } catch(e){ console.error(e); const _be=document.getElementById('add-pedido-btn');if(_be)_be.dataset.processing='0'; }
+
+  pedidosTemp.push(autorizadoPor?{num,qt,dupAutorizadoPor:autorizadoPor}:{num,qt});
+  qtAuto=false;qtInfo('');
+  const _addBtnOk = document.getElementById('add-pedido-btn');
+  if(_addBtnOk) _addBtnOk.dataset.processing='0';
+  document.getElementById('p-num').value='';
+  document.getElementById('p-qt').value='';
+  document.getElementById('p-num').focus();
+  renderPedidoTemp();
+}
+
+function showDuplicateAlert(msg, type) {
+  const el = document.getElementById('dup-alert');
+  el.textContent = msg;
+  el.className = 'dup-alert dup-' + type;
+  el.style.display = 'block';
+  setTimeout(()=>el.style.display='none', 5000);
+}
+
+function removePedido(i){pedidosTemp.splice(i,1);renderPedidoTemp();if(filaAro.length)renderFilaAro();}
+
+function renderPedidoTemp(){
+  const listEl=document.getElementById('pedido-list');
+  const emptyEl=document.getElementById('pedido-empty');
+  const summEl=document.getElementById('pedido-summary');
+  if(!pedidosTemp.length){listEl.innerHTML='';emptyEl.style.display='';summEl.style.display='none';return;}
+  emptyEl.style.display='none';summEl.style.display='flex';
+  listEl.innerHTML=pedidosTemp.map((p,i)=>`<div class="pedido-item"><div style="display:flex;align-items:center;gap:10px"><div style="width:7px;height:7px;border-radius:50%;background:var(--green-t);flex-shrink:0"></div><span class="pedido-num">${p.num}</span><span class="pedido-qt">— ${p.qt} pneu${p.qt!==1?'s':''}</span></div><button class="pedido-del" onclick="removePedido(${i})">×</button></div>`).join('');
+  document.getElementById('ps-total-ped').textContent=pedidosTemp.length;
+  document.getElementById('ps-total-pn').textContent=pedidosTemp.reduce((a,p)=>a+p.qt,0).toLocaleString('pt-BR');
+}
+
+async function salvarPedidos(){
+  if(exigirTrava())return;
+  const filial=document.getElementById('p-filial').value;
+  const date=document.getElementById('p-date').value;
+  const colab=document.getElementById('p-colab').value;
+  let ok=true;
+  [['p-filial',filial],['p-date',date],['p-colab',colab]].forEach(([id,val])=>{document.getElementById(id).classList.toggle('err',!val);if(!val)ok=false;});
+  if(!ok){showAlert('err','Preencha filial, data e colaborador.');return;}
+  if(!pedidosTemp.length){showAlert('err','Adicione pelo menos um pedido.');return;}
+  const btn=document.getElementById('btn-salvar-pedidos');
+  btn.disabled=true;btn.dataset.busy='1';btn.innerHTML='<span class="spinner"></span> Iniciando...';
+  // todas as conferências ao mesmo tempo (antes era uma depois da outra)
+  const [bloqueado,,tomados,fasPre,dupsPre]=await Promise.all([
+    verificarBloqueio(),carregarRegistrosAbertos(),filaReservar(pedidosTemp),
+    Promise.all(pedidosTemp.map(p=>filialDoPedidoAro(p.num))),
+    conferirDuplicadosLote(pedidosTemp.filter(p=>!p.dupAutorizadoPor))]);
+  if(bloqueado){btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;}
+  if(tomados.length){
+    pedidosTemp=pedidosTemp.filter(p=>!tomados.includes(p));renderPedidoTemp();await carregarFilaAro();
+    showAlert('err','Pedido(s) '+tomados.map(p=>p.num).join(', ')+' já foram pegos por outro separador e saíram do seu lote. Confira e clique em Iniciar de novo.');
+    btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;
+  }
+  // Pedidos de outra filial (conferência final, inclusive se a filial foi trocada depois de adicionar)
+  {const fora=[];
+   const fas=fasPre;
+   pedidosTemp.forEach((p,i)=>{const fa=fas[i];if(fa&&!mesmaFilial(fa,filial))fora.push({p,num:p.num,filial:fa});});
+   if(fora.length){
+     fora.forEach(x=>registrarDuplicado({origem:'separador',bloqueado:true,numPedido:x.num,filial,quem:colab,detalhe:'Tentou iniciar na '+filial+' um pedido da '+x.filial+'. Pedido retirado do lote.'}));
+     await avisoOutraFilial(fora,filial);
+     const tirar=new Set(fora.map(x=>x.p));pedidosTemp=pedidosTemp.filter(p=>!tirar.has(p));renderPedidoTemp();
+     showAlert('err','Pedido(s) de outra filial retirado(s) do lote.');
+     btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;}}
+  // TRAVA FINAL: confere no servidor se algum pedido do lote já tem lançamento (qualquer filial, últimos 30 dias)
+  const dups=dupsPre;
+  if(dups.length){
+    const r=await modalPedidoDuplicado(dups);
+    const quem={filial,colab};
+    if(r.acao==='autorizado'){
+      dups.forEach(d=>{d.p.dupAutorizadoPor=r.nome;registrarDuplicado({origem:'separador',bloqueado:false,numPedido:d.p.num,filial,quem:colab,autorizadoPor:r.nome,
+        detalhe:'Iniciou separação de pedido que já tinha registro ('+d.texto+'). Liberado por: '+r.nome});});
+    }else{
+      dups.forEach(d=>registrarDuplicado({origem:'separador',bloqueado:true,numPedido:d.p.num,filial,quem:colab,detalhe:'Tentou iniciar separação de pedido que já tinha registro ('+d.texto+')'+(r.acao==='tirar'?'. Pedido retirado do lote.':'')}));
+      if(r.acao==='tirar'){
+        const fora=new Set(dups.map(d=>d.p));
+        const cancelar={};dups.forEach(d=>{if(d.p.filaKey){cancelar[d.p.filaKey+'/status']='cancelado';cancelar[d.p.filaKey+'/canceladoMotivo']='duplicado';}});
+        if(Object.keys(cancelar).length)try{await fbPatch('filaPedidos',cancelar);}catch(e){console.error(e);}
+        pedidosTemp=pedidosTemp.filter(p=>!fora.has(p));renderPedidoTemp();carregarFilaAro();
+        showAlert('err','Pedido(s) duplicado(s) retirado(s) do lote. O responsável já foi avisado no painel do gestor.');
+      }
+      btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();return;
+    }
+  }
+  const lote=pedidosTemp.slice();
+  const totalPneus=lote.reduce((a,p)=>a+p.qt,0);
+  const inicio=getBrasiliaTimestamp();
+  let finalizados=[];
+  try{
+    // 0) Finaliza automaticamente os registros anteriores ainda abertos (fim = agora)
+    finalizados=registrosAbertos.slice();
+    await Promise.all(finalizados.map(r=>fbPatch('registros/'+r._key,{fim:inicio,duracaoMin:Math.round((inicio-r.inicio)/60000),status:'finalizado',finalizadoAuto:true})));
+    registrosAbertos=[];
+    // 1) Cria o registro (lote) com horário de início
+    const reg=await fbPost('registros',{data:date,filial,colaborador:colab,inicio,fim:null,duracaoMin:null,status:'em_separacao',pedidos:lote.map(p=>({num:p.num,qt:p.qt,...(p.dupAutorizadoPor?{dupAutorizadoPor:p.dupAutorizadoPor}:{})})),totalPedidos:lote.length,totalPneus});
+    const registroId=reg&&reg.name;
+    if(!registroId)throw new Error('Registro não criado');
+    // 2) Lançamentos (mesmo formato de antes + registroId), enviados em paralelo
+    const base={data:date,filial,colaborador:colab,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:inicio,registroId};
+    await Promise.all([
+      ...lote.map(p=>{guardarNoCache({...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,_key:'local'+p.num});return fbPost('lancamentos',{...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,pedidos:0,pneus:0,...(p.filaKey?{origem:'aro',filaKey:p.filaKey}:{}),...(p.dupAutorizadoPor?{dupAutorizadoPor:p.dupAutorizadoPor}:{})});}),
+      fbPost('lancamentos',{...base,isPedido:false,numPedido:'',qtdPedido:0,pedidos:lote.length,pneus:totalPneus})
+    ]);
+    try{await filaMarcarPegos(lote,colab,registroId,inicio);}catch(e){console.error(e);}
+    pedidosTemp=[];renderPedidoTemp();carregarFilaAro();
+    registrosAbertos.unshift({...reg,_key:registroId,data:date,filial,colaborador:colab,inicio,status:'em_separacao',pedidos:lote,totalPedidos:lote.length,totalPneus});
+    renderRegistrosAbertos();
+    avisarConferente(filial);
+    showAlert('ok',(finalizados.length?`Anterior finalizado em ${fmtDur(inicio-finalizados[0].inicio)}. `:'')+`Nova separação iniciada: ${lote.length} pedido${lote.length!==1?'s':''}, ${totalPneus} pneus.`);
+    carregarHoje();
+  }catch(e){showAlert('err','Erro ao salvar. Tente de novo.');console.error(e);}
+  btn.disabled=false;btn.dataset.busy='0';atualizarBotaoIniciar();
+}
+
+// ---- ABA CONFIRMAR: só a quantidade de pedidos aguardando conferência por filial ----
+let abTimer=null;
+async function carregarAbertosConferencia(){
+  const el=document.getElementById('ab-lista');if(!el)return;
+  const dia=n=>new Date(Date.now()-n*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});
+  try{
+    const [l,c]=await Promise.all([fbQuery('lancamentos','data',{startAt:dia(3)}),fbQuery('confirmacoes','data',{startAt:dia(30)})]);
+    const conf=new Set(Object.values(c||{}).map(x=>normPed(x.numPedido)+'|'+x.filial));
+    const vistos=new Set(),porFilial={};
+    Object.values(l||{}).forEach(x=>{if(!x||!x.isPedido||!x.numPedido)return;const k=normPed(x.numPedido)+'|'+x.filial;
+      if(vistos.has(k)||conf.has(k))return;vistos.add(k);porFilial[x.filial]=(porFilial[x.filial]||0)+1;});
+    const minha=(document.getElementById('p-filial')||{}).value||'';
+    const nomes=[...new Set([...filiais.map(f=>f.nome||f),...Object.keys(porFilial)])].filter(Boolean)
+      .sort((a,b)=>(b===minha)-(a===minha)||(porFilial[b]||0)-(porFilial[a]||0)||a.localeCompare(b));
+    const total=Object.values(porFilial).reduce((a,b)=>a+b,0);
+    document.getElementById('ab-total').textContent=total+' no total';
+    el.innerHTML=nomes.map(n=>{const q=porFilial[n]||0,eu=n===minha;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1px solid '+(eu?'var(--orange)':'var(--border)')+';border-radius:var(--rsm);margin-bottom:8px;background:'+(eu?'var(--orange-bg)':'var(--surface)')+'">'
+        +'<span style="font-weight:'+(eu?'700':'500')+';font-size:15px">'+n+(eu?' <span style="font-size:11px;color:var(--orange-t)">(sua filial)</span>':'')+'</span>'
+        +'<span style="font-family:var(--mono);font-size:22px;font-weight:600;color:'+(q?'var(--orange-t)':'var(--hint)')+'">'+q+'</span></div>';}).join('')
+      ||'<div style="text-align:center;color:var(--hint);padding:16px">Nenhuma filial cadastrada</div>';
+    document.getElementById('ab-hora').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+  }catch(e){console.error(e);el.innerHTML='<div style="text-align:center;color:var(--red-t);padding:16px">Não consegui carregar agora. Tentando de novo…</div>';}
+  if(!abTimer)abTimer=setInterval(()=>{const t=document.getElementById('tab-confirmar');if(t&&t.classList.contains('active')&&document.visibilityState==='visible')carregarAbertosConferencia();},30000);
+}
+
+// ---- TUTORIAL DO SEPARADOR (tutorial-separador.html, aberto por cima do app) ----
+function abrirTutorial(){
+  let ov=document.getElementById('tutorial-ov');
+  if(!ov){ov=document.createElement('div');ov.id='tutorial-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:9000;background:#131F3B;display:flex;flex-direction:column';
+    ov.innerHTML='<iframe src="tutorial-separador.html?v='+Date.now()+'" title="Como lançar pedidos" style="flex:1;border:0;width:100%;background:#F3F2EE"></iframe>';
+    document.body.appendChild(ov);}
+  else ov.style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function fecharTutorial(){const ov=document.getElementById('tutorial-ov');if(ov)ov.style.display='none';document.body.style.overflow='';}
+window.addEventListener('message',e=>{if(e.data==='fechar-tutorial')fecharTutorial();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharTutorial();});
+
+// ---- PEDIDO COM REGISTRO DUPLICADO ----
+const DUP_DIAS=30;
+function dupDataLimite(){return new Date(Date.now()-DUP_DIAS*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
+function dupDescrever(l){const h=l.timestamp?new Date(l.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'';
+  return (l.colaborador||'sem separador')+' em '+String(l.data||'').split('-').reverse().slice(0,2).join('/')+(h?' às '+h:'')+(l.filial?' ('+l.filial+')':'');}
+// ===== CACHE DOS LANÇAMENTOS (deixa o lançamento rápido) =====
+// Antes cada "+ Add" baixava 8 e depois 30 dias de lançamentos de todas as filiais.
+// Agora: carga completa a cada 10 min; entre elas, só os lançamentos de ontem para cá (bem pequeno).
+let cacheLanc={lista:[],completoEm:0,deltaEm:0,mapa:null},cacheLancPromessa=null;
+function dataMenos(d){return new Date(Date.now()-d*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
+async function obterLancRecentes(fresco){
+  if(cacheLancPromessa)return cacheLancPromessa;
+  const agora=Date.now();
+  if(!fresco&&agora-cacheLanc.deltaEm<20000&&cacheLanc.completoEm)return cacheLanc.lista;
+  cacheLancPromessa=(async()=>{
+    if(!cacheLanc.completoEm||agora-cacheLanc.completoEm>10*60000){
+      const d=await fbQuery('lancamentos','data',{startAt:dupDataLimite()});
+      cacheLanc.lista=Object.entries(d||{}).map(([k,v])=>({...v,_key:k}));cacheLanc.completoEm=agora;
+    }else{
+      const ini=dataMenos(1),d=await fbQuery('lancamentos','data',{startAt:ini});
+      cacheLanc.lista=cacheLanc.lista.filter(l=>!(l.data>=ini)).concat(Object.entries(d||{}).map(([k,v])=>({...v,_key:k})));
+    }
+    cacheLanc.deltaEm=Date.now();cacheLanc.mapa=null;return cacheLanc.lista;
+  })().finally(()=>{cacheLancPromessa=null;});
+  return cacheLancPromessa;
+}
+// Sinal para o tablet do conferente atualizar na hora (ele fica "ouvindo" sinais/<filial>)
+function chaveSinal(f){return String(f||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_');}
+function avisarConferente(filial){if(!filial)return;try{fbEscrever('PUT','sinais/'+chaveSinal(filial),Date.now()).catch(()=>{});}catch(e){}}
+// Ranking só da filial deste computador (a filial travada); o ranking de todas as filiais fica escondido
+function aplicarFilialRanking(){
+  const t=travaFilial(),g=document.getElementById('g-filial'),geral=document.getElementById('card-rank-geral');
+  if(geral)geral.style.display='none';
+  if(t&&g){if(![...g.options].some(o=>o.value===t.filial))g.insertAdjacentHTML('beforeend','<option>'+t.filial+'</option>');
+    if(g.value!==t.filial){g.value=t.filial;loadColabs('g-filial','g-colab');}g.disabled=true;g.title='Filial deste computador';}
+}
+function guardarNoCache(l){cacheLanc.lista.push(l);cacheLanc.mapa=null;}
+let margemCache={v:null,em:0};
+async function obterMargem(){if(Date.now()-margemCache.em<5*60000&&margemCache.v!=null)return margemCache.v;
+  const m=await fbGet('configuracoes/margemPedidos');margemCache={v:m,em:Date.now()};return m;}
+async function lancamentosRecentesPorPedido(fresco){
+  const lista=await obterLancRecentes(fresco);
+  if(cacheLanc.mapa&&!fresco)return cacheLanc.mapa;
+  const m=new Map();
+  lista.forEach(l=>{if(!l||!l.isPedido||!l.numPedido)return;const n=normPed(l.numPedido);if(!n)return;(m.get(n)||m.set(n,[]).get(n)).push(l);});
+  cacheLanc.mapa=m;return m;
+}
+async function conferirDuplicadosLote(lote){
+  let m;try{m=await lancamentosRecentesPorPedido(true);}catch(e){console.error(e);return[];}
+  return lote.map(p=>{const ex=m.get(normPed(p.num))||[];return ex.length?{p,existentes:ex,texto:'já separado por '+ex.map(dupDescrever).join('; ')}:null;}).filter(Boolean);
+}
+// ===== BLOQUEIO DO SEPARADOR ATÉ A SENHA DO RESPONSÁVEL =====
+// Quem tenta lançar pedido duplicado fica bloqueado (gravado no Firebase em bloqueiosDup) até o responsável
+// digitar a senha de liberação (cadastrada no gestor, guardada só como hash) ou liberar pelo painel do gestor.
+const fbDel=async p=>{const r=await fetch(`${FB_URL}/${p}.json`,{method:'DELETE'});if(!r.ok)throw new Error('DELETE '+r.status);};
+const fbPutC=async(p,d)=>{const r=await fetch(`${FB_URL}/${p}.json`,{method:'PUT',body:JSON.stringify(d)});if(!r.ok)throw new Error('PUT '+r.status);};
+function chaveBloqueio(filial,colab){return (String(filial||'')+'__'+String(colab||'')).toUpperCase().replace(/[.#$\[\]\/]/g,'_').replace(/\s+/g,'_');}
+// ===== PALAVRA-CHAVE DA SEMANA =====
+// Troca sozinha toda segunda-feira (horário de Brasília): o primeiro app aberto na semana sorteia uma
+// palavra comum e grava. Acento e maiúscula/minúscula não importam na hora de digitar.
+const PALAVRAS_SENHA=['maçã','carro','faca','árvore','pneu','cachorro','gato','banana','cadeira','mesa','janela','porta','escada','caneta','livro','relógio','sapato','camisa','chapéu','bolsa','garrafa','copo','prato','panela','colher','garfo','fogão','geladeira','sofá','cama','travesseiro','toalha','sabonete','escova','espelho','vassoura','balde','martelo','chave','cadeado','bicicleta','ônibus','caminhão','moto','avião','barco','trem','estrada','ponte','praia','areia','montanha','rio','lago','chuva','nuvem','vento','estrela','lua','sol','flor','folha','grama','jardim','laranja','limão','uva','morango','abacaxi','melancia','tomate','cebola','batata','cenoura','arroz','feijão','pão','queijo','leite','café','bolo','pipoca','sorvete','chocolate','biscoito','galinha','cavalo','vaca','porco','coelho','peixe','tartaruga','macaco','leão','girafa','elefante','pato','abelha','borboleta','formiga','papagaio','coruja','violão','tambor','bola','pipa','boneca','foguete','lápis','caderno','mochila','tesoura','régua','apito','lanterna','vela','sino','tijolo','telhado','parede','quintal','varanda','calçada','buzina','volante','farol','motor','roda','gaveta','armário','tapete','cortina','almofada','pente','anel','colar','óculos','luva','meia','casaco','guarda-chuva','carteira','moeda','envelope','jornal','revista','rádio','tesouro','castelo','navio','sereia','dragão','pirata','palhaço'];
+const normSenha=t=>String(t==null?'':t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+async function hashPalavra(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mauer-dup|'+normSenha(t)));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+// Segunda-feira da semana atual (Brasília), ex. "2026-09-28"
+function segundaDaSemana(ts){
+  const d=new Date(new Date(ts||Date.now()).toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));
+  d.setDate(d.getDate()-((d.getDay()+6)%7));
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function sortearPalavra(evitar){
+  const ev=normSenha(evitar),r=n=>crypto.getRandomValues(new Uint32Array(1))[0]%n;
+  let p;do{p=PALAVRAS_SENHA[r(PALAVRAS_SENHA.length)];}while(normSenha(p)===ev);return p;
+}
+let _garantindoSenha=null;
+async function garantirSenhaDaSemana(){
+  if(_garantindoSenha)return _garantindoSenha;
+  _garantindoSenha=(async()=>{
+    const FBU='https://mauer-produtividade-default-rtdb.firebaseio.com/configuracoes/';
+    const ler=async p=>{const r=await fetch(FBU+p+'.json?x='+Date.now(),{cache:'no-store'});return r.ok?await r.json():null;};
+    const grava=async(p,v)=>{const r=await fetch(FBU+p+'.json',{method:'PUT',body:JSON.stringify(v)});if(!r.ok)throw new Error('PUT '+r.status);};
+    const sem=segundaDaSemana();let info=await ler('senhaLiberacaoDupInfo');
+    if(!info||info.semana!==sem){
+      const texto=sortearPalavra(info&&info.texto);
+      info={texto,semana:sem,alteradoPor:'Troca automática (segunda-feira)',alteradoEm:Date.now(),automatica:true};
+      await grava('senhaLiberacaoDup',await hashPalavra(texto));await grava('senhaLiberacaoDupInfo',info);
+      await new Promise(r=>setTimeout(r,600));               // se dois aparelhos sortearem juntos, vale o último gravado
+      info=await ler('senhaLiberacaoDupInfo')||info;
+      const h=await ler('senhaLiberacaoDup');if(h!==await hashPalavra(info.texto))await grava('senhaLiberacaoDup',await hashPalavra(info.texto));
+    }
+    return info;
+  })().finally(()=>{setTimeout(()=>{_garantindoSenha=null;},5000);});
+  return _garantindoSenha;
+}
+const hashSenha=hashPalavra;
+async function conferirSenha(t){
+  try{await garantirSenhaDaSemana();}catch(e){console.error(e);}
+  const h=await fbGet('configuracoes/senhaLiberacaoDup');
+  if(!h)return{ok:false,erro:'Não consegui ler a palavra-chave. O responsável pode liberar pelo painel do gestor (Duplicados).'};
+  return (await hashSenha(t))===h?{ok:true}:{ok:false,erro:'Senha incorreta.'};
+}
+async function bloquearSeparador(filial,colab,dups){
+  if(!filial||!colab)return;
+  try{await fbPutC('bloqueiosDup/'+chaveBloqueio(filial,colab),{filial,colaborador:colab,pedidos:dups.map(d=>String(d.p.num)),
+    detalhe:dups.map(d=>d.p.num+': já separado por '+d.existentes.map(dupDescrever).join('; ')).join(' | '),desde:Date.now(),data:getBrasiliaDateStr()});}catch(e){console.error(e);}
+}
+async function liberarSeparador(filial,colab,como){
+  try{await fbDel('bloqueiosDup/'+chaveBloqueio(filial,colab));}catch(e){console.error(e);}
+  registrarDuplicado({origem:'separador',bloqueado:false,liberacao:true,numPedido:'',filial,quem:colab,autorizadoPor:como,detalhe:'Separador liberado ('+como+')'});
+}
+async function bloqueioAtual(){
+  const f=document.getElementById('p-filial').value,c=document.getElementById('p-colab').value;
+  if(!f||!c)return null;
+  try{return await fbGet('bloqueiosDup/'+chaveBloqueio(f,c));}catch(e){return null;}
+}
+const escH=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// Tela que trava o app enquanto o separador estiver bloqueado
+let telaBloqAberta=false,telaBloqTimer=null;
+async function verificarBloqueio(){
+  const b=await bloqueioAtual();
+  if(b&&!telaBloqAberta)abrirTelaBloqueio(b);
+  if(!b&&telaBloqAberta)fecharTelaBloqueio();
+  return !!b;
+}
+function fecharTelaBloqueio(){const o=document.getElementById('tela-bloq');if(o)o.remove();telaBloqAberta=false;}
+function abrirTelaBloqueio(b){
+  telaBloqAberta=true;try{navigator.vibrate&&navigator.vibrate([300,150,300]);}catch(e){}
+  const ov=document.createElement('div');ov.id='tela-bloq';
+  ov.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(179,38,30,.96);display:flex;align-items:center;justify-content:center;padding:18px';
+  ov.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:480px;width:100%;padding:22px;text-align:center">
+    <div style="font-size:40px">🔒</div>
+    <div style="font-size:22px;font-weight:700;color:#B3261E">SEPARADOR BLOQUEADO</div>
+    <div style="font-size:17px;font-weight:600;margin:6px 0">${escH(b.colaborador)}</div>
+    <div style="font-size:14px;color:#333;margin-bottom:12px">Tentou registrar pedido duplicado (${escH((b.pedidos||[]).join(', '))}).<br><b>Chame o responsável para liberar.</b></div>
+    <div style="font-size:12px;color:#666;text-align:left;background:#f5f4f0;border-radius:8px;padding:8px 12px;margin-bottom:12px">${escH(b.detalhe||'')}</div>
+    <input type="password" data-s placeholder="Palavra-chave do responsável" autocapitalize="characters" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #c8c5ba;border-radius:8px;font-size:17px;text-align:center">
+    <div data-e style="color:#B3261E;font-size:13px;min-height:18px;margin:6px 0"></div>
+    <button data-a="liberar" style="width:100%;min-height:54px;border:none;border-radius:10px;background:#1E2B4A;color:#fff;font-size:17px;font-weight:600">Liberar</button>
+    <button data-a="trocar" style="width:100%;min-height:40px;margin-top:10px;border:none;background:none;color:#666;font-size:13px">Sou outro separador (trocar)</button></div>`;
+  document.body.appendChild(ov);
+  const inp=ov.querySelector('[data-s]'),err=ov.querySelector('[data-e]');setTimeout(()=>inp.focus(),50);
+  ov.addEventListener('click',async e=>{const a=e.target.closest('button[data-a]');if(!a)return;
+    if(a.dataset.a==='trocar'){fecharTelaBloqueio();trocarIdent();return;}
+    a.disabled=true;const r=await conferirSenha(inp.value);a.disabled=false;
+    if(!r.ok){err.textContent=r.erro==='Senha incorreta.'?'Palavra-chave incorreta.':r.erro;inp.value='';inp.focus();return;}
+    await liberarSeparador(b.filial,b.colaborador,'senha do responsável');fecharTelaBloqueio();showAlert('ok','Separador liberado.');});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')ov.querySelector('[data-a="liberar"]').click();});
+}
+setInterval(()=>{if(document.visibilityState==='visible')verificarBloqueio();},20000);
+
+// Tela do pedido duplicado: já bloqueia o separador; só segue com a senha do responsável
+function modalPedidoDuplicado(dups,txt){
+  txt=txt||{};
+  const filial=document.getElementById('p-filial').value,colab=document.getElementById('p-colab').value;
+  bloquearSeparador(filial,colab,dups);
+  return new Promise(res=>{
+    try{navigator.vibrate&&navigator.vibrate([200,100,200,100,400]);}catch(e){}
+    telaBloqAberta=true; // o modal faz o papel da tela de bloqueio
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(179,38,30,.94);display:flex;align-items:center;justify-content:center;padding:18px';
+    ov.innerHTML=`<div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:22px;text-align:center;font-family:inherit;max-height:92vh;overflow:auto">
+      <div style="font-size:24px;font-weight:700;color:#B3261E">PEDIDO COM REGISTRO DUPLICADO</div>
+      <div style="font-size:15px;color:#333;margin:8px 0 12px">Não separe este pedido. <b>Você está bloqueado até o responsável digitar a palavra-chave.</b></div>
+      <div style="text-align:left;background:#f5f4f0;border-radius:8px;padding:10px 14px;margin-bottom:14px">${dups.map(d=>`<div style="padding:6px 0;border-bottom:1px solid #e2e0d8"><div style="font-family:monospace;font-size:22px;font-weight:600">${escH(d.p.num)}</div><div style="font-size:14px">${d.existentes.map(l=>'Já separado por '+escH(dupDescrever(l))).join('<br>')}</div></div>`).join('')}</div>
+      <input type="password" data-s placeholder="Palavra-chave do responsável" autocapitalize="characters" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #c8c5ba;border-radius:8px;font-size:17px;text-align:center">
+      <div data-e style="color:#B3261E;font-size:13px;min-height:18px;margin:6px 0"></div>
+      <button data-a="tirar" style="width:100%;min-height:54px;border:none;border-radius:10px;background:#B3261E;color:#fff;font-size:17px;font-weight:600;margin-bottom:8px">Liberar sem este pedido</button>
+      <button data-a="autorizado" style="width:100%;min-height:46px;border:1px solid #c8c5ba;border-radius:10px;background:#fff;font-size:15px;font-weight:600">Liberar e separar mesmo assim</button>
+      <button data-a="fechar" style="width:100%;min-height:40px;margin-top:10px;border:none;background:none;color:#666;font-size:13px">Fechar (continua bloqueado)</button></div>`;
+    document.body.appendChild(ov);
+    const inp=ov.querySelector('[data-s]'),err=ov.querySelector('[data-e]');setTimeout(()=>inp.focus(),50);
+    ov.addEventListener('click',async e=>{const b=e.target.closest('button[data-a]');if(!b)return;const a=b.dataset.a;
+      if(a==='fechar'){ov.remove();telaBloqAberta=false;res({acao:'bloqueado'});setTimeout(verificarBloqueio,300);return;}
+      b.disabled=true;const r=await conferirSenha(inp.value);b.disabled=false;
+      if(!r.ok){err.textContent=r.erro==='Senha incorreta.'?'Palavra-chave incorreta.':r.erro;inp.value='';inp.focus();return;}
+      await liberarSeparador(filial,colab,'senha do responsável');
+      ov.remove();telaBloqAberta=false;res({acao:a,nome:'senha do responsável'});});
+  });
+}
+// Aviso dentro do cartão "Em separação" quando um pedido aberto também foi lançado em outro lote
+let dupAbertosCache={em:0,map:new Map()};const dupAvisados=new Set((()=>{try{return JSON.parse(localStorage.getItem('dupAvisados')||'[]');}catch(e){return[];}})());
+function dupGuardarAvisados(){try{localStorage.setItem('dupAvisados',JSON.stringify([...dupAvisados].slice(-200)));}catch(e){}}
+async function verificarDupAbertos(){
+  if(!registrosAbertos.length)return;
+  if(Date.now()-dupAbertosCache.em>60000){
+    try{dupAbertosCache={em:Date.now(),map:await lancamentosRecentesPorPedido()};}catch(e){return;}
+  }
+  registrosAbertos.forEach(r=>{
+    const el=document.getElementById('reg-'+r._key);if(!el)return;
+    const achados=(r.pedidos||[]).map(p=>({p,outros:(dupAbertosCache.map.get(normPed(p.num))||[]).filter(l=>l.registroId!==r._key)})).filter(x=>x.outros.length);
+    let box=el.querySelector('.reg-dup');
+    if(!achados.length){if(box)box.remove();return;}
+    if(!box){box=document.createElement('div');box.className='reg-dup';box.style.cssText='margin:8px 0;padding:10px 12px;border-radius:8px;background:#B3261E;color:#fff;font-size:14px;font-weight:600;line-height:1.4';el.querySelector('.reg-info').appendChild(box);}
+    box.innerHTML='⚠ REGISTRO DUPLICADO: '+achados.map(x=>'pedido '+x.p.num+' também separado por '+dupDescrever(x.outros[0])+(x.p.dupAutorizadoPor?' (liberado por '+String(x.p.dupAutorizadoPor).replace(/[<>&]/g,'')+')':'')).join('; ')+'.'+(achados.every(x=>x.p.dupAutorizadoPor)?'':'<br>Avise o responsável.');
+    achados.forEach(x=>{const k=r._key+'|'+x.p.num;if(dupAvisados.has(k))return;dupAvisados.add(k);dupGuardarAvisados();
+      if(x.p.dupAutorizadoPor||x.outros.some(l=>(l.timestamp||0)>(r.inicio||0)))return; // já registrado na liberação, ou quem lançou depois é que registra
+      registrarDuplicado({origem:'separador',bloqueado:false,numPedido:x.p.num,filial:r.filial,quem:r.colaborador,detalhe:'Separação em andamento de pedido com registro duplicado (também por '+dupDescrever(x.outros[0])+')'});});
+  });
+}
+
+// ---- REGISTROS EM SEPARAÇÃO ----
+async function carregarRegistrosAbertos(){
+  const filial=document.getElementById('p-filial').value;
+  const colab=document.getElementById('p-colab').value;
+  const el=document.getElementById('reg-abertos');
+  if(!filial||!colab){registrosAbertos=[];renderRegistrosAbertos();carregarFilaAro();return;}
+  try{
+    const [data,cfg]=await Promise.all([fbQuery('registros','status',{equalTo:'em_separacao'}),fbGet('configuracoes/metaPneusHora')]);
+    if(cfg&&Number(cfg)>0)metaPneusHora=Number(cfg);
+    // confere se o usuário não trocou de colaborador enquanto carregava
+    if(document.getElementById('p-colab').value!==colab)return;
+    registrosAbertos=data?Object.entries(data).map(([k,v])=>({...v,_key:k}))
+      .filter(r=>r.status==='em_separacao'&&r.filial===filial&&r.colaborador===colab)
+      .sort((a,b)=>b.inicio-a.inicio):[];
+    registrosAbertos=await fecharLotesJaConferidos(registrosAbertos);
+    renderRegistrosAbertos();
+    carregarFilaAro();
+  }catch(e){console.error(e);el.innerHTML='<div class="reg-empty">Erro ao carregar registros.</div>';}
+}
+
+function atualizarIdent(){
+  const f=document.getElementById('p-filial').value,c=document.getElementById('p-colab').value,d=document.getElementById('p-date').value;
+  const ok=f&&c&&d;
+  document.getElementById('ident-resumo').classList.toggle('show',!!ok);
+  document.getElementById('ident-form').style.display=ok?'none':'';
+  if(ok){
+    document.getElementById('ident-nome').textContent=c;
+    const hoje=getBrasiliaDateStr();
+    document.getElementById('ident-sub').textContent=f+', '+(d===hoje?'hoje':d.split('-').reverse().join('/'));
+  }
+}
+function trocarIdent(){
+  document.getElementById('ident-resumo').classList.remove('show');
+  document.getElementById('ident-form').style.display='';
+  document.getElementById('p-colab').focus();
+}
+
+// Cada pedido conferido é finalizado individualmente dentro do lote.
+// O lote só encerra quando todos os pedidos dele estiverem conferidos (fim = última conferência).
+async function fecharLotesJaConferidos(lista){
+  if(!lista.length)return lista;
+  try{
+    const ini=lista.map(r=>r.data).sort()[0];
+    const cs=await fbQuery('confirmacoes','data',{startAt:ini});
+    const arr=cs?Object.values(cs).filter(c=>!c.baixaMassa&&c.timestamp):[];
+    const restantes=[];
+    for(const r of lista){
+      const nums=(r.pedidos||[]).map(p=>String(p.num));
+      const fin={...(r.pedidosFinalizados||{})};
+      const novos={};
+      nums.forEach(n=>{
+        if(fin[n])return;
+        const c=arr.filter(c=>c.filial===r.filial&&c.data===r.data&&String(c.numPedido)===n&&c.timestamp>=r.inicio).sort((a,b)=>a.timestamp-b.timestamp)[0];
+        if(c){fin[n]=c.timestamp;novos['pedidosFinalizados/'+n]=c.timestamp;}
+      });
+      const todos=nums.length>0&&nums.every(n=>fin[n]);
+      if(todos){
+        const fim=Math.max(...nums.map(n=>fin[n]));
+        Object.assign(novos,{fim,duracaoMin:Math.round((fim-r.inicio)/60000),status:'finalizado',finalizadoAuto:true,finalizadoPor:'conferencia'});
+      }
+      if(Object.keys(novos).length){try{await fbPatch('registros/'+r._key,novos);}catch(e){console.error(e);}}
+      r.pedidosFinalizados=fin;
+      if(!todos)restantes.push(r);
+    }
+    return restantes;
+  }catch(e){console.error(e);return lista;}
+}
+
+
+// ===================== ROBÔ (aba oculta) =====================
+// Filiais liberadas para o robô. Para abrir para todas, coloque as outras aqui (ou use ['*']).
+// Nome que a extensão do Aro usa (igual ao ERP) -> nomes que a filial pode ter no cadastro do site
+// Filiais MAUER do ERP que o Aro pode lançar. Cada uma só casa com a filial de MESMO nome no cadastro
+// ("MAUER ES" ou "ES"). Exceção: RP é a MAUER BAURU do site.
+// MAUER BU fica de fora até confirmar para onde vai (no ERP ela também é Bauru, CNPJ /0002).
+const ROBO_SIGLAS=['SP','RP','ES','MG','GO','BA','CE','DF','MS','MT','PE','PR','RS','SC'];
+const ROBO_APELIDOS=Object.fromEntries(ROBO_SIGLAS.map(sg=>['MAUER '+sg,['MAUER '+sg,sg]]));
+ROBO_APELIDOS['MAUER RP'].push('MAUER BAURU','BAURU'); // RP e Bauru são a mesma filial
+const ROBO_FILIAIS=Object.keys(ROBO_APELIDOS);
+const ROBO_PARAMS=new URLSearchParams(location.search);
+const MODO_ROBO=ROBO_PARAMS.has('robo');
+// Compara sem acento, espaço extra e sem o prefixo MAUER ("Mauer  RP", "MAUER RP" e "RP" contam como a mesma filial)
+function roboNomeFilial(n){return String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\bMAUER\b/g,'').replace(/[^A-Z0-9]+/g,' ').trim();}
+// Devolve o nome do Aro ('MAUER RP') para um nome do cadastro, ou null se a filial não é do Aro
+function roboCanonica(nome){const n=roboNomeFilial(nome);if(!n)return null;
+  for(const [k,al] of Object.entries(ROBO_APELIDOS))if(al.some(a=>roboNomeFilial(a)===n))return k;return null;}
+function roboFilialLiberada(nome){return !!roboCanonica(nome);}
+// Nome da filial como está no cadastro (é o que separador, gestor e conferente usam)
+function roboFilialCad(){const o=document.getElementById('robo-filial').selectedOptions[0];return o?(o.dataset.cad||o.value):'';}
+function roboStatus(estado,msg,res){
+  const el=document.getElementById('robo-status');el.dataset.state=estado;el.textContent=msg;
+  const cores={ok:['var(--green-bg)','var(--green-t)','var(--green-b)'],erro:['var(--red-bg)','var(--red-t)','var(--red-b)'],processando:['var(--orange-bg)','var(--orange-t)','var(--orange-b)'],pronto:['var(--bg)','var(--muted)','var(--border)']}[estado]||[];
+  if(cores.length){el.style.background=cores[0];el.style.color=cores[1];el.style.borderColor=cores[2];}
+  if(res!==undefined){document.getElementById('robo-resultado').textContent=JSON.stringify(res,null,2);window.roboUltimoResultado=res;}
+}
+function roboCarregarColabs(){
+  const f=roboFilialCad(),sel=document.getElementById('robo-colab');
+  const cols=(f&&colaboradores[f])||[];
+  sel.innerHTML='<option value="">Selecione</option>'+cols.map(c=>'<option>'+c.nome+'</option>').join('');
+}
+function roboParsePedidos(txt){
+  const itens=[],erros=[];
+  String(txt||'').split(/[\n,]+/).map(l=>l.trim()).filter(Boolean).forEach(l=>{
+    const m=l.match(/^(\d+)\s*[;:\t ]\s*(\d+)$/);
+    if(!m){erros.push({linha:l,erro:'formato inválido (use numero;quantidade)'});return;}
+    const qt=parseInt(m[2]);if(!qt||qt<1){erros.push({linha:l,erro:'quantidade inválida'});return;}
+    itens.push({num:m[1],qt});
+  });
+  return{itens,erros};
+}
+// ===== Anti-duplicado do Aro =====
+// Quantos dias para trás o Aro olha nos lançamentos manuais para barrar pedido já separado
+const ROBO_DIAS_DUPLICADO=30;
+// Normaliza o número do pedido: só dígitos, sem zeros à esquerda ("0363582 " -> "363582")
+function normPed(x){const d=String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');return d;}
+// Chave fixa por pedido: o mesmo pedido cai sempre no mesmo lugar da fila, então nunca existem dois
+function roboChave(num){return 'aro_'+normPed(num);}
+function roboDataLimite(dias){return new Date(Date.now()-dias*864e5).toLocaleDateString('sv-SE',{timeZone:'America/Sao_Paulo'});}
+let roboTravado=false;
+async function roboEnviar(){
+  const btn=document.getElementById('robo-enviar');
+  if(roboTravado||btn.disabled)return window.roboUltimoResultado;
+  const filialAro=document.getElementById('robo-filial').value,filial=roboFilialCad();
+  const data=document.getElementById('robo-data').value||getBrasiliaDateStr();
+  const res={ok:false,filial:filialAro,filialCadastro:filial,data,enfileirados:[],duplicados:[],invalidos:[]};
+  if(!(await roboLerPausas())){res.erro='Não consegui conferir as pausas. Nada foi lançado.';roboStatus('erro',res.erro,res);return res;}
+  if(roboPausada(filialAro)){roboMontarCasas();res.erro=filialAro+' está pausada. Nada foi lançado.';res.pausada=true;roboStatus('erro',res.erro,res);return res;}
+  if(filial&&roboCanonica(filial)!==filialAro){res.erro='Filial não confere ('+filialAro+' x '+filial+'). Nada foi lançado.';roboStatus('erro',res.erro,res);return res;}
+  if(!filial||!roboFilialLiberada(filial)){res.erro='Filial não liberada para o Aro';roboStatus('erro',res.erro,res);return res;}
+  const {itens,erros}=roboParsePedidos(document.getElementById('robo-pedidos').value);
+  res.invalidos=erros;
+  if(!itens.length){res.erro='Nenhum pedido válido';roboStatus('erro',res.erro,res);return res;}
+  roboTravado=true;btn.disabled=true;roboStatus('processando','Conferindo duplicados...');
+  try{
+    // Tudo que já existe: lançamentos (separados à mão ou pelo Aro) e a fila inteira do Aro
+    const limStr=roboDataLimite(ROBO_DIAS_DUPLICADO);
+    const [lanc,fila]=await Promise.all([fbQuery('lancamentos','data',{startAt:limStr}),fbGet('filaPedidos')]);
+    const existentes=new Set([
+      ...Object.values(lanc||{}).filter(l=>l&&l.isPedido&&l.numPedido).map(l=>normPed(l.numPedido)),
+      ...Object.values(fila||{}).filter(f=>f&&f.status!=='cancelado').map(f=>normPed(f.num))]);
+    const vistos=new Set(),candidatos=[];
+    itens.forEach(it=>{const n=normPed(it.num);
+      if(!n){res.invalidos.push({linha:it.num,erro:'número inválido'});return;}
+      if(existentes.has(n)||vistos.has(n))res.duplicados.push(n);else{vistos.add(n);candidatos.push({num:n,qt:it.qt});}});
+    // Última conferência, pedido a pedido, imediatamente antes de gravar (pega outro Aro rodando junto)
+    const novos=[];
+    if(candidatos.length){
+      roboStatus('processando','Enviando para a fila...');
+      const atuais=await Promise.all(candidatos.map(it=>fbGet('filaPedidos/'+roboChave(it.num)).catch(()=>null)));
+      candidatos.forEach((it,i)=>{const a=atuais[i];if(a&&a.status!=='cancelado')res.duplicados.push(it.num);else novos.push(it);});
+    }
+    if(novos.length){
+      const agora=getBrasiliaTimestamp(),upd={};
+      novos.forEach(it=>{upd[roboChave(it.num)]={num:it.num,qt:it.qt,filial,data,status:'disponivel',criadoEm:agora,origem:'aro'};});
+      await fbPatch('filaPedidos',upd);
+    }
+    Object.assign(res,{ok:true,enfileirados:novos.map(p=>p.num),totalPneus:novos.reduce((a,p)=>a+p.qt,0)});
+    // Duplicados barrados do Aro não viram alerta (o Aro continua sem conseguir duplicar; só não avisa o gestor/tablet/WhatsApp).
+    roboStatus('ok',novos.length?'Aro colocou '+novos.length+' pedido(s) na fila, '+res.totalPneus+' pneus'+(res.duplicados.length?' | '+res.duplicados.length+' duplicado(s) barrado(s): '+res.duplicados.join(', '):''):'Nada lançado: todos os pedidos já estavam na fila ou já foram separados ('+res.duplicados.join(', ')+')',res);
+    document.getElementById('robo-pedidos').value='';roboMostrarFila();
+  }catch(e){console.error(e);res.erro='Falha ao gravar: '+e.message;roboStatus('erro',res.erro,res);}
+  roboTravado=false;btn.disabled=false;return res;
+}
+// Cancela cópias repetidas que já estejam na fila (fica o registro mais antigo; só mexe no que está "Na fila")
+async function roboLimparDuplicados(){
+  const fila=await fbGet('filaPedidos')||{};
+  const porNum={};
+  Object.entries(fila).forEach(([k,v])=>{if(!v||v.status==='cancelado')return;const n=normPed(v.num);(porNum[n]=porNum[n]||[]).push({k,...v});});
+  const upd={};let n=0;
+  Object.values(porNum).forEach(lista=>{if(lista.length<2)return;
+    // mantém o que já está com separador; se nenhum, mantém o mais antigo
+    lista.sort((a,b)=>(a.status==='disponivel')-(b.status==='disponivel')||(a.criadoEm||0)-(b.criadoEm||0));
+    lista.slice(1).filter(x=>x.status==='disponivel').forEach(x=>{upd[x.k+'/status']='cancelado';upd[x.k+'/canceladoMotivo']='duplicado';n++;});});
+  if(n)await fbPatch('filaPedidos',upd);
+  roboStatus('ok',n?n+' cópia(s) duplicada(s) removida(s) da fila':'Nenhum duplicado na fila',{removidos:n});
+  roboMostrarFila();return n;
+}
+async function roboMostrarFila(){
+  const el=document.getElementById('robo-fila');if(!el)return;
+  const filial=roboFilialCad();
+  try{
+    const lim=new Date();lim.setDate(lim.getDate()-3);
+    const d=await fbQuery('filaPedidos','data',{startAt:dataBR(lim)});
+    const itens=Object.values(d||{}).filter(f=>f.filial===filial).sort((a,b)=>b.criadoEm-a.criadoEm);
+    el.innerHTML=itens.length?itens.slice(0,100).map(f=>'<div style="display:flex;gap:10px;padding:7px 10px;border-top:1px solid var(--border)"><span style="font-family:var(--mono);font-weight:500">'+f.num+'</span><span style="color:var(--muted)">'+f.qt+' pneus</span><span style="margin-left:auto">'+(f.status==='disponivel'?'<span class="badge badge-warn">Na fila</span>':'<span style="color:var(--green-t);font-weight:600">Com '+(f.colaborador||'separador')+'</span>')+'</span></div>').join(''):'<div style="padding:10px;color:var(--hint)">Fila vazia</div>';
+  }catch(e){console.error(e);el.innerHTML='<div style="padding:10px;color:var(--red-t)">Erro ao ler a fila</div>';}
+}
+// ===== Pausa por filial =====
+// Fica em roboConfig/pausadas no Firebase: {'MAUER SP':true}. Filial pausada some da lista Filial,
+// então a extensão não acha e não lança; o envio também confere de novo antes de gravar.
+let roboPausadas={},roboPausaOk=false,roboLib=[];
+const roboChavePausa=k=>k.replace(/[.#$\[\]\/]/g,'_');
+async function roboLerPausas(){
+  for(let t=0;t<3;t++){try{const r=await fetch(`${FB_URL}/roboConfig/pausadas.json?x=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(r.status);roboPausadas=(await r.json())||{};roboPausaOk=true;return true;}catch(e){await new Promise(r=>setTimeout(r,800));}}
+  roboPausaOk=false;return false;
+}
+const roboPausada=k=>!!roboPausadas[roboChavePausa(k)];
+function roboMontarCasas(){
+  const box=document.getElementById('robo-casas'),fs=document.getElementById('robo-filial'),antes=fs.value;
+  if(!roboPausaOk){box.innerHTML='<span style="color:var(--red-t);font-size:13px">Não consegui ler as pausas. Por segurança o Aro não lança em nenhuma filial agora. Recarregue a página.</span>';fs.innerHTML='';return;}
+  box.innerHTML=roboLib.map(n=>{const k=roboCanonica(n),p=roboPausada(k);
+    return '<button type="button" onclick="roboAlternarPausa(\''+k.replace(/'/g,"\\'")+'\')" style="min-height:34px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid '+(p?'var(--red-t)':'var(--green-t,#1a7f37)')+';background:'+(p?'var(--red-bg,#fdecea)':'var(--green-bg,#e9f7ee)')+';color:'+(p?'var(--red-t)':'var(--green-t,#1a7f37)')+'">'+(p?'⏸ ':'✓ ')+n+(p?' · pausada':'')+'</button>';}).join('')||'<span style="color:var(--hint);font-size:13px">Nenhuma filial liberada</span>';
+  // só as que estão lançando entram na lista Filial (é ela que a extensão lê)
+  const ativas=roboLib.filter(n=>!roboPausada(roboCanonica(n)));
+  fs.innerHTML=ativas.map(n=>{const k=roboCanonica(n),e=x=>String(x).replace(/"/g,'&quot;');return '<option value="'+e(k)+'" data-cad="'+e(n)+'">'+n+(roboNomeFilial(k)!==roboNomeFilial(n)?' ('+k+')':'')+'</option>';}).join('');
+  if([...fs.options].some(o=>o.value===antes))fs.value=antes;
+}
+async function roboAlternarPausa(k){
+  const p=!roboPausada(k),ch=roboChavePausa(k);
+  if(p&&!confirm('Pausar '+k+'? O Aro para de lançar pedidos dessa filial até você voltar.'))return;
+  try{
+    const r=await fetch(`${FB_URL}/roboConfig/pausadas/${encodeURIComponent(ch)}.json`,{method:p?'PUT':'DELETE',body:p?'true':undefined});
+    if(!r.ok)throw new Error(r.status);
+    await roboLerPausas();roboMontarCasas();roboMostrarFila();
+    roboStatus('ok',k+(p?' pausada: o Aro não lança nela.':' voltou: o Aro lança nela de novo.'),{filial:k,pausada:p});
+  }catch(e){roboStatus('erro','Não consegui gravar a pausa de '+k+': '+e.message,{});}
+}
+async function initRobo(){
+  if(!MODO_ROBO)return;
+  document.querySelector('.tabs')&&(document.querySelector('.tabs').style.display='none');
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-robo').classList.add('active');
+  const tt=document.querySelector('.tb-title');if(tt)tt.textContent='Aro';const ts=document.querySelector('.tb-sub');if(ts)ts.textContent='Robô de lançamentos';document.title='Aro | Mauer';
+  const todas=filiais.map(f=>f.nome).filter(roboFilialLiberada);
+  const ambiguas=ROBO_FILIAIS.filter(k=>todas.filter(n=>roboCanonica(n)===k).length>1);
+  const lib=todas.filter(n=>!ambiguas.includes(roboCanonica(n)));
+  const faltam=ROBO_FILIAIS.filter(k=>!lib.some(n=>roboCanonica(n)===k));
+  document.getElementById('robo-liberadas').textContent=(lib.length?lib.join(', '):'nenhuma')+(faltam.filter(k=>!ambiguas.includes(k)).length?' | Não cadastrada(s) no sistema: '+faltam.filter(k=>!ambiguas.includes(k)).join(', ')+' (cadastre no gestor)':'')
+    +(ambiguas.length?' | BLOQUEADA(S): '+ambiguas.map(k=>k+' combina com '+todas.filter(n=>roboCanonica(n)===k).join(' e ')).join('; ')+' (deixe só uma no cadastro)':'');
+  {const fora=filiais.map(f=>f.nome).filter(n=>!roboFilialLiberada(n));const el=document.getElementById('robo-liberadas');
+   if(fora.length){const d=document.createElement('div');d.style.cssText='margin-top:6px;font-size:12px;color:var(--hint);font-weight:400';d.textContent='Não liberadas: '+fora.join(', ');el.parentNode.appendChild(d);}}
+  const fs=document.getElementById('robo-filial');
+  // value = nome do Aro (o que a extensão procura); texto e data-cad = nome do cadastro
+  roboLib=lib;await roboLerPausas();roboMontarCasas();
+  const pf=roboCanonica(ROBO_PARAMS.get('filial'));if(pf&&[...fs.options].some(o=>o.value===pf))fs.value=pf;
+  document.getElementById('robo-data').value=ROBO_PARAMS.get('data')||getBrasiliaDateStr();
+  const pp=ROBO_PARAMS.get('pedidos');if(pp)document.getElementById('robo-pedidos').value=pp.split(',').join('\n');
+  roboStatus('pronto','Aro pronto',{});
+  roboMostrarFila();
+  if(ROBO_PARAMS.get('auto')==='1'&&pp)roboEnviar();
+}
+
+// ===================== FILA DO ARO (aba do separador) =====================
+let filaAro=[];
+function filaTemId(key){return pedidosTemp.some(p=>p.filaKey===key);}
+const ARO_DIAS_VENCE=3;   // dias que um pedido do Aro pode ficar esperando na fila antes de vencer
+async function carregarFilaAro(){
+  const card=document.getElementById('card-fila-aro');if(!card)return;
+  const filial=document.getElementById('p-filial').value,colab=document.getElementById('p-colab').value;
+  if(!filial||!colab){card.style.display='none';filaAro=[];return;}
+  try{
+    const d=await fbQuery('filaPedidos','status',{equalTo:'disponivel'});
+    filaAro=Object.entries(d||{}).map(([k,v])=>({...v,_key:k})).filter(f=>f.status==='disponivel'&&String(f.filial||'').trim().toUpperCase()===String(filial).trim().toUpperCase()).sort((a,b)=>a.criadoEm-b.criadoEm);
+    // Pedido do Aro parado há mais de ARO_DIAS_VENCE dias sai da fila do separador e fica gravado como 'vencido'
+    // (o Aro continua sem conseguir lançar esse número de novo; o separador ainda pode digitar à mão se precisar).
+    {const lim=Date.now()-ARO_DIAS_VENCE*86400000,venc=filaAro.filter(f=>(f.criadoEm||0)<lim);
+     if(venc.length){const upd={},ts=Date.now();venc.forEach(f=>{upd[f._key+'/status']='vencido';upd[f._key+'/vencidoEm']=ts;});
+       fbPatch('filaPedidos',upd).catch(e=>console.error('vencidos',e));
+       const fora=new Set(venc.map(f=>f._key));filaAro=filaAro.filter(f=>!fora.has(f._key));}}
+    {const vis=new Set();filaAro=filaAro.filter(f=>{const n=normPed(f.num);if(vis.has(n))return false;vis.add(n);return true;});}
+  }catch(e){console.error(e);}
+  if(!filaAro.length&&!roboFilialLiberada(filial)){card.style.display='none';return;}
+  renderFilaAro();
+}
+function renderFilaAro(){
+  const card=document.getElementById('card-fila-aro'),el=document.getElementById('fila-lista');
+  const marcados=new Set([...el.querySelectorAll('input:checked')].map(i=>i.value));
+  card.style.display='';
+  document.getElementById('fila-cont').textContent=filaAro.filter(f=>!filaTemId(f._key)).length;
+  if(!filaAro.length){el.innerHTML='<div class="fila-vazia">Nenhum pedido do Aro esperando separação</div>';return;}
+  const now=Date.now();
+  el.innerHTML=filaAro.map(f=>{const no=filaTemId(f._key);
+    return `<label class="fila-it${no?' nolote':''}"><input type="checkbox" value="${f._key}" ${no?'checked disabled':(marcados.has(f._key)?'checked':'')}><span class="fila-num">${f.num}</span><span class="fila-qt">${f.qt} pneu${f.qt!==1?'s':''}</span><span class="fila-t">${no?'no lote':fmtDur(now-f.criadoEm)}</span></label>`;}).join('');
+}
+function filaMarcarTodos(){
+  const cbs=[...document.querySelectorAll('#fila-lista input:not(:disabled)')];
+  const todos=cbs.every(c=>c.checked);cbs.forEach(c=>c.checked=!todos);
+}
+async function filaAdicionar(){
+  if(exigirTrava())return;
+  if(await verificarBloqueio())return;
+  const sel=[...document.querySelectorAll('#fila-lista input:checked:not(:disabled)')].map(i=>i.value);
+  if(!sel.length){showAlert('err','Marque pelo menos um pedido da fila.');return;}
+  let n=0;
+  sel.forEach(k=>{const f=filaAro.find(x=>x._key===k);if(!f||filaTemId(k))return;
+    if(pedidosTemp.some(p=>normPed(p.num)===normPed(f.num)))return;
+    pedidosTemp.push({num:String(f.num),qt:Number(f.qt),filaKey:k});n++;});
+  renderPedidoTemp();renderFilaAro();
+  if(n)showAlert('ok',n+' pedido'+(n!==1?'s':'')+' do Aro adicionado'+(n!==1?'s':'')+' ao lote.');
+}
+// Reserva os pedidos da fila na hora de iniciar a separação; devolve os que outro separador já pegou
+async function filaReservar(lote){
+  const filial=document.getElementById('p-filial').value;
+  // pedido digitado à mão que também está na fila conta como pego
+  lote.forEach(p=>{if(!p.filaKey){const f=filaAro.find(x=>normPed(x.num)===normPed(p.num));if(f)p.filaKey=f._key;}});
+  const tomados=[];
+  for(const p of lote.filter(p=>p.filaKey)){
+    try{const atual=await fbGet('filaPedidos/'+p.filaKey);if(!atual||atual.status!=='disponivel')tomados.push(p);}catch(e){}
+  }
+  return tomados;
+}
+async function filaMarcarPegos(lote,colab,registroId,ts){
+  const upd={};
+  lote.filter(p=>p.filaKey).forEach(p=>{Object.assign(upd,{[p.filaKey+'/status']:'separacao',[p.filaKey+'/colaborador']:colab,[p.filaKey+'/registroId']:registroId,[p.filaKey+'/pegoEm']:ts});});
+  if(Object.keys(upd).length)await fbPatch('filaPedidos',upd);
+}
+
+function fmtDur(ms){
+  const m=Math.max(0,Math.floor(ms/60000));
+  const h=Math.floor(m/60);
+  return h?h+'h'+String(m%60).padStart(2,'0'):m+' min';
+}
+
+function renderRegistrosAbertos(){
+  const el=document.getElementById('reg-abertos');
+  const card=document.getElementById('card-em-separacao');
+  atualizarBotaoIniciar();
+  if(!registrosAbertos.length){
+    el.querySelectorAll('.reg-item').forEach(n=>n.remove());
+    if(!el.querySelector('.reg-undo'))card.style.display='none';
+    if(regTimerInt){clearInterval(regTimerInt);regTimerInt=null;}
+    return;
+  }
+  card.style.display='';
+  const now=Date.now(), hoje=getBrasiliaDateStr();
+  el.innerHTML=registrosAbertos.map(r=>{
+    const hIni=new Date(r.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+    const dIni=r.data&&r.data!==hoje?r.data.split('-').reverse().slice(0,2).join('/')+' ':'';
+    const finMap=r.pedidosFinalizados||{};
+    const nums=(r.pedidos||[]).map(p=>finMap[p.num]?p.num+' ✓':p.num).join(', ');
+    const nConf=(r.pedidos||[]).filter(p=>finMap[p.num]).length;
+    const meta=metaMinRegistro(r);
+    const late=(now-r.inicio)>meta*60000;
+    const pct=Math.min(100,(now-r.inicio)/(meta*600));
+    return `<div class="reg-item${late?' late':''}" id="reg-${r._key}">
+      <div class="reg-info">
+        <div class="reg-head">${r.totalPedidos} pedido${r.totalPedidos!==1?'s':''}, ${r.totalPneus} pneus</div>
+        <div class="reg-sub">Início ${dIni}${hIni}${nums?' | '+nums:''}</div>
+        ${nConf?`<div class="reg-conf">${nConf} de ${r.totalPedidos} já conferido${nConf!==1?'s':''}</div>`:''}
+      </div>
+      <div class="reg-timer" data-ini="${r.inicio}" data-meta="${meta}">${fmtDur(now-r.inicio)}</div>
+      <div class="reg-meta"><div class="reg-bar"><div style="width:${pct}%"></div></div><span class="reg-meta-txt">${late?'Atrasado '+fmtDur(now-r.inicio-meta*60000):'Meta '+meta+' min'}</span></div>
+      <button class="btn-fin" onclick="finalizarRegistro('${r._key}',this)">Finalizar</button>
+    </div>`;
+  }).join('');
+  if(!regTimerInt)regTimerInt=setInterval(()=>{atualizarTimers();verificarDupAbertos();},15000);
+  verificarDupAbertos();
+}
+
+function atualizarBotaoIniciar(){
+  const btn=document.getElementById('btn-salvar-pedidos');
+  if(!btn||btn.dataset.busy==='1')return;
+  const aberto=registrosAbertos.length>0;
+  btn.classList.remove('blocked');
+  btn.innerHTML=aberto
+    ?'<svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg> Finalizar anterior e iniciar novo'
+    :'<svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg> Iniciar separação';
+}
+
+function atualizarTimers(){
+  const now=Date.now();
+  document.querySelectorAll('.reg-timer[data-ini]').forEach(t=>{
+    const ini=Number(t.dataset.ini);
+    t.textContent=fmtDur(now-ini);
+    const meta=Number(t.dataset.meta)||60,it=t.closest('.reg-item'),late=(now-ini)>meta*60000;
+    it.classList.toggle('late',late);
+    const bar=it.querySelector('.reg-bar>div');if(bar)bar.style.width=Math.min(100,(now-ini)/(meta*600))+'%';
+    const tx=it.querySelector('.reg-meta-txt');if(tx)tx.textContent=late?'Atrasado '+fmtDur(now-ini-meta*60000):'Meta '+meta+' min';
+  });
+}
+
+async function finalizarRegistro(id,btn){
+  btn.disabled=true;btn.textContent='...';
+  const reg=registrosAbertos.find(r=>r._key===id);
+  const fim=getBrasiliaTimestamp();
+  const duracaoMin=reg?Math.round((fim-reg.inicio)/60000):null;
+  try{
+    await fbPatch('registros/'+id,{fim,duracaoMin,status:'finalizado'});
+    try{avisarConferente((registrosAbertos.find(r=>r._key===id)||{}).filial||document.getElementById('p-filial').value);}catch(e){}
+    registrosAbertos=registrosAbertos.filter(r=>r._key!==id);
+    mostrarDesfazer(reg,duracaoMin);
+    renderRegistrosAbertos();
+  }catch(e){
+    console.error(e);showAlert('err','Erro ao finalizar. Tente de novo.');
+    btn.disabled=false;btn.textContent='Finalizar';
+  }
+}
+
+// Em vez de pedir confirmação, oferece "Desfazer" por alguns segundos
+let undoTimer=null;
+function mostrarDesfazer(reg,duracaoMin){
+  const el=document.getElementById('reg-abertos');
+  const card=document.getElementById('card-em-separacao');
+  clearTimeout(undoTimer);
+  const div=document.createElement('div');div.className='reg-undo';
+  div.innerHTML=`<span>Finalizado em ${fmtDur((duracaoMin||0)*60000)}</span><button>Desfazer</button>`;
+  div.querySelector('button').onclick=()=>desfazerFinalizacao(reg,div);
+  el.appendChild(div);card.style.display='';
+  undoTimer=setTimeout(()=>{div.remove();renderRegistrosAbertos();},6000);
+}
+
+async function desfazerFinalizacao(reg,div){
+  clearTimeout(undoTimer);
+  div.querySelector('button').disabled=true;
+  try{
+    await fbPatch('registros/'+reg._key,{fim:null,duracaoMin:null,status:'em_separacao'});
+    registrosAbertos.unshift(reg);
+    div.remove();renderRegistrosAbertos();
+  }catch(e){console.error(e);showAlert('err','Não foi possível desfazer.');div.remove();renderRegistrosAbertos();}
+}
+
+function renderPedidoHistory(){
+  const today=dataBR();
+  const items=lancamentosHoje.filter(l=>l.isPedido&&l.data===today);
+  const el=document.getElementById('pedido-history');
+  if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum pedido registrado hoje</div>';return;}
+  const ag={};
+  items.forEach(p=>{if(!ag[p.colaborador])ag[p.colaborador]={colab:p.colaborador,filial:p.filial,pneus:0,pedidos:[]};ag[p.colaborador].pneus+=Number(p.qtdPedido||0);ag[p.colaborador].pedidos.push(p.numPedido);});
+  el.innerHTML=Object.values(ag).map(a=>`<div class="hist-item"><div class="hist-dot ok"></div><div><div style="font-weight:500;font-size:13px">${a.colab} <span style="font-weight:400;color:var(--muted)">— ${a.filial}</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px">${a.pedidos.length} pedido${a.pedidos.length!==1?'s':''} · ${a.pneus} pneus</div></div></div>`).join('');
+}
+
+// ---- CONFERENTE ----
+async function salvarErro(){
+  const filial=document.getElementById('cf-filial').value;
+  const date=document.getElementById('cf-date').value;
+  const conf=document.getElementById('cf-nome').value.trim().toUpperCase();
+  const colab=document.getElementById('cf-colab').value;
+  const motivo=document.getElementById('cf-motivo').value;
+  const pedErr=document.getElementById('cf-pedido-err').value.trim();
+  const obs=document.getElementById('cf-obs').value.trim();
+  let ok=true;
+  [['cf-filial',filial],['cf-date',date],['cf-nome',conf],['cf-colab',colab],['cf-motivo',motivo]].forEach(([id,val])=>{document.getElementById(id).classList.toggle('err',!val);if(!val)ok=false;});
+  if(!ok){showAlert('err','Preencha todos os campos.');return;}
+  const btn=document.getElementById('btn-salvar-erro');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Registrando...';
+  try{
+    await fbPost('lancamentos',{data:date,filial,colaborador:colab,motivo,pedidoErro:pedErr,obs,conferente:conf,pedidos:0,pneus:0,isPedido:false,isErro:true,numPedido:'',qtdPedido:0,timestamp:getBrasiliaTimestamp()});
+    ['cf-colab','cf-motivo','cf-pedido-err','cf-obs'].forEach(id=>{document.getElementById(id).value='';document.getElementById(id).classList.remove('err');});
+    document.getElementById('separador-info').style.display='none';
+    document.getElementById('separador-nao-found').style.display='none';
+    showAlert('ok','Erro registrado no painel do gestor!');
+    await carregarHoje();
+  }catch(e){showAlert('err','Erro ao registrar.');console.error(e);}
+  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Registrar erro';
+}
+
+function renderErroHistory(){
+  const today=dataBR();
+  const items=lancamentosHoje.filter(l=>l.isErro&&l.data===today);
+  const el=document.getElementById('erro-history');
+  if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--hint);text-align:center;padding:14px">Nenhum erro hoje</div>';return;}
+  el.innerHTML=[...items].reverse().map(e=>`<div class="hist-item"><div class="hist-dot err"></div><div style="font-size:13px"><div style="font-weight:500">${e.colaborador} <span class="badge badge-warn">${e.motivo}</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px">${e.pedidoErro?`Pedido ${e.pedidoErro} · `:''}Conf.: ${e.conferente}</div></div></div>`).join('');
+}
+
+// ---- GRÁFICO ----
+
+
+function setGeralPeriodo(tipo) {
+  const hoje = dataBR();
+  const ini = new Date();
+  ini.setDate(1);
+  const iniMes = dataBR(ini);
+  const fim = dataBR(new Date(ini.getFullYear(), ini.getMonth()+1, 0));
+  if(tipo==='hoje') {
+    document.getElementById('geral-date-ini').value = hoje;
+    document.getElementById('geral-date-fim').value = hoje;
+  } else {
+    document.getElementById('geral-date-ini').value = iniMes;
+    document.getElementById('geral-date-fim').value = fim;
+  }
+  renderRankingGeral();
+}
+
+async function renderRankingGeral() {
+  {const c=document.getElementById('card-rank-geral');if(c&&c.style.display==='none')return;}
+  const wrap = document.getElementById('ranking-geral-wrap');
+  const ini = document.getElementById('geral-date-ini').value;
+  const fim = document.getElementById('geral-date-fim').value;
+  const today = dataBR();
+  const dataIni = ini || today;
+  const dataFim = fim || today;
+  wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando ranking geral... 🛞</div>';
+  try {
+    const data = await fbQuery('lancamentos','data',{startAt:(document.getElementById('geral-date-ini').value||dataMenos(31))});
+    const todos = data ? Object.values(data) : [];
+    const hoje = todos.filter(l=>l.data>=dataIni&&l.data<=dataFim&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
+    if(!hoje.length){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px;background:#131F3B;border-radius:var(--radius)">Nenhuma separação registrada hoje</div>';return;}
+    
+    // Agrupa por colaborador+filial
+    const ag={};
+    hoje.forEach(l=>{
+      const key=l.colaborador+'||'+l.filial;
+      if(!ag[key])ag[key]={nome:l.colaborador,filial:l.filial,pneus:0,pedidos:0};
+      ag[key].pneus+=Number(l.pneus||0);
+      ag[key].pedidos+=Number(l.pedidos||0);
+    });
+    
+    const list=Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
+    const max=list[0]?.pneus||1;
+    const totalPneus=list.reduce((a,c)=>a+c.pneus,0);
+    const totalSep=list.length;
+    const cores=['#E38A29','#D5DAE4','#C9A27A','#669EA1','#8FB8BA','#A9B4C8','#7E8CA8','#C3CAD8','#5E8587','#B38A5E'];
+    const medalhas=['🥇','🥈','🥉'];
+    const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const labelPeriodo = dataIni===dataFim ? dataIni.split('-').reverse().join('/') : dataIni.split('-').reverse().join('/')+' → '+dataFim.split('-').reverse().join('/');
+    
+    const html=`<div class="race-track">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:#fff">🌎 ${labelPeriodo}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4)">Atualizado ${hora}</div>
+      </div>
+      ${list.map((c,i)=>{
+        const pct=Math.round((c.pneus/max)*100);
+        const cor=cores[i%cores.length];
+        const medal=medalhas[i]||`${i+1}º`;
+        return`<div class="race-lane">
+          <div class="race-pos${i===0?' first':i===1?' second':i===2?' third':''}">${medal}</div>
+          <div style="min-width:90px">
+            <div class="race-name">${c.nome}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:1px">${c.filial}</div>
+          </div>
+          <div class="race-bar-wrap">
+            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}">
+              <span class="race-val">${c.pneus}</span>
+            </div>
+          </div>
+          <div class="race-total">${c.pneus} 🛞</div>
+        </div>`;
+      }).join('')}
+      <div class="race-meta">
+        <span class="race-meta-txt">${totalSep} separadores no total</span>
+        <span class="race-meta-txt">${totalPneus} pneus hoje</span>
+      </div>
+    </div>`;
+    wrap.innerHTML=html;
+  } catch(e){wrap.innerHTML='<div style="text-align:center;padding:20px;color:#B3261E;font-size:13px">Erro ao carregar ranking geral</div>';console.error(e);}
+}
+
+
+async function renderRankingCorrida() {
+  const filial = document.getElementById('g-filial').value;
+  const wrap = document.getElementById('ranking-corrida-wrap');
+  if(!filial){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px">Selecione uma filial para ver o ranking</div>';return;}
+  wrap.innerHTML='<div style="text-align:center;padding:20px;color:rgba(255,255,255,.5);font-size:13px;background:#131F3B;border-radius:var(--radius)">Carregando corrida... 🛞</div>';
+  try {
+    const today = dataBR();
+    const data = await fbQuery('lancamentos','data',{startAt:today});
+    const todos = data ? Object.values(data) : [];
+    const hoje = todos.filter(l=>l.filial===filial&&l.data===today&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
+    if(!hoje.length){wrap.innerHTML='<div style="text-align:center;padding:30px;color:var(--hint);font-size:13px;background:#131F3B;border-radius:var(--radius)">Nenhuma separação registrada hoje nesta filial</div>';return;}
+    // Agrupa por colaborador
+    const ag={};
+    hoje.forEach(l=>{
+      if(!ag[l.colaborador])ag[l.colaborador]={nome:l.colaborador,pneus:0,pedidos:0,erros:0};
+      ag[l.colaborador].pneus+=Number(l.pneus||0);
+      ag[l.colaborador].pedidos+=Number(l.pedidos||0);
+    });
+    // Conta erros
+    const errosHoje=todos.filter(l=>l.filial===filial&&l.data===today&&l.motivo);
+    errosHoje.forEach(l=>{if(ag[l.colaborador])ag[l.colaborador].erros++;});
+    const list=Object.values(ag).sort((a,b)=>b.pneus-a.pneus);
+    const max=list[0]?.pneus||1;
+    const totalPneus=list.reduce((a,c)=>a+c.pneus,0);
+    const cores=['#E38A29','#669EA1','#8FB8BA','#A9B4C8','#7E8CA8','#C3CAD8','#5E8587','#B38A5E'];
+    const medalhas=['🥇','🥈','🥉'];
+    const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const html=`<div class="race-track">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:#fff">🏁 ${filial}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4)">Atualizado ${hora}</div>
+      </div>
+      ${list.map((c,i)=>{
+        const pct=Math.round((c.pneus/max)*100);
+        const cor=cores[i%cores.length];
+        const medal=medalhas[i]||`${i+1}º`;
+        return`<div class="race-lane">
+          <div class="race-pos${i===0?' first':i===1?' second':i===2?' third':''}">${medal}</div>
+          <div class="race-name">${c.nome}</div>
+          <div class="race-bar-wrap">
+            <div class="race-bar" style="width:${Math.max(pct,8)}%;background:${cor}">
+              <span class="race-val">${c.pneus}</span>
+            </div>
+          </div>
+          <div class="race-total">${c.pneus} 🛞</div>
+        </div>`;
+      }).join('')}
+      <div class="race-meta">
+        <span class="race-meta-txt">${list.length} separadores em pista</span>
+        <span class="race-meta-txt">${totalPneus} pneus total hoje</span>
+      </div>
+    </div>`;
+    wrap.innerHTML=html;
+  } catch(e){wrap.innerHTML='<div style="text-align:center;padding:20px;color:#B3261E;font-size:13px">Erro ao carregar ranking</div>';console.error(e);}
+}
+
+
+async function renderChart(){
+  const filial=document.getElementById('g-filial').value;
+  const colab=document.getElementById('g-colab').value;
+  const metricsEl=document.getElementById('chart-metrics');
+  const wrapEl=document.getElementById('chart-wrap');
+  const emptyEl=document.getElementById('chart-empty');
+  if(!filial||!colab){metricsEl.style.display='none';wrapEl.style.display='none';emptyEl.style.display='';if(myChart){myChart.destroy();myChart=null;}return;}
+  emptyEl.textContent='Carregando...';emptyEl.style.display='';
+  try{
+    const data=await fbQuery('lancamentos','data',{startAt:dataMenos(60)}); // últimos 60 dias
+    const todos=data?Object.values(data):[];
+    const dados=todos.filter(l=>l.filial===filial&&l.colaborador===colab&&!l.isPedido&&!l.isErro&&Number(l.pneus||0)>0);
+    if(!dados.length){emptyEl.textContent='Nenhum dado.';wrapEl.style.display='none';metricsEl.style.display='none';if(myChart){myChart.destroy();myChart=null;}return;}
+    emptyEl.style.display='none';
+    const byDate={};
+    dados.forEach(l=>{if(!byDate[l.data])byDate[l.data]={pneus:0,pedidos:0};byDate[l.data].pneus+=Number(l.pneus||0);byDate[l.data].pedidos+=Number(l.pedidos||0);});
+    const dates=Object.keys(byDate).sort();
+    const labels=dates.map(d=>{try{const[y,m,dd]=d.split('-');return`${dd}/${m}`;}catch(e){return d;}});
+    const pneusData=dates.map(d=>byDate[d].pneus);
+    const totalPn=pneusData.reduce((a,v)=>a+v,0);
+    const totalPd=dados.reduce((a,l)=>a+Number(l.pedidos||0),0);
+    const media=dates.length>0?Math.round(totalPn/dates.length):0;
+    const maximo=pneusData.length>0?Math.max(...pneusData):0;
+    metricsEl.style.display='grid';
+    metricsEl.innerHTML=`<div class="cm"><div class="cm-lbl">Total pneus</div><div class="cm-val">${totalPn.toLocaleString('pt-BR')}</div></div><div class="cm"><div class="cm-lbl">Pedidos</div><div class="cm-val">${totalPd}</div></div><div class="cm"><div class="cm-lbl">Média/dia</div><div class="cm-val">${media}</div></div><div class="cm"><div class="cm-lbl">Melhor dia</div><div class="cm-val" style="color:var(--green-t)">${maximo}</div></div>`;
+    wrapEl.style.display='';
+    if(myChart)myChart.destroy();
+    myChart=new Chart(document.getElementById('myChart'),{type:'bar',data:{labels,datasets:[{label:'Pneus',data:pneusData,backgroundColor:pneusData.map(v=>v===maximo&&maximo>0?'#131F3B':'#B8CFD0'),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} pneus`}}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11},maxRotation:45}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}}}});
+  }catch(e){emptyEl.textContent='Erro ao carregar.';emptyEl.style.display='';console.error(e);}
+}
+
+function showAlert(type,msg){
+  ['alert-ok','alert-err'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  if(type==='ok'){document.getElementById('alert-ok-msg').textContent=msg;document.getElementById('alert-ok').classList.add('show');}
+  else{document.getElementById('err-msg').textContent=msg;document.getElementById('alert-err').classList.add('show');}
+  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(()=>{document.getElementById('alert-ok').classList.remove('show');document.getElementById('alert-err').classList.remove('show');},5000);
+}
+
+document.addEventListener('change',e=>{if(e.target.matches('input,select,textarea'))e.target.classList.remove('err');});
+document.addEventListener('input',e=>{if(e.target.matches('input,textarea'))e.target.classList.remove('err');});
+
+init();
+</script>
 </body>
 </html>
