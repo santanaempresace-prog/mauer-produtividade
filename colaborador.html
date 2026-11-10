@@ -588,7 +588,7 @@ async function fbQuery(path,field,opts){
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 // Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-11-10-github-aro';
+const APP_VERSAO='2026-11-10-github-completa';
 async function checarVersao(){
   if(location.protocol==='file:')return false;
   try{
@@ -2010,6 +2010,17 @@ async function roboEnviar(){
       const atuais=await Promise.all(candidatos.map(it=>fbGet('filaPedidos/'+roboChave(it.num)).catch(()=>null)));
       candidatos.forEach((it,i)=>{const a=atuais[i];if(a&&a.status!=='cancelado')res.duplicados.push(it.num);else novos.push(it);});
     }
+    // Pedido que já existia sem as informações novas (ex.: entrou antes no formato antigo): completa com
+    // nota, transportadora, cliente e medidas, sem lançar de novo. Vale para a fila e para o lançamento já separado.
+    res.completados=[];
+    {const porNum=new Map();itens.forEach(it=>{const n=normPed(it.num);if(n&&Array.isArray(it.itens)&&it.itens.length&&!porNum.has(n))porNum.set(n,aroDetalhes(it));});
+     const updF={},updL={};
+     res.duplicados.forEach(n=>{const d=porNum.get(n);if(!d)return;let fez=false;
+       Object.entries(fila||{}).forEach(([k,f])=>{if(f&&normPed(f.num)===n&&f.status!=='cancelado'&&!(Array.isArray(f.itens)&&f.itens.length)){Object.entries(d).forEach(([c,v])=>updF[k+'/'+c]=v);fez=true;}});
+       Object.entries(lanc||{}).forEach(([k,l])=>{if(l&&l.isPedido&&normPed(l.numPedido)===n&&!(Array.isArray(l.itens)&&l.itens.length)){Object.entries(d).forEach(([c,v])=>updL[k+'/'+c]=v);fez=true;}});
+       if(fez)res.completados.push(n);});
+     if(Object.keys(updF).length)await fbPatch('filaPedidos',updF);
+     if(Object.keys(updL).length)await fbPatch('lancamentos',updL);}
     if(novos.length){
       const agora=getBrasiliaTimestamp(),upd={};
       novos.forEach(it=>{upd[roboChave(it.num)]={...aroDetalhes(it),num:it.num,qt:it.qt,filial,data,status:'disponivel',criadoEm:agora,origem:'aro'};});
@@ -2017,7 +2028,8 @@ async function roboEnviar(){
     }
     Object.assign(res,{ok:true,enfileirados:novos.map(p=>p.num),totalPneus:novos.reduce((a,p)=>a+p.qt,0)});
     // Duplicados barrados do Aro não viram alerta (o Aro continua sem conseguir duplicar; só não avisa o gestor/tablet/WhatsApp).
-    roboStatus('ok',novos.length?'Aro colocou '+novos.length+' pedido(s) na fila, '+res.totalPneus+' pneus'+(res.duplicados.length?' | '+res.duplicados.length+' duplicado(s) barrado(s): '+res.duplicados.join(', '):''):'Nada lançado: todos os pedidos já estavam na fila ou já foram separados ('+res.duplicados.join(', ')+')',res);
+    const txtComp=res.completados.length?' | '+res.completados.length+' pedido(s) que já existia(m) completado(s) com cliente, NF e medidas: '+res.completados.join(', '):'';
+    roboStatus('ok',(novos.length?'Aro colocou '+novos.length+' pedido(s) na fila, '+res.totalPneus+' pneus'+(res.duplicados.length?' | '+res.duplicados.length+' duplicado(s) barrado(s): '+res.duplicados.join(', '):''):'Nada lançado: todos os pedidos já estavam na fila ou já foram separados ('+res.duplicados.join(', ')+')')+txtComp,res);
     document.getElementById('robo-pedidos').value='';roboMostrarFila();
   }catch(e){console.error(e);res.erro='Falha ao gravar: '+e.message;roboStatus('erro',res.erro,res);}
   roboTravado=false;btn.disabled=false;return res;
