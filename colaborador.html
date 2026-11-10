@@ -1,18 +1,17 @@
 <!DOCTYPE html>
-<script>
-// ENDEREÇO ANTIGO (GitHub). Pessoas são levadas para o site novo, com a trava do computador.
-// O robô Aro (endereço com ?robo) continua rodando AQUI, porque a extensão dele só tem permissão neste endereço.
-(function(){
-  if(new URLSearchParams(location.search).has('robo'))return;
-  var url="https://mauer-produtividade.web.app/colaborador.html"+location.search,extra="";
-  try{var t=localStorage.getItem('mauerFilialComputador'),id=localStorage.getItem('mauerComputadorId');
-    if(t&&id)extra="#trava="+encodeURIComponent(JSON.stringify({t:JSON.parse(t),id:id}));}catch(e){}
-  location.replace(url+extra);
-  document.write('<plaintext style="display:none">');   // não roda o resto da página
-})();
-</script>
 <html lang="pt-BR">
 <head>
+<script>
+// ===== CÓPIA NO ENDEREÇO ANTIGO (GitHub) =====
+// Só a tela do Aro (?robo=1) roda aqui, porque a extensão do Aro ainda abre este endereço.
+// Qualquer outro acesso (separadores) vai para o endereço novo, levando a trava da filial deste computador.
+(function(){try{
+  if(/[?&]robo(=|&|$)/.test(location.search))return;
+  var h='';try{var t=localStorage.getItem('mauerFilialComputador'),id=localStorage.getItem('mauerComputadorId');
+    if(t&&id)h='#trava='+encodeURIComponent(JSON.stringify({t:JSON.parse(t),id:id}));}catch(e){}
+  location.replace('https://mauer-produtividade.web.app/colaborador.html'+location.search+h);
+}catch(e){location.replace('https://mauer-produtividade.web.app/colaborador.html');}})();
+</script>
 <script>
 // ===== TRAVA DO COMPUTADOR VINDA DO ENDEREÇO ANTIGO =====
 // O endereço antigo (GitHub) manda a trava deste computador junto no redirecionamento.
@@ -38,11 +37,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<title>Preenchimento Diário — Mauer</title>
+<title>Separação — Mauer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <meta name="theme-color" content="#131F3B">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{--navy:#131F3B;--navy-2:#1E2C4E;--navy-soft:#AEB6C8;--orange:#E38A29;--orange-t:#9C5A12;--orange-bg:#FBF0E4;--orange-b:#F0C999;--teal:#669EA1;--teal-t:#3F6F72;--bg:#F3F3F2;--surface:#fff;--border:#E7E6E6;--border-strong:#C9CCD3;--text:#131F3B;--muted:#5C6478;--hint:#8A91A1;--radius:10px;--rsm:7px;--green-bg:#E7F2EC;--green-t:#2F7D5B;--green-b:#B5D8C5;--red-bg:#FBEAEA;--red-t:#B3261E;--red-b:#F0BDBA;--amber-bg:var(--orange-bg);--amber-t:var(--orange-t);--amber-b:var(--orange-b);--blue-bg:#EAF2F2;--blue-t:var(--teal-t);--blue-b:#C4DCDD;--font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -188,6 +186,9 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
 .fila-num{font-family:var(--mono);font-weight:500;font-size:15px}
 .fila-qt{color:var(--muted);font-size:13px}
 .fila-t{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--hint)}
+.fila-info{flex:1;min-width:0}.fila-info>div:first-child{display:flex;gap:10px;align-items:baseline}
+.fila-det{font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fila-med{font-family:var(--mono);font-size:12px;color:var(--teal-t);margin-top:2px;white-space:normal}
 .fila-vazia{padding:16px;text-align:center;color:var(--hint);font-size:13px}
 .fila-acoes{display:flex;gap:8px;margin-top:10px}
 .reg-meta{grid-area:meta;display:flex;align-items:center;gap:10px;margin-top:8px}
@@ -204,6 +205,9 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
 .btn-submit.blocked{background:var(--muted)}
 .reg-undo{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:rgba(47,125,91,.22);border:1px solid rgba(181,216,197,.35);border-radius:var(--rsm);font-size:14px;color:#D6EDE1;font-weight:500}
 .reg-undo button{background:transparent;border:1px solid #D6EDE1;color:#fff;border-radius:var(--rsm);padding:8px 14px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;min-height:38px}
+.reg-aviso{padding:10px 14px;border-radius:var(--rsm);font-size:14px;font-weight:500;line-height:1.4;background:rgba(227,138,41,.18);border:1px solid rgba(240,201,153,.45);color:#FBE3C6}
+.reg-aviso.rede{background:rgba(255,255,255,.08);border-color:#34425F;color:#C3C9D6;font-size:13px}
+.reg-aviso+.reg-aviso,.reg-item+.reg-aviso{margin-top:10px}
 .reg-empty{font-size:13px;color:var(--navy-soft);text-align:center;padding:14px}
 @media(max-width:480px){.topbar{padding:10px 14px 14px;gap:10px}.tb-logo{height:22px}.tb-sub{display:none}.form-grid{grid-template-columns:1fr}.pedido-add-row{grid-template-columns:1fr 82px auto}.chart-metrics{grid-template-columns:repeat(2,1fr)}.tab-btn{font-size:12px;padding:9px 4px}.tab-btn span{font-size:10px}.card{padding:16px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -224,7 +228,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
   <div class="tabs">
     <button class="tab-btn active" onclick="setTab('pedido',this)">Registrar pedido<span>Separador</span></button>
     <button class="tab-btn" onclick="setTab('confirmar',this)">Confirmar<span>Conferência</span></button>
-    <button class="tab-btn" onclick="setTab('conferente',this)">Conferente<span>Lançar erros</span></button>
+    <button class="tab-btn" onclick="setTab('conferente',this)" style="display:none" aria-hidden="true">Conferente<span>Lançar erros</span></button><!-- erros agora são lançados no tablet (botão "Com erro") -->
     <button class="tab-btn" onclick="setTab('grafico',this)">Corrida<span>Ranking ao vivo</span></button>
   </div>
 
@@ -236,7 +240,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
       <div class="ident-resumo" id="ident-resumo"><div><div class="ident-nome" id="ident-nome"></div><div class="ident-sub" id="ident-sub"></div></div><button type="button" class="btn-trocar" onclick="trocarIdent()">Trocar</button></div>
       <div class="form-grid" id="ident-form">
         <div class="form-group"><label>Filial <span class="req">*</span></label><select id="p-filial" onchange="loadColabs('p-filial','p-colab');carregarRegistrosAbertos();atualizarIdent()"><option value="">Selecione</option></select></div>
-        <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="p-date" onchange="atualizarIdent()"></div>
+        <div class="form-group"><label>Data <span class="req">*</span></label><input type="date" id="p-date" onchange="atualizarIdent()" disabled title="A data é sempre a de hoje. Lançamento de outro dia só pelo gestor."></div>
         <div class="form-group full"><label>Colaborador <span class="req">*</span></label><select id="p-colab" onchange="carregarRegistrosAbertos();atualizarIdent();verificarBloqueio()"><option value="">Selecione a filial primeiro</option></select></div>
       </div>
       <div id="trava-filial" style="margin-top:10px;font-size:13px"></div>
@@ -327,13 +331,31 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
     <div class="form-grid">
       <div class="form-group"><label>Filial</label><select id="robo-filial"></select></div>
       <div class="form-group"><label>Data</label><input type="date" id="robo-data"></div>
-      <div class="form-group full"><label>Pedidos: um por linha, no formato numero;quantidade</label><textarea id="robo-pedidos" rows="6" placeholder="363582;16&#10;363583;8" style="font-family:var(--mono)"></textarea></div>
+      <div class="form-group full"><label>Pedidos: um item por linha, no formato pedido;nota;transportadora;cliente;descrição;marca;quantidade;local (marca e local opcionais; o antigo numero;quantidade continua valendo)</label><textarea id="robo-pedidos" rows="6" placeholder="383255;;FLORESTA LOGISTICA LTDA;JULIANO AUTO CENTER;2 - FIREMAX - PNEU 175/70R14 84H FM686 HP;;8,00;B3" style="font-family:var(--mono)"></textarea></div>
     </div>
     <button class="btn-submit" id="robo-enviar" style="margin-top:14px" onclick="roboEnviar()">Enviar para a fila de separação</button>
     <div id="robo-status" data-state="pronto" style="margin-top:12px;padding:10px 12px;border-radius:var(--rsm);font-size:14px;font-weight:500;background:var(--bg);border:1px solid var(--border)">Aro pronto</div>
     <div style="margin-top:14px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center">Fila atual da filial <button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="roboMostrarFila()">Atualizar</button> <button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="roboLimparDuplicados()">Limpar duplicados</button></div>
     <div id="robo-fila" style="margin-top:6px;border:1px solid var(--border);border-radius:var(--rsm);max-height:220px;overflow:auto;font-size:13px"></div>
     <pre id="robo-resultado" style="margin-top:10px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;max-height:240px;overflow:auto">{}</pre>
+  </div>
+  <div class="card" id="robo-formato" style="margin-top:12px">
+    <div class="card-title"><svg viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 11-12.8 0"/></svg>Formato novo do Aro (cliente, NF, medidas e marca)</div>
+    <div class="card-sub">Ligue quando o Aro já estiver mandando o formato novo. Antes disso o sistema recebe e guarda, mas separador e tablet continuam como hoje.</div>
+    <div id="rf-estado" style="padding:12px 14px;border-radius:var(--rsm);font-size:15px;font-weight:600;margin-bottom:10px">Lendo...</div>
+    <div id="rf-recebidos" style="font-size:13px;color:var(--muted);margin-bottom:12px"></div>
+    <button class="btn-submit" id="rf-botao" onclick="roboAlternarFormato()" disabled>...</button>
+  </div>
+  <div class="card" id="robo-exclusivo" style="margin-top:12px">
+    <div class="card-title"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Só o Aro lança</div>
+    <div class="card-sub">Ligado: nas filiais do Aro o separador não digita pedido que não está na fila. Se o Aro ficar parado mais que o tempo abaixo, o lançamento à mão abre sozinho até ele voltar.</div>
+    <div id="rx-estado" style="padding:12px 14px;border-radius:var(--rsm);font-size:15px;font-weight:600;margin-bottom:10px">Lendo...</div>
+    <div id="rx-vivo" style="font-size:13px;color:var(--muted);margin-bottom:12px"></div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div class="form-group" style="width:200px"><label>Aro parado depois de (min)</label><input type="number" id="rx-min" min="5" max="240"></div>
+      <button type="button" class="btn-trocar" onclick="roboSalvarVigiaMin()" style="min-height:46px">Salvar tempo</button>
+    </div>
+    <button class="btn-submit" id="rx-botao" style="margin-top:12px" onclick="roboAlternarExclusivo()" disabled>...</button>
   </div>
 </div>
 <div class="tab-content" id="tab-confirmar">
@@ -566,7 +588,7 @@ async function fbQuery(path,field,opts){
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 // Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-11-04-b';
+const APP_VERSAO='2026-11-10-github-aro';
 async function checarVersao(){
   if(location.protocol==='file:')return false;
   try{
@@ -609,6 +631,9 @@ function restaurarIdentReabertura(){
   carregarRegistrosAbertos();atualizarIdent();verificarBloqueio();if(typeof carregarFilaAro==='function')carregarFilaAro();
 }
 setInterval(()=>{if(document.getElementById('p-colab')?.value&&!MODO_ROBO_SAFE())carregarFilaAro();},15000);
+// A data do separador é sempre a de hoje (vira sozinha à meia-noite se a tela ficar aberta)
+function dataSempreHoje(){const el=document.getElementById('p-date');if(!el)return;const h=getBrasiliaDateStr();if(el.value!==h){el.value=h;try{atualizarIdent();}catch(e){}}}
+setInterval(dataSempreHoje,60000);
 function MODO_ROBO_SAFE(){try{return MODO_ROBO;}catch(e){return false;}}
 // Atualiza o card "Em separação" (ex.: lote finalizado pela conferência)
 setInterval(()=>{const b=document.getElementById('btn-salvar-pedidos');if(b&&b.dataset.busy==='1')return;if(document.querySelector('.reg-undo'))return;if(document.getElementById('p-colab')?.value)carregarRegistrosAbertos();},30000);
@@ -1229,7 +1254,10 @@ function setTab(tab,btn){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');btn.classList.add('active');
-  if(tab==='grafico'){aplicarFilialRanking();renderRankingCorrida();renderChart();}
+  if(tab==='grafico'){aplicarFilialRanking();
+    const pc=document.getElementById('p-colab').value,gc=document.getElementById('g-colab');
+    if(pc&&gc&&!gc.value&&[...gc.options].some(o=>o.value===pc))gc.value=pc;
+    renderRankingCorrida();renderChart();}
   if(tab==='confirmar'){carregarAbertosConferencia();}
   if(tab==='pedido')renderPedidoHistory();
   if(tab==='conferente')renderErroHistory();
@@ -1263,6 +1291,8 @@ async function buscarQtdPedido(){
     qtInfo('✓ '+Number(f.qt)+' pneus, puxado do Aro'+(f.status==='separacao'?' · ⚠ este pedido já foi pego por outro separador':''),f.status==='separacao'?'#9C5A12':'#1A6B45');
     return true;
   }
+  await lerAroVigia();
+  if(soAroLanca(filial)){qtInfo('🚫 Pedido não está na fila do Aro desta filial. Aqui só o Aro lança: espere o Aro ou avise o responsável.','#B3261E');return false;}
   qtInfo('Pedido não está na fila do Aro: digite a quantidade de pneus.');return false;
 }
 async function enterNumPedido(){
@@ -1315,6 +1345,13 @@ async function addPedido(){
        document.getElementById('p-num').value='';document.getElementById('p-qt').value='';
        const _b0=document.getElementById('add-pedido-btn');if(_b0)_b0.dataset.processing='0';
        return;}}
+    // Só o Aro lança: pedido que não está na fila do Aro desta filial não entra (a não ser que o Aro esteja parado)
+    {const fAtual=document.getElementById('p-filial').value;await lerAroVigia();
+     if(!fAroPar&&soAroLanca(fAtual)){
+       showDuplicateAlert('🚫 Pedido '+num+' não está na fila do Aro desta filial. Aqui só o Aro lança: confira se o pedido é da '+fAtual+' e espere o Aro (ele roda sozinho). Se o pedido não aparecer, avise o responsável.','err');
+       document.getElementById('p-num').value='';document.getElementById('p-qt').value='';qtInfo('');
+       const _bA=document.getElementById('add-pedido-btn');if(_bA)_bA.dataset.processing='0';
+       renderAroVigia();return;}}
     // Pedido já registrado (qualquer data nos últimos 30 dias, qualquer filial): BLOQUEIA e pede para avisar o responsável
     let jaReg=mapaDup.get(normPed(num))||[];
     if(jaReg.length){
@@ -1387,6 +1424,7 @@ function renderPedidoTemp(){
 
 async function salvarPedidos(){
   if(exigirTrava())return;
+  dataSempreHoje();
   const filial=document.getElementById('p-filial').value;
   const date=document.getElementById('p-date').value;
   const colab=document.getElementById('p-colab').value;
@@ -1453,7 +1491,7 @@ async function salvarPedidos(){
     // 2) Lançamentos (mesmo formato de antes + registroId), enviados em paralelo
     const base={data:date,filial,colaborador:colab,isErro:false,motivo:'',pedidoErro:'',obs:'',conferente:'',timestamp:inicio,registroId};
     await Promise.all([
-      ...lote.map(p=>{guardarNoCache({...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,_key:'local'+p.num});return fbPost('lancamentos',{...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,pedidos:0,pneus:0,...(p.filaKey?{origem:'aro',filaKey:p.filaKey}:{}),...(p.dupAutorizadoPor?{dupAutorizadoPor:p.dupAutorizadoPor}:{})});}),
+      ...lote.map(p=>{guardarNoCache({...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,_key:'local'+p.num});return fbPost('lancamentos',{...base,isPedido:true,numPedido:p.num,qtdPedido:p.qt,pedidos:0,pneus:0,...(p.filaKey?{origem:'aro',filaKey:p.filaKey,...(p.aro||{})}:{}),...(p.dupAutorizadoPor?{dupAutorizadoPor:p.dupAutorizadoPor}:{})});}),
       fbPost('lancamentos',{...base,isPedido:false,numPedido:'',qtdPedido:0,pedidos:lote.length,pneus:totalPneus})
     ]);
     try{await filaMarcarPegos(lote,colab,registroId,inicio);}catch(e){console.error(e);}
@@ -1707,23 +1745,63 @@ async function verificarDupAbertos(){
 }
 
 // ---- REGISTROS EM SEPARAÇÃO ----
+// Avisos que aparecem dentro do card "Em separação" (lote que sumiu, sem internet). Somem sozinhos.
+let avisosLote=[];
+function avisoLote(txt,tipo,seg){avisosLote=avisosLote.filter(a=>a.tipo!=='rede'||tipo!=='rede');avisosLote.push({txt,tipo:tipo||'',ate:Date.now()+(seg||45)*1000});renderRegistrosAbertos();}
+// Lotes criados neste computador que ainda estão guardados sem internet (o Firebase ainda não tem)
+function lotesGuardadosAqui(filial,colab){
+  const out=new Map(),fechados=new Set();
+  try{offLer().forEach(it=>{const ps=String(it.path).split('/');if(ps[0]!=='registros'||!ps[1])return;
+    if(it.metodo==='PUT'&&ps.length===2&&it.data&&it.data.status==='em_separacao'&&it.data.filial===filial&&it.data.colaborador===colab)out.set(ps[1],{...it.data,_key:ps[1]});
+    if(it.metodo==='PATCH'&&ps.length===2&&it.data&&it.data.status==='finalizado')fechados.add(ps[1]);});}catch(e){}
+  fechados.forEach(k=>out.delete(k));return{lotes:[...out.values()],fechados};
+}
+// Diz por que um lote saiu da tela, em vez de o botão Finalizar sumir sem explicação
+async function explicarSumidos(sumidos,fechadosConf){
+  for(const r of sumidos){
+    const h=new Date(r.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+    const nome='O lote das '+h+' ('+(r.totalPedidos||(r.pedidos||[]).length)+' pedido'+((r.totalPedidos||1)!==1?'s':'')+')';
+    if(fechadosConf.has(r._key)){avisoLote(nome+' foi finalizado sozinho: todos os pedidos já foram conferidos no tablet.');continue;}
+    let atual=null;try{atual=await fbGet('registros/'+r._key);}catch(e){continue;}
+    if(!atual)avisoLote(nome+' foi apagado (pelo gestor). Se ainda está separando, chame o responsável.');
+    else if(atual.status==='finalizado')avisoLote(nome+' foi finalizado '+(atual.finalizadoPor==='conferencia'?'pela conferência no tablet.':atual.finalizadoAuto?'automaticamente.':'pelo gestor ou em outro computador.'));
+    else if(atual.colaborador!==r.colaborador)avisoLote(nome+' foi passado para '+atual.colaborador+'.');
+  }
+}
 async function carregarRegistrosAbertos(){
   const filial=document.getElementById('p-filial').value;
   const colab=document.getElementById('p-colab').value;
   const el=document.getElementById('reg-abertos');
   if(!filial||!colab){registrosAbertos=[];renderRegistrosAbertos();carregarFilaAro();return;}
+  const antes=registrosAbertos.filter(r=>r.filial===filial&&r.colaborador===colab);
   try{
     const [data,cfg]=await Promise.all([fbQuery('registros','status',{equalTo:'em_separacao'}),fbGet('configuracoes/metaPneusHora')]);
+    if(data&&data.error)throw new Error(data.error);
     if(cfg&&Number(cfg)>0)metaPneusHora=Number(cfg);
     // confere se o usuário não trocou de colaborador enquanto carregava
     if(document.getElementById('p-colab').value!==colab)return;
-    registrosAbertos=data?Object.entries(data).map(([k,v])=>({...v,_key:k}))
-      .filter(r=>r.status==='em_separacao'&&r.filial===filial&&r.colaborador===colab)
-      .sort((a,b)=>b.inicio-a.inicio):[];
-    registrosAbertos=await fecharLotesJaConferidos(registrosAbertos);
+    let lista=data?Object.entries(data).map(([k,v])=>({...v,_key:k}))
+      .filter(r=>r&&r.status==='em_separacao'&&r.filial===filial&&r.colaborador===colab):[];
+    // lote iniciado sem internet ainda não chegou no Firebase: continua na tela (antes ele sumia junto com o Finalizar)
+    const loc=lotesGuardadosAqui(filial,colab);
+    lista=lista.filter(r=>!loc.fechados.has(r._key));
+    loc.lotes.forEach(r=>{if(!lista.some(x=>x._key===r._key))lista.push(r);});
+    lista.sort((a,b)=>b.inicio-a.inicio);
+    const restantes=await fecharLotesJaConferidos(lista);
+    const fechadosConf=new Set(lista.filter(r=>!restantes.includes(r)).map(r=>r._key));
+    if(document.getElementById('p-colab').value!==colab)return;
+    registrosAbertos=restantes;
+    avisosLote=avisosLote.filter(a=>a.tipo!=='rede');
+    const sumidos=antes.filter(r=>!registrosAbertos.some(x=>x._key===r._key));
     renderRegistrosAbertos();
+    if(sumidos.length)explicarSumidos(sumidos,fechadosConf);
     carregarFilaAro();
-  }catch(e){console.error(e);el.innerHTML='<div class="reg-empty">Erro ao carregar registros.</div>';}
+  }catch(e){
+    // Sem internet ou Firebase lento: mantém os lotes que já estavam na tela (com o botão Finalizar) em vez de apagar tudo
+    console.error(e);
+    if(antes.length||registrosAbertos.length)avisoLote('📶 Conexão instável: mostrando o último estado. O Finalizar continua funcionando.','rede',40);
+    else el.innerHTML='<div class="reg-empty">Sem conexão para carregar as separações. Tentando de novo...</div>';
+  }
 }
 
 function atualizarIdent(){
@@ -1806,16 +1884,90 @@ function roboCarregarColabs(){
   const cols=(f&&colaboradores[f])||[];
   sel.innerHTML='<option value="">Selecione</option>'+cols.map(c=>'<option>'+c.nome+'</option>').join('');
 }
+// Lê o que o Aro manda. Dois formatos:
+//  novo:   pedido;nota;transportadora;cliente;descrição;quantidade  (uma linha por medida; o pedido junta as linhas)
+//  antigo: pedido;quantidade
+// Aceita rótulos entre parênteses na frente do valor: "(pedido)373025;(nota)11554;..."
+function roboCampos(l){return l.split(/[;\t]/).map(c=>c.replace(/^\s*\([^)]*\)\s*/,'').trim());}
+// Lê uma linha do formato novo. Com rótulos "(marca)..." usa o rótulo; sem rótulo vale a posição:
+//   pedido;nota;transportadora;cliente;descrição;quantidade          (sem marca)
+//   pedido;nota;transportadora;cliente;descrição;marca;quantidade    (com marca)
+function roboLinhaNova(l){
+  const brutos=l.split(/[;\t]/),c=roboCampos(l);
+  const rot=brutos.map(b=>{const m=b.match(/^\s*\(([^)]*)\)/);return m?m[1].normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim():'';});
+  const pega=(...nomes)=>{const i=rot.findIndex(r=>nomes.includes(r));return i>=0?c[i]:undefined;};
+  if(rot.filter(Boolean).length>=4){
+    return{num:pega('pedido','numero','num')||'',nota:pega('nota','nf','nota fiscal')||'',transp:pega('transportadora','transp')||'',cliente:pega('cliente')||'',
+      desc:pega('descricao','medida','desc','produto')||'',marca:pega('marca')||'',qtS:pega('quantidade','qtd','qt','quant.','quant')||'',
+      local:pega('local','local estoque','estoque','endereco')||'',codigo:pega('codigo','cod')||''};
+  }
+  const n=c.length;
+  if(n>=8)return{num:c[0],nota:c[1],transp:c[2],cliente:c[3],desc:c[4],marca:c[5],qtS:c[6],local:c.slice(7).join(' ')};
+  // 7 campos terminando em local (sem o campo marca): pedido;nota;transportadora;cliente;descrição;quantidade;local
+  const ehQt=x=>/^\d{1,3}(\.\d{3})*(,\d+)?$|^\d+([.,]\d+)?$/.test(String(x||'').trim());
+  if(n===7&&ehQt(c[5])&&!ehQt(c[6]))return{num:c[0],nota:c[1],transp:c[2],cliente:c[3],desc:c[4],marca:'',qtS:c[5],local:c[6]};
+  return{num:c[0],nota:c[1],transp:c[2],cliente:c[3],desc:c[4],marca:n>=7?c.slice(5,n-1).join(' '):'',qtS:c[n-1]};
+}
 function roboParsePedidos(txt){
-  const itens=[],erros=[];
-  String(txt||'').split(/[\n,]+/).map(l=>l.trim()).filter(Boolean).forEach(l=>{
+  const itens=[],erros=[],porNum=new Map();
+  let linhas=String(txt||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  // formato antigo podia vir separado por vírgula ("1;2,3;4"); o novo não é quebrado na vírgula (nome de cliente pode ter)
+  linhas=linhas.flatMap(l=>roboCampos(l).length>=6?[l]:l.split(',').map(x=>x.trim()).filter(Boolean));
+  linhas.forEach(l=>{
+    const c=roboCampos(l);
+    if(c.length>=6){
+      let {num,nota,transp,cliente,desc,marca,qtS,local,codigo}=roboLinhaNova(l);
+      if(!/^\d+$/.test(num)){erros.push({linha:l,erro:'número do pedido inválido'});return;}
+      // quantidade como no ERP: "8,00" ou "1.200,00" também vale (só número inteiro de pneus)
+      const qtN=Number(String(qtS||'').trim().replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'));
+      const qt=Number.isInteger(qtN)&&qtN>0?qtN:0;if(!qt){erros.push({linha:l,erro:'quantidade inválida'});return;}
+      // descrição do ERP "2 - FIREMAX - PNEU 175/70R14 84H FM686 HP": a marca sai do meio quando não veio separada
+      {const m=String(desc||'').match(/^\s*\d+\s*-\s*([^-]+?)\s*-\s*(.+)$/);if(m){if(!marca)marca=m[1].trim();desc=m[2].trim();}}
+      if(!marca){const mf=marcaNaDesc(desc);if(mf){marca=mf.marca;desc=mf.resto;}}else marca=marcaOficial(marca);
+      marca=String(marca||'').trim();local=String(local||'').trim();codigo=String(codigo||'').trim();
+      let it=porNum.get(num);
+      if(!it){it={num,qt:0,nota:nota||'',transportadora:transp||'',cliente:cliente||'',itens:[]};porNum.set(num,it);itens.push(it);}
+      else if(!it.itens){erros.push({linha:l,erro:'pedido repetido em formatos diferentes'});return;}
+      if(nota&&it.nota&&!it.nota.split(' / ').includes(nota))it.nota+=' / '+nota;else if(nota&&!it.nota)it.nota=nota;
+      if(!it.transportadora&&transp)it.transportadora=transp;
+      if(!it.cliente&&cliente)it.cliente=cliente;
+      const ex=it.itens.find(x=>x.desc===desc&&(x.marca||'')===marca&&(x.local||'')===local);if(ex)ex.qt+=qt;else it.itens.push({desc,qt,...(marca?{marca}:{}),...(local?{local}:{}),...(codigo?{codigo}:{})});
+      it.qt+=qt;return;
+    }
     const m=l.match(/^(\d+)\s*[;:\t ]\s*(\d+)$/);
-    if(!m){erros.push({linha:l,erro:'formato inválido (use numero;quantidade)'});return;}
+    if(!m){erros.push({linha:l,erro:'formato inválido (use pedido;nota;transportadora;cliente;descrição;quantidade)'});return;}
     const qt=parseInt(m[2]);if(!qt||qt<1){erros.push({linha:l,erro:'quantidade inválida'});return;}
     itens.push({num:m[1],qt});
   });
   return{itens,erros};
 }
+// Separa a medida do resto da descrição: "PNEU 175/70R14 84H FM686 HP" -> 175/70R14 + "84H FM686 HP"
+function medidaDe(desc){const t=String(desc||'').replace(/^\s*PNEUS?\s+/i,'').trim();
+  const m=t.match(/\b(\d{2,3}\/\d{2}(?:[.,]\d)?\s*Z?R\s*\d{2}(?:[.,]\d)?C?|\d{2,3}\s*X\s*\d{1,2}[.,]\d{2}\s*R\s*\d{2}|\d{1,2}[.,]\d{2}\s*-?\s*R?\s*\d{2}(?:[.,]\d)?)\b/i);
+  if(!m)return{medida:t,resto:''};return{medida:m[1].replace(/\s+/g,''),resto:(t.slice(0,m.index)+' '+t.slice(m.index+m[0].length)).replace(/\s+/g,' ').trim()};}
+// ===== Marcas que a Mauer trabalha =====
+// A marca é procurada na descrição (no fim, no meio ou no formato "2 - MARCA - PNEU ...") e aparece
+// separada, na frente da descrição. Para incluir marca nova, acrescente aqui.
+const MARCAS_MAUER='ADVANCE|ALLIANCE|ANTARES|APOLLO|BARAK|BRIDGESTONE|COMPASAL|COMFORSER|CONSTELLATION|DOUBLEKING|FERENTINO|FIREMAX|FIRESTONE|GALAXY|GENERAL TIRE|JOYROAD|JK|LEÃO|LINGLONG|LOYFER|MAXTREK|PRIMEX|PIRELLI|RADAR|ROADTRACK|SPEEDFLEX|SUNNY|TBB TIRES|VREDESTEIN|XBRI|X-POUNCE|ZMAX'.split('|');
+const MARCAS_APELIDOS=Object.fromEntries('DOUBLE KING=DOUBLEKING|GENERAL=GENERAL TIRE|LEAO=LEÃO|LING LONG=LINGLONG|TBB=TBB TIRES|XPOUNCE=X-POUNCE|X POUNCE=X-POUNCE|PRIME X=PRIMEX|JK TYRE=JK|RADAR TIRES=RADAR'.split('|').map(x=>x.split('=')));
+const semAcento=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+const MARCAS_BUSCA=[...MARCAS_MAUER.map(m=>[semAcento(m),m]),...Object.entries(MARCAS_APELIDOS).map(([a,m])=>[semAcento(a),m])]
+  .sort((a,b)=>b[0].length-a[0].length);   // nomes maiores primeiro ("GENERAL TIRE" antes de "GENERAL")
+function marcaOficial(m){const s=semAcento(m).trim();const f=MARCAS_BUSCA.find(([b])=>b===s);return f?f[1]:String(m||'').trim().toUpperCase();}
+function marcaNaDesc(texto){
+  const t=String(texto||'').trim(),u=semAcento(t);
+  for(const [b,m] of MARCAS_BUSCA){
+    const re=new RegExp('(^|[^A-Z0-9])'+b.replace(/[-]/g,'\\-').replace(/ /g,'\\s+')+'(?=$|[^A-Z0-9])');
+    const x=re.exec(u);if(!x)continue;
+    const ini=x.index+x[1].length,fim=x.index+x[0].length;
+    return{marca:m,resto:(t.slice(0,ini)+' '+t.slice(fim)).replace(/\s+/g,' ').trim()};
+  }
+  return null;}
+// Campos extras do Aro (só os que vieram) para gravar na fila e no lançamento
+function aroDetalhes(f){const d={};if(!f)return d;
+  if(f.nota)d.nota=String(f.nota);if(f.transportadora)d.transportadora=String(f.transportadora);if(f.cliente)d.cliente=String(f.cliente);
+  if(Array.isArray(f.itens)&&f.itens.length)d.itens=f.itens.map(i=>({desc:String(i.desc||''),...(i.marca?{marca:String(i.marca)}:{}),...(i.local?{local:String(i.local)}:{}),...(i.codigo?{codigo:String(i.codigo)}:{}),qt:Number(i.qt)||0}));
+  return d;}
 // ===== Anti-duplicado do Aro =====
 // Quantos dias para trás o Aro olha nos lançamentos manuais para barrar pedido já separado
 const ROBO_DIAS_DUPLICADO=30;
@@ -1838,6 +1990,7 @@ async function roboEnviar(){
   const {itens,erros}=roboParsePedidos(document.getElementById('robo-pedidos').value);
   res.invalidos=erros;
   if(!itens.length){res.erro='Nenhum pedido válido';roboStatus('erro',res.erro,res);return res;}
+  roboMarcarVivo(filialAro);
   roboTravado=true;btn.disabled=true;roboStatus('processando','Conferindo duplicados...');
   try{
     // Tudo que já existe: lançamentos (separados à mão ou pelo Aro) e a fila inteira do Aro
@@ -1849,7 +2002,7 @@ async function roboEnviar(){
     const vistos=new Set(),candidatos=[];
     itens.forEach(it=>{const n=normPed(it.num);
       if(!n){res.invalidos.push({linha:it.num,erro:'número inválido'});return;}
-      if(existentes.has(n)||vistos.has(n))res.duplicados.push(n);else{vistos.add(n);candidatos.push({num:n,qt:it.qt});}});
+      if(existentes.has(n)||vistos.has(n))res.duplicados.push(n);else{vistos.add(n);candidatos.push({...aroDetalhes(it),num:n,qt:it.qt});}});
     // Última conferência, pedido a pedido, imediatamente antes de gravar (pega outro Aro rodando junto)
     const novos=[];
     if(candidatos.length){
@@ -1859,7 +2012,7 @@ async function roboEnviar(){
     }
     if(novos.length){
       const agora=getBrasiliaTimestamp(),upd={};
-      novos.forEach(it=>{upd[roboChave(it.num)]={num:it.num,qt:it.qt,filial,data,status:'disponivel',criadoEm:agora,origem:'aro'};});
+      novos.forEach(it=>{upd[roboChave(it.num)]={...aroDetalhes(it),num:it.num,qt:it.qt,filial,data,status:'disponivel',criadoEm:agora,origem:'aro'};});
       await fbPatch('filaPedidos',upd);
     }
     Object.assign(res,{ok:true,enfileirados:novos.map(p=>p.num),totalPneus:novos.reduce((a,p)=>a+p.qt,0)});
@@ -1890,7 +2043,7 @@ async function roboMostrarFila(){
     const lim=new Date();lim.setDate(lim.getDate()-3);
     const d=await fbQuery('filaPedidos','data',{startAt:dataBR(lim)});
     const itens=Object.values(d||{}).filter(f=>f.filial===filial).sort((a,b)=>b.criadoEm-a.criadoEm);
-    el.innerHTML=itens.length?itens.slice(0,100).map(f=>'<div style="display:flex;gap:10px;padding:7px 10px;border-top:1px solid var(--border)"><span style="font-family:var(--mono);font-weight:500">'+f.num+'</span><span style="color:var(--muted)">'+f.qt+' pneus</span><span style="margin-left:auto">'+(f.status==='disponivel'?'<span class="badge badge-warn">Na fila</span>':'<span style="color:var(--green-t);font-weight:600">Com '+(f.colaborador||'separador')+'</span>')+'</span></div>').join(''):'<div style="padding:10px;color:var(--hint)">Fila vazia</div>';
+    el.innerHTML=itens.length?itens.slice(0,100).map(f=>'<div style="display:flex;gap:10px;padding:7px 10px;border-top:1px solid var(--border)"><span style="font-family:var(--mono);font-weight:500">'+f.num+'</span><span style="color:var(--muted)">'+f.qt+' pneus'+(f.cliente?' · '+escH(f.cliente):'')+(f.nota?' · NF '+escH(f.nota):'')+'</span><span style="margin-left:auto">'+(f.status==='disponivel'?'<span class="badge badge-warn">Na fila</span>':'<span style="color:var(--green-t);font-weight:600">Com '+(f.colaborador||'separador')+'</span>')+'</span></div>').join(''):'<div style="padding:10px;color:var(--hint)">Fila vazia</div>';
   }catch(e){console.error(e);el.innerHTML='<div style="padding:10px;color:var(--red-t)">Erro ao ler a fila</div>';}
 }
 // ===== Pausa por filial =====
@@ -1923,6 +2076,56 @@ async function roboAlternarPausa(k){
     roboStatus('ok',k+(p?' pausada: o Aro não lança nela.':' voltou: o Aro lança nela de novo.'),{filial:k,pausada:p});
   }catch(e){roboStatus('erro','Não consegui gravar a pausa de '+k+': '+e.message,{});}
 }
+// Mostra se o formato novo está ligado e quantos pedidos no formato novo o Aro já mandou hoje
+async function roboMostrarFormato(){
+  const est=document.getElementById('rf-estado'),rec=document.getElementById('rf-recebidos'),bt=document.getElementById('rf-botao');if(!est)return;
+  await lerAroDetalhes(true);const i=aroDetalhesInfo||{};
+  const hm=ts=>new Date(ts).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  if(window.MAUER_TESTE){est.textContent='🧪 Ambiente de teste: o formato novo fica sempre ligado aqui.';est.style.cssText+=';background:var(--orange-bg);color:var(--orange-t);border:1px solid var(--orange-b)';bt.style.display='none';}
+  else if(aroDetalhesOn){est.textContent='✓ LIGADO'+(i.em?' desde '+hm(i.em):'')+(i.por?' por '+i.por:'')+'. Separador e tablet mostram cliente, NF, medidas e marca.';est.style.background='var(--green-bg)';est.style.color='var(--green-t)';est.style.border='1px solid var(--green-b)';bt.textContent='Desligar formato novo';bt.classList.add('danger');bt.disabled=false;}
+  else{est.textContent='○ DESLIGADO. O sistema recebe o formato novo, mas ainda não mostra nada diferente.';est.style.background='var(--bg)';est.style.color='var(--muted)';est.style.border='1px solid var(--border)';bt.textContent='Ativar em definitivo';bt.classList.remove('danger');bt.disabled=false;}
+  try{const d=await fbQuery('filaPedidos','data',{startAt:getBrasiliaDateStr()});
+    const novos=Object.values(d||{}).filter(f=>f&&f.origem==='aro'&&Array.isArray(f.itens)&&f.itens.length).sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+    rec.innerHTML=novos.length?'Pedidos no formato novo recebidos hoje: <b>'+novos.length+'</b> · último às '+hm(novos[0].criadoEm).split(' ')[1]+' (pedido '+escH(novos[0].num)+', '+escH(novos[0].filial)+')':'Nenhum pedido no formato novo recebido hoje ainda.';
+  }catch(e){rec.textContent='';}
+}
+async function roboMostrarExclusivo(){
+  const est=document.getElementById('rx-estado'),viv=document.getElementById('rx-vivo'),bt=document.getElementById('rx-botao'),mi=document.getElementById('rx-min');if(!est)return;
+  await lerAroVigia(true);const i=aroVigia.exInfo||{};
+  const hm=ts=>new Date(ts).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  if(document.activeElement!==mi)mi.value=aroVigia.minutos;
+  const cor=(bg,c,b)=>{est.style.background=bg;est.style.color=c;est.style.border='1px solid '+b;};
+  if(window.MAUER_TESTE){est.textContent='🧪 Ambiente de teste: "Só o Aro lança" fica sempre ligado aqui.';cor('var(--orange-bg)','var(--orange-t)','var(--orange-b)');bt.style.display='none';}
+  else if(aroVigia.exclusivo){est.textContent='🔒 LIGADO'+(i.em?' desde '+hm(i.em):'')+(i.por?' por '+i.por:'')+'.';cor('var(--green-bg)','var(--green-t)','var(--green-b)');bt.textContent='Desligar (separador volta a digitar)';bt.classList.add('danger');bt.disabled=false;}
+  else{est.textContent='○ DESLIGADO. O separador ainda pode digitar qualquer pedido.';cor('var(--bg)','var(--muted)','var(--border)');bt.textContent='Ligar: só o Aro lança';bt.classList.remove('danger');bt.disabled=false;}
+  viv.innerHTML='Último sinal do Aro: '+(aroVigia.vivoEm?hm(aroVigia.vivoEm)+' ('+aroHaQuanto(aroVigia.vivoEm)+')':'nenhum ainda')+'. Parado depois de '+aroVigia.minutos+' min sem sinal.'+
+    (aroVigia.vivoSite?'<br>Site de onde o Aro lançou: <b>'+escH(aroVigia.vivoSite)+'</b>'+(/github\.io/i.test(aroVigia.vivoSite)?' <span style="color:var(--red-t)">(endereço antigo)</span>':''):'');
+}
+async function roboAlternarExclusivo(){
+  const ligar=!aroVigia.exclusivo;
+  if(ligar){const t=prompt('Ligar "Só o Aro lança"?\n\nNas filiais do Aro o separador não consegue mais digitar pedido que não está na fila. Se o Aro parar mais de '+aroVigia.minutos+' min, libera sozinho.\n\nDigite ATIVAR para confirmar:');if(!t||t.trim().toUpperCase()!=='ATIVAR')return;}
+  else if(!confirm('Desligar? O separador volta a poder digitar qualquer pedido.'))return;
+  const quem=prompt('Seu nome (fica registrado):','Caio')||'';
+  try{const r=await fetch(FB_URL+'/configuracoes/aroExclusivo.json',{method:'PUT',body:JSON.stringify({ativo:ligar,em:Date.now(),por:quem.trim()})});if(!r.ok)throw new Error(r.status);
+    roboStatus('ok',ligar?'Só o Aro lança: LIGADO. Os separadores pegam em até 1 minuto.':'Só o Aro lança: desligado.',{});await roboMostrarExclusivo();}
+  catch(e){roboStatus('erro','Não consegui gravar: '+e.message,{});}
+}
+async function roboSalvarVigiaMin(){
+  const v=parseInt(document.getElementById('rx-min').value);if(!(v>=5&&v<=240)){alert('Use de 5 a 240 minutos.');return;}
+  try{const r=await fetch(FB_URL+'/configuracoes/aroVigiaMin.json',{method:'PUT',body:JSON.stringify(v)});if(!r.ok)throw new Error(r.status);
+    roboStatus('ok','Aro parado agora é depois de '+v+' min sem sinal.',{});await roboMostrarExclusivo();}catch(e){roboStatus('erro','Não consegui gravar: '+e.message,{});}
+}
+setInterval(()=>{if(MODO_ROBO_SAFE()&&document.getElementById('rx-estado'))roboMostrarExclusivo();},60000);
+async function roboAlternarFormato(){
+  const ligar=!aroDetalhesOn;
+  if(ligar){const t=prompt('Ativar em definitivo o formato novo do Aro?\n\nSeparador e tablet passam a mostrar cliente, NF, medidas e marca, e o "Conferido OK" só libera com todas as medidas marcadas.\n\nDigite ATIVAR para confirmar:');
+    if(!t||t.trim().toUpperCase()!=='ATIVAR')return;}
+  else if(!confirm('Desligar o formato novo? Separador e tablet voltam a funcionar como antes (os dados continuam guardados).'))return;
+  const quem=prompt('Seu nome (fica registrado):','Caio')||'';
+  try{const r=await fetch(FB_URL+'/configuracoes/aroDetalhes.json',{method:'PUT',body:JSON.stringify({ativo:ligar,em:Date.now(),por:quem.trim()})});if(!r.ok)throw new Error(r.status);
+    roboStatus('ok',ligar?'Formato novo LIGADO. Separadores e tablets atualizam em até 1 minuto.':'Formato novo desligado.',{});await roboMostrarFormato();}
+  catch(e){roboStatus('erro','Não consegui gravar: '+e.message,{});}
+}
 async function initRobo(){
   if(!MODO_ROBO)return;
   document.querySelector('.tabs')&&(document.querySelector('.tabs').style.display='none');
@@ -1942,10 +2145,75 @@ async function initRobo(){
   roboLib=lib;await roboLerPausas();roboMontarCasas();
   const pf=roboCanonica(ROBO_PARAMS.get('filial'));if(pf&&[...fs.options].some(o=>o.value===pf))fs.value=pf;
   document.getElementById('robo-data').value=ROBO_PARAMS.get('data')||getBrasiliaDateStr();
-  const pp=ROBO_PARAMS.get('pedidos');if(pp)document.getElementById('robo-pedidos').value=pp.split(',').join('\n');
+  const pp=ROBO_PARAMS.get('pedidos');if(pp)document.getElementById('robo-pedidos').value=pp.split(/,(?=\s*(?:\([^)]*\))?\s*\d{4,}\s*[;:\t ])/).join('\n'); // vírgula só separa linha quando vem outro pedido depois (nome de cliente pode ter vírgula)
   roboStatus('pronto','Aro pronto',{});
-  roboMostrarFila();
+  roboMostrarFila();roboMostrarFormato();roboMarcarVivo(roboCanonica(ROBO_PARAMS.get('filial')));roboMostrarExclusivo();
   if(ROBO_PARAMS.get('auto')==='1'&&pp)roboEnviar();
+}
+
+
+// ===== CHAVE DO FORMATO NOVO DO ARO =====
+// Fica em configuracoes/aroDetalhes {ativo,em,por}. Desligada: o sistema aceita e guarda o formato novo,
+// mas separador e tablet funcionam como antes (sem cliente/NF/medidas/marca e sem trava das medidas).
+// No ambiente de teste fica sempre ligada.
+let aroDetalhesOn=!!window.MAUER_TESTE,aroDetalhesLidoEm=0,aroDetalhesInfo=null;
+async function lerAroDetalhes(forcar){
+  if(window.MAUER_TESTE){aroDetalhesOn=true;return true;}
+  if(!forcar&&Date.now()-aroDetalhesLidoEm<60000)return aroDetalhesOn;
+  try{const r=await fetch(FB_URL+'/configuracoes/aroDetalhes.json?x='+Date.now(),{cache:'no-store'});if(r.ok){aroDetalhesInfo=await r.json();aroDetalhesOn=!!(aroDetalhesInfo&&aroDetalhesInfo.ativo);aroDetalhesLidoEm=Date.now();
+    try{localStorage.setItem('mauerAroDetalhes',aroDetalhesOn?'1':'0');}catch(e){}}}
+  catch(e){try{aroDetalhesOn=localStorage.getItem('mauerAroDetalhes')==='1';}catch(_){}}
+  return aroDetalhesOn;
+}
+try{if(!window.MAUER_TESTE)aroDetalhesOn=localStorage.getItem('mauerAroDetalhes')==='1';}catch(e){}
+
+
+// ===================== SÓ O ARO LANÇA + VIGIA DO ARO =====================
+// Com "Só o Aro lança" ligado (configuracoes/aroExclusivo), nas filiais do Aro o separador só lança pedido que
+// está na fila do Aro. Se o Aro ficar parado mais que N minutos (configuracoes/aroVigiaMin, padrão 30),
+// o lançamento à mão abre sozinho até ele voltar, e aparece o aviso de Aro parado.
+// O Aro marca que está vivo em roboConfig/vivo toda vez que abre a tela ou envia pedidos.
+const ARO_VIGIA_PADRAO=30;
+let aroVigia={vivoEm:0,pausadas:{},exclusivo:!!window.MAUER_TESTE,minutos:ARO_VIGIA_PADRAO,lidoEm:0};
+async function lerAroVigia(forcar){
+  if(!forcar&&Date.now()-aroVigia.lidoEm<30000)return aroVigia;
+  try{
+    const sem=x=>fetch(FB_URL+'/'+x+'.json?x='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null);
+    const [rc,ex,mi]=await Promise.all([sem('roboConfig'),sem('configuracoes/aroExclusivo'),sem('configuracoes/aroVigiaMin')]);
+    aroVigia={vivoEm:Number(rc&&rc.vivo&&rc.vivo.geral&&rc.vivo.geral.em)||0,vivoSite:(rc&&rc.vivo&&rc.vivo.geral&&rc.vivo.geral.site)||'',pausadas:(rc&&rc.pausadas)||{},
+      exclusivo:window.MAUER_TESTE?true:!!(ex&&ex.ativo),minutos:Number(mi)>=5?Number(mi):ARO_VIGIA_PADRAO,lidoEm:Date.now(),exInfo:ex||null};
+  }catch(e){}
+  return aroVigia;
+}
+function aroParado(){return !aroVigia.vivoEm||Date.now()-aroVigia.vivoEm>aroVigia.minutos*60000;}
+function aroDaFilial(f){const k=roboCanonica(f);return !!k&&!aroVigia.pausadas[roboChavePausa(k)];}
+// true = nesta filial o separador NÃO pode digitar pedido que não esteja na fila do Aro
+function soAroLanca(f){return aroVigia.exclusivo&&aroDaFilial(f)&&!aroParado();}
+function aroHaQuanto(ts){if(!ts)return 'nunca';const m=Math.round((Date.now()-ts)/60000);if(m<1)return 'agora';if(m<60)return 'há '+m+' min';const h=Math.floor(m/60);return 'há '+h+'h'+String(m%60).padStart(2,'0');}
+// Faixa no card da fila: Aro rodando / Aro parado
+function renderAroVigia(){
+  const card=document.getElementById('card-fila-aro'),f=document.getElementById('p-filial').value;if(!card)return;
+  let el=document.getElementById('aro-vigia');
+  if(!aroVigia.exclusivo||!aroDaFilial(f)){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='aro-vigia';el.style.cssText='margin:-6px 0 12px;padding:9px 12px;border-radius:var(--rsm);font-size:13px;font-weight:600;line-height:1.4';
+    const sub=card.querySelector('.card-sub');sub.parentNode.insertBefore(el,sub.nextSibling);}
+  if(aroParado()){el.style.background='var(--orange-bg)';el.style.color='var(--orange-t)';el.style.border='1px solid var(--orange-b)';
+    el.innerHTML='⚠ Aro parado ('+(aroVigia.vivoEm?'última vez '+aroHaQuanto(aroVigia.vivoEm):'sem sinal')+'). Lançamento à mão liberado até ele voltar. Avise o responsável.';}
+  else{el.style.background='var(--green-bg)';el.style.color='var(--green-t)';el.style.border='1px solid var(--green-b)';
+    el.innerHTML='✓ Só o Aro lança nesta filial (rodou '+aroHaQuanto(aroVigia.vivoEm)+'). Pedido que não está aqui: espere o Aro, ele roda sozinho.';}
+}
+// Registra (uma vez por parada) que o Aro parou, para o gestor ver
+let aroParadaAvisada=0;
+function registrarAroParado(){
+  if(!aroVigia.exclusivo||!aroParado())return;
+  const chave=aroVigia.vivoEm||1;if(aroParadaAvisada===chave)return;aroParadaAvisada=chave;
+  fetch(FB_URL+'/roboConfig/paradas/p'+chave+'.json',{method:'PATCH',body:JSON.stringify({desde:aroVigia.vivoEm||null,percebidoEm:Date.now(),filial:document.getElementById('p-filial').value||'',minutos:aroVigia.minutos})}).catch(()=>{});
+}
+setInterval(()=>{if(MODO_ROBO_SAFE())return;lerAroVigia().then(()=>{renderAroVigia();registrarAroParado();});},30000);
+// Aro vivo: grava a hora (sem fila offline e sem esperar; nunca atrapalha o Aro)
+function roboMarcarVivo(filialAro){
+  try{const em=Date.now(),upd={'vivo/geral':{em,site:location.origin+location.pathname,navegador:descreverNavegador()}};if(filialAro)upd['vivo/filiais/'+roboChavePausa(filialAro)]=em;
+    fetch(FB_URL+'/roboConfig.json',{method:'PATCH',body:JSON.stringify(upd)}).catch(()=>{});}catch(e){}
 }
 
 // ===================== FILA DO ARO (aba do separador) =====================
@@ -1953,6 +2221,7 @@ let filaAro=[];
 function filaTemId(key){return pedidosTemp.some(p=>p.filaKey===key);}
 const ARO_DIAS_VENCE=3;   // dias que um pedido do Aro pode ficar esperando na fila antes de vencer
 async function carregarFilaAro(){
+  lerAroDetalhes().then(on=>{if(on!==window._aroDetUlt){window._aroDetUlt=on;if(filaAro.length)renderFilaAro();}});
   const card=document.getElementById('card-fila-aro');if(!card)return;
   const filial=document.getElementById('p-filial').value,colab=document.getElementById('p-colab').value;
   if(!filial||!colab){card.style.display='none';filaAro=[];return;}
@@ -1968,6 +2237,7 @@ async function carregarFilaAro(){
     {const vis=new Set();filaAro=filaAro.filter(f=>{const n=normPed(f.num);if(vis.has(n))return false;vis.add(n);return true;});}
   }catch(e){console.error(e);}
   if(!filaAro.length&&!roboFilialLiberada(filial)){card.style.display='none';return;}
+  lerAroVigia().then(()=>{renderAroVigia();registrarAroParado();});
   renderFilaAro();
 }
 function renderFilaAro(){
@@ -1978,7 +2248,9 @@ function renderFilaAro(){
   if(!filaAro.length){el.innerHTML='<div class="fila-vazia">Nenhum pedido do Aro esperando separação</div>';return;}
   const now=Date.now();
   el.innerHTML=filaAro.map(f=>{const no=filaTemId(f._key);
-    return `<label class="fila-it${no?' nolote':''}"><input type="checkbox" value="${f._key}" ${no?'checked disabled':(marcados.has(f._key)?'checked':'')}><span class="fila-num">${f.num}</span><span class="fila-qt">${f.qt} pneu${f.qt!==1?'s':''}</span><span class="fila-t">${no?'no lote':fmtDur(now-f.criadoEm)}</span></label>`;}).join('');
+    const det=aroDetalhesOn?[f.cliente,f.transportadora,f.nota?'NF '+f.nota:''].filter(Boolean).map(escH).join(' · '):'';
+    const med=aroDetalhesOn&&Array.isArray(f.itens)&&f.itens.length?f.itens.map(i=>{const md=medidaDe(i.desc),mk=i.marca||((marcaNaDesc(md.resto)||{}).marca||'');return '<b>'+escH(i.qt+'× '+md.medida)+'</b>'+(mk?' '+escH(mk):'')+(i.local?' · 📍'+escH(i.local):'');}).join('  ·  '):'';
+    return `<label class="fila-it${no?' nolote':''}"><input type="checkbox" value="${f._key}" ${no?'checked disabled':(marcados.has(f._key)?'checked':'')}><div class="fila-info"><div><span class="fila-num">${f.num}</span><span class="fila-qt">${f.qt} pneu${f.qt!==1?'s':''}</span></div>${det?`<div class="fila-det">${det}</div>`:''}${med?`<div class="fila-med">${med}</div>`:''}</div><span class="fila-t">${no?'no lote':fmtDur(now-f.criadoEm)}</span></label>`;}).join('');
 }
 function filaMarcarTodos(){
   const cbs=[...document.querySelectorAll('#fila-lista input:not(:disabled)')];
@@ -1992,7 +2264,7 @@ async function filaAdicionar(){
   let n=0;
   sel.forEach(k=>{const f=filaAro.find(x=>x._key===k);if(!f||filaTemId(k))return;
     if(pedidosTemp.some(p=>normPed(p.num)===normPed(f.num)))return;
-    pedidosTemp.push({num:String(f.num),qt:Number(f.qt),filaKey:k});n++;});
+    pedidosTemp.push({num:String(f.num),qt:Number(f.qt),filaKey:k,aro:aroDetalhes(f)});n++;});
   renderPedidoTemp();renderFilaAro();
   if(n)showAlert('ok',n+' pedido'+(n!==1?'s':'')+' do Aro adicionado'+(n!==1?'s':'')+' ao lote.');
 }
@@ -2000,7 +2272,7 @@ async function filaAdicionar(){
 async function filaReservar(lote){
   const filial=document.getElementById('p-filial').value;
   // pedido digitado à mão que também está na fila conta como pego
-  lote.forEach(p=>{if(!p.filaKey){const f=filaAro.find(x=>normPed(x.num)===normPed(p.num));if(f)p.filaKey=f._key;}});
+  lote.forEach(p=>{if(!p.filaKey){const f=filaAro.find(x=>normPed(x.num)===normPed(p.num));if(f){p.filaKey=f._key;p.aro=aroDetalhes(f);}}});
   const tomados=[];
   for(const p of lote.filter(p=>p.filaKey)){
     try{const atual=await fbGet('filaPedidos/'+p.filaKey);if(!atual||atual.status!=='disponivel')tomados.push(p);}catch(e){}
@@ -2023,9 +2295,13 @@ function renderRegistrosAbertos(){
   const el=document.getElementById('reg-abertos');
   const card=document.getElementById('card-em-separacao');
   atualizarBotaoIniciar();
+  avisosLote=avisosLote.filter(a=>a.ate>Date.now());
+  const htmlAvisos=avisosLote.map(a=>`<div class="reg-aviso${a.tipo?' '+a.tipo:''}">${a.txt.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>`).join('');
+  if(avisosLote.length)setTimeout(()=>{if(avisosLote.some(a=>a.ate<=Date.now()))renderRegistrosAbertos();},(Math.min(...avisosLote.map(a=>a.ate))-Date.now())+200);
   if(!registrosAbertos.length){
-    el.querySelectorAll('.reg-item').forEach(n=>n.remove());
-    if(!el.querySelector('.reg-undo'))card.style.display='none';
+    el.querySelectorAll('.reg-item,.reg-aviso,.reg-empty').forEach(n=>n.remove());
+    if(htmlAvisos){el.insertAdjacentHTML('afterbegin',htmlAvisos);card.style.display='';}
+    else if(!el.querySelector('.reg-undo'))card.style.display='none';
     if(regTimerInt){clearInterval(regTimerInt);regTimerInt=null;}
     return;
   }
@@ -2050,7 +2326,7 @@ function renderRegistrosAbertos(){
       <div class="reg-meta"><div class="reg-bar"><div style="width:${pct}%"></div></div><span class="reg-meta-txt">${late?'Atrasado '+fmtDur(now-r.inicio-meta*60000):'Meta '+meta+' min'}</span></div>
       <button class="btn-fin" onclick="finalizarRegistro('${r._key}',this)">Finalizar</button>
     </div>`;
-  }).join('');
+  }).join('')+htmlAvisos;
   if(!regTimerInt)regTimerInt=setInterval(()=>{atualizarTimers();verificarDupAbertos();},15000);
   verificarDupAbertos();
 }
@@ -2302,6 +2578,11 @@ async function renderRankingCorrida() {
 }
 
 
+// Biblioteca de gráfico só é baixada quando alguém abre "Meu histórico" (deixa a abertura da página mais leve)
+let _chartJs=null;
+function carregarChartJs(){if(window.Chart)return Promise.resolve();if(_chartJs)return _chartJs;
+  _chartJs=new Promise((ok,erro)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';sc.onload=ok;sc.onerror=()=>{_chartJs=null;erro(new Error('Chart.js'));};document.head.appendChild(sc);});
+  return _chartJs;}
 async function renderChart(){
   const filial=document.getElementById('g-filial').value;
   const colab=document.getElementById('g-colab').value;
@@ -2328,6 +2609,7 @@ async function renderChart(){
     metricsEl.style.display='grid';
     metricsEl.innerHTML=`<div class="cm"><div class="cm-lbl">Total pneus</div><div class="cm-val">${totalPn.toLocaleString('pt-BR')}</div></div><div class="cm"><div class="cm-lbl">Pedidos</div><div class="cm-val">${totalPd}</div></div><div class="cm"><div class="cm-lbl">Média/dia</div><div class="cm-val">${media}</div></div><div class="cm"><div class="cm-lbl">Melhor dia</div><div class="cm-val" style="color:var(--green-t)">${maximo}</div></div>`;
     wrapEl.style.display='';
+    try{await carregarChartJs();}catch(e){emptyEl.textContent='Não consegui carregar o gráfico. Verifique a internet.';emptyEl.style.display='';wrapEl.style.display='none';return;}
     if(myChart)myChart.destroy();
     myChart=new Chart(document.getElementById('myChart'),{type:'bar',data:{labels,datasets:[{label:'Pneus',data:pneusData,backgroundColor:pneusData.map(v=>v===maximo&&maximo>0?'#131F3B':'#B8CFD0'),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} pneus`}}},scales:{x:{grid:{display:false},ticks:{color:'#a09d96',font:{size:11},maxRotation:45}},y:{grid:{color:'#e2e0d8'},ticks:{color:'#a09d96',font:{size:11}},beginAtZero:true}}}});
   }catch(e){emptyEl.textContent='Erro ao carregar.';emptyEl.style.display='';console.error(e);}
