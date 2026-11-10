@@ -357,6 +357,14 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
     </div>
     <button class="btn-submit" id="rx-botao" style="margin-top:12px" onclick="roboAlternarExclusivo()" disabled>...</button>
   </div>
+  <div class="card" id="robo-pendentes" style="margin-top:12px">
+    <div class="card-title"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Pedidos em aberto sem as informações novas</div>
+    <div class="card-sub">Pedidos que entraram no formato antigo e ainda não foram conferidos (na fila ou em separação). Copie a lista e mande o Aro lançar esses pedidos de novo no formato novo: o sistema não duplica, só completa com cliente, NF e medidas, e o tablet passa a mostrar as medidas.</div>
+    <button class="btn-submit" type="button" onclick="roboListarPendentes()">Listar pedidos em aberto sem medidas</button>
+    <div id="rp-resumo" style="margin-top:12px;font-size:14px"></div>
+    <textarea id="rp-lista" rows="6" readonly style="display:none;margin-top:8px;font-family:var(--mono)"></textarea>
+    <button type="button" class="btn-trocar" id="rp-copiar" style="display:none;margin-top:8px" onclick="roboCopiarPendentes()">Copiar lista</button>
+  </div>
 </div>
 <div class="tab-content" id="tab-confirmar">
     <div class="card" style="margin-bottom:12px;background:var(--orange);border:none;text-align:center;padding:28px 18px">
@@ -588,7 +596,7 @@ async function fbQuery(path,field,opts){
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 // Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-11-10-github-completa';
+const APP_VERSAO='2026-11-10-github-pend';
 async function checarVersao(){
   if(location.protocol==='file:')return false;
   try{
@@ -2128,6 +2136,32 @@ async function roboSalvarVigiaMin(){
     roboStatus('ok','Aro parado agora é depois de '+v+' min sem sinal.',{});await roboMostrarExclusivo();}catch(e){roboStatus('erro','Não consegui gravar: '+e.message,{});}
 }
 setInterval(()=>{if(MODO_ROBO_SAFE()&&document.getElementById('rx-estado'))roboMostrarExclusivo();},60000);
+// Pedidos ainda não conferidos que não têm as informações novas: na fila do Aro (disponível/em separação)
+// e lançamentos dos últimos dias sem baixa no tablet
+async function roboListarPendentes(){
+  const res=document.getElementById('rp-resumo'),ta=document.getElementById('rp-lista'),bt=document.getElementById('rp-copiar');
+  res.textContent='Procurando...';ta.style.display='none';bt.style.display='none';
+  try{
+    const ini=roboDataLimite(5),iniConf=roboDataLimite(30);
+    const [fila,lanc,conf]=await Promise.all([fbGet('filaPedidos'),fbQuery('lancamentos','data',{startAt:ini}),fbQuery('confirmacoes','data',{startAt:iniConf})]);
+    const conferidos=new Set(Object.values(conf||{}).filter(c=>c&&c.numPedido).map(c=>normPed(c.numPedido)));
+    const temInfo=x=>Array.isArray(x&&x.itens)&&x.itens.length;
+    const pend=new Map(); // num -> {filial, onde}
+    Object.values(fila||{}).forEach(f=>{if(!f||!f.num)return;const n=normPed(f.num);
+      if((f.status==='disponivel'||f.status==='separacao')&&!temInfo(f)&&!conferidos.has(n))pend.set(n,{filial:f.filial||'',onde:f.status==='disponivel'?'na fila':'em separação'});});
+    const comInfo=new Set(Object.values(lanc||{}).filter(l=>l&&l.isPedido&&temInfo(l)).map(l=>normPed(l.numPedido)));
+    Object.values(lanc||{}).forEach(l=>{if(!l||!l.isPedido||!l.numPedido)return;const n=normPed(l.numPedido);
+      if(!temInfo(l)&&!comInfo.has(n)&&!conferidos.has(n)&&!pend.has(n))pend.set(n,{filial:l.filial||'',onde:'separado, sem conferência'});});
+    // só filiais do Aro
+    const lista=[...pend.entries()].filter(([n,v])=>roboFilialLiberada(v.filial)).sort((a,b)=>a[1].filial.localeCompare(b[1].filial)||a[0].localeCompare(b[0]));
+    if(!lista.length){res.innerHTML='<b style="color:var(--green-t)">✓ Nenhum pedido em aberto sem as informações novas.</b>';return;}
+    const porFil={};lista.forEach(([n,v])=>{(porFil[v.filial]=porFil[v.filial]||[]).push(n);});
+    res.innerHTML='<b>'+lista.length+' pedido(s)</b> em aberto sem medidas: '+Object.entries(porFil).map(([f,a])=>escH(f)+' ('+a.length+')').join(' · ');
+    ta.value=lista.map(([n])=>n).join('\n');ta.style.display='';bt.style.display='';
+  }catch(e){console.error(e);res.innerHTML='<span style="color:var(--red-t)">Não consegui ler: '+escH(e.message)+'</span>';}
+}
+function roboCopiarPendentes(){const ta=document.getElementById('rp-lista');ta.select();
+  (navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>roboStatus('ok','Lista copiada.',undefined)).catch(()=>{try{document.execCommand('copy');roboStatus('ok','Lista copiada.',undefined);}catch(e){}});}
 async function roboAlternarFormato(){
   const ligar=!aroDetalhesOn;
   if(ligar){const t=prompt('Ativar em definitivo o formato novo do Aro?\n\nSeparador e tablet passam a mostrar cliente, NF, medidas e marca, e o "Conferido OK" só libera com todas as medidas marcadas.\n\nDigite ATIVAR para confirmar:');
