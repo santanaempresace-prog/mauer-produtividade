@@ -211,6 +211,9 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
 .reg-empty{font-size:13px;color:var(--navy-soft);text-align:center;padding:14px}
 @media(max-width:480px){.topbar{padding:10px 14px 14px;gap:10px}.tb-logo{height:22px}.tb-sub{display:none}.form-grid{grid-template-columns:1fr}.pedido-add-row{grid-template-columns:1fr 82px auto}.chart-metrics{grid-template-columns:repeat(2,1fr)}.tab-btn{font-size:12px;padding:9px 4px}.tab-btn span{font-size:10px}.card{padding:16px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.fila-busca-wrap{position:relative;margin-bottom:8px}
+#fila-busca{font-size:15px;min-height:46px;padding-right:80px}
+#fila-busca-info{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--hint);font-family:var(--mono)}
 </style>
 </head>
 <body>
@@ -252,6 +255,7 @@ button:focus-visible{outline:3px solid rgba(227,138,41,.55);outline-offset:2px}
     <div class="card" id="card-fila-aro" style="display:none">
       <div class="card-title" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6"/></svg>Pedidos do Aro para separar</span><span style="display:flex;align-items:center;gap:8px"><button type="button" class="btn-trocar" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="carregarFilaAro()">Atualizar</button><span class="fila-cont" id="fila-cont">0</span></span></div>
       <div class="card-sub">Marque os pedidos que você vai separar e clique em Adicionar ao lote.</div>
+      <div class="fila-busca-wrap"><input type="text" id="fila-busca" autocomplete="off" placeholder="🔍 Buscar na fila: nº do pedido, cliente, NF ou medida (Enter adiciona ao lote)" oninput="renderFilaAro()" onkeydown="if(event.key==='Enter'){event.preventDefault();filaBuscaEnter();}if(event.key==='Escape'){this.value='';renderFilaAro();}"><span id="fila-busca-info"></span></div>
       <div id="fila-lista"></div>
       <div class="fila-acoes">
         <button type="button" class="btn-trocar" onclick="filaMarcarTodos()">Marcar todos</button>
@@ -596,7 +600,7 @@ async function fbQuery(path,field,opts){
 let filiais=[], colaboradores={}, lancamentosHoje=[], allLancamentos=[], myChart=null;
 let pedidosTemp=[];
 // Versão desta página. Ao publicar alteração, mude o valor: aparelhos com a versão antiga recarregam sozinhos.
-const APP_VERSAO='2026-11-10-github-pend';
+const APP_VERSAO='2026-11-11-github-busca';
 async function checarVersao(){
   if(location.protocol==='file:')return false;
   try{
@@ -2288,24 +2292,46 @@ async function carregarFilaAro(){
 }
 function renderFilaAro(){
   const card=document.getElementById('card-fila-aro'),el=document.getElementById('fila-lista');
-  const marcados=new Set([...el.querySelectorAll('input:checked')].map(i=>i.value));
+  el.querySelectorAll('input:checked:not(:disabled)').forEach(i=>filaSel.add(i.value));
+  const marcados=filaSel;
   card.style.display='';
   document.getElementById('fila-cont').textContent=filaAro.filter(f=>!filaTemId(f._key)).length;
   if(!filaAro.length){el.innerHTML='<div class="fila-vazia">Nenhum pedido do Aro esperando separação</div>';return;}
   const now=Date.now();
-  el.innerHTML=filaAro.map(f=>{const no=filaTemId(f._key);
+  // busca: número, cliente, NF, transportadora ou medida
+  const q=String((document.getElementById('fila-busca')||{}).value||'').trim().toUpperCase(),qn=q.replace(/\D/g,'');
+  const bate=f=>{if(!q)return true;if(qn&&q===qn)return normPed(f.num).includes(normPed(qn))||String(f.nota||'').includes(qn);
+    const txt=[f.num,f.cliente,f.transportadora,f.nota,...(Array.isArray(f.itens)?f.itens.map(i=>i.desc+' '+(i.marca||'')):[])].join(' ').toUpperCase();return q.split(/\s+/).every(p=>txt.includes(p));};
+  const lista=filaAro.filter(bate);
+  const info=document.getElementById('fila-busca-info');if(info)info.textContent=q?lista.length+' de '+filaAro.length:'';
+  if(!lista.length){el.innerHTML='<div class="fila-vazia">Nenhum pedido da fila com "'+escH(q)+'". Se ele é desta filial, espere o Aro rodar de novo.</div>';return;}
+  el.innerHTML=lista.map(f=>{const no=filaTemId(f._key);
     const det=aroDetalhesOn?[f.cliente,f.transportadora,f.nota?'NF '+f.nota:''].filter(Boolean).map(escH).join(' · '):'';
     const med=aroDetalhesOn&&Array.isArray(f.itens)&&f.itens.length?f.itens.map(i=>{const md=medidaDe(i.desc),mk=i.marca||((marcaNaDesc(md.resto)||{}).marca||'');return '<b>'+escH(i.qt+'× '+md.medida)+'</b>'+(mk?' '+escH(mk):'')+(i.local?' · 📍'+escH(i.local):'');}).join('  ·  '):'';
     return `<label class="fila-it${no?' nolote':''}"><input type="checkbox" value="${f._key}" ${no?'checked disabled':(marcados.has(f._key)?'checked':'')}><div class="fila-info"><div><span class="fila-num">${f.num}</span><span class="fila-qt">${f.qt} pneu${f.qt!==1?'s':''}</span></div>${det?`<div class="fila-det">${det}</div>`:''}${med?`<div class="fila-med">${med}</div>`:''}</div><span class="fila-t">${no?'no lote':fmtDur(now-f.criadoEm)}</span></label>`;}).join('');
 }
+
+// ===== Busca na fila do Aro =====
+let filaSel=new Set();
+document.addEventListener('change',e=>{const c=e.target;if(c&&c.matches&&c.matches('#fila-lista input[type=checkbox]')&&!c.disabled){if(c.checked)filaSel.add(c.value);else filaSel.delete(c.value);}});
+// Enter na busca: se sobrou 1 pedido (ou o número bate exato), marca e já adiciona ao lote
+function filaBuscaEnter(){
+  const inp=document.getElementById('fila-busca');const q=String(inp.value||'').trim();if(!q)return;
+  const qn=normPed(q.replace(/\D/g,''));
+  let alvo=qn?filaAro.filter(f=>normPed(f.num)===qn):[];
+  if(!alvo.length){const vis=[...document.querySelectorAll('#fila-lista input:not(:disabled)')].map(i=>i.value);if(vis.length===1)alvo=filaAro.filter(f=>f._key===vis[0]);}
+  if(alvo.length!==1){showAlert('err',alvo.length?'Mais de um pedido encontrado: marque o certo na lista.':'Pedido '+q+' não está na fila do Aro desta filial.');return;}
+  if(filaTemId(alvo[0]._key)){showAlert('err','Pedido '+alvo[0].num+' já está no lote.');inp.value='';renderFilaAro();return;}
+  filaSel.add(alvo[0]._key);inp.value='';renderFilaAro();filaAdicionar();
+}
 function filaMarcarTodos(){
   const cbs=[...document.querySelectorAll('#fila-lista input:not(:disabled)')];
-  const todos=cbs.every(c=>c.checked);cbs.forEach(c=>c.checked=!todos);
+  const todos=cbs.every(c=>c.checked);cbs.forEach(c=>{c.checked=!todos;if(c.checked)filaSel.add(c.value);else filaSel.delete(c.value);});
 }
 async function filaAdicionar(){
   if(exigirTrava())return;
   if(await verificarBloqueio())return;
-  const sel=[...document.querySelectorAll('#fila-lista input:checked:not(:disabled)')].map(i=>i.value);
+  const sel=[...new Set([...document.querySelectorAll('#fila-lista input:checked:not(:disabled)')].map(i=>i.value).concat([...filaSel]))].filter(k=>!filaTemId(k)&&filaAro.some(f=>f._key===k));filaSel=new Set();
   if(!sel.length){showAlert('err','Marque pelo menos um pedido da fila.');return;}
   let n=0;
   sel.forEach(k=>{const f=filaAro.find(x=>x._key===k);if(!f||filaTemId(k))return;
